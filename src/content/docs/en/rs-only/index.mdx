@@ -1,0 +1,136 @@
+---
+title: "Rust You Won't Find in TypeScript"
+description: 'An overview of the Rust-only concepts — ownership, borrowing, lifetimes, and more — that have no direct equivalent in TypeScript or JavaScript.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## What TypeScript cannot teach you
+
+TypeScript is an excellent language. But it runs on a garbage-collected JavaScript runtime. That runtime makes many hard decisions invisible: when is memory freed? Who owns a value? Can two threads read the same object at the same time?
+
+Rust makes all of these decisions explicit — at **compile time**, with zero runtime cost. That means Rust has a set of concepts with **no equivalent in TypeScript** at all. This module covers them.
+
+<RsOnly title="The Rust concepts with no TS equivalent">
+
+Here is the complete list of concepts this module covers. Each one solves a problem that TypeScript either delegates to the runtime or ignores entirely:
+
+| Concept | What problem it solves |
+|---|---|
+| **Ownership** | Exactly one owner per value; compiler frees memory when the owner goes out of scope. |
+| **Borrowing & references** | Temporary access to a value without transferring ownership. |
+| **Lifetimes** | Compiler-checked guarantees that references never outlive the data they point to. |
+| **Move vs Copy** | Explicit control over whether a value is duplicated or transferred. |
+| **Traits** | Nominal, coherent interfaces — unlike TypeScript's structural typing. |
+| **Enums as ADTs** | Sum types that can carry data; exhaustive `match`. |
+| **Option / Result** | No `null`, no `undefined`, no unchecked exceptions. |
+| **No GC / RAII** | Deterministic, scope-based resource cleanup with zero runtime overhead. |
+
+None of these require a runtime. They are all enforced by the Rust compiler (rustc) before your program runs.
+
+</RsOnly>
+
+## TypeScript hands memory to the runtime
+
+In TypeScript (and JavaScript), you never think about memory:
+
+export const indexTs = `// TypeScript — memory is invisible
+const greeting = "hello";       // allocated on the heap, somewhere
+const copy = greeting;           // both point to the same string object
+// When does "hello" get freed? The GC decides. You never know.
+// There is no ownership. There are no rules. Just references.
+function process(s: string) {
+  console.log(s);
+}
+process(greeting);
+console.log(greeting); // still valid — GC keeps it alive`;
+
+export const indexRs = `fn main() {
+    // Rust — ownership is explicit
+    let s = String::from("hello");  // s owns the string data
+    let t = s;                       // ownership MOVES to t; s is gone
+    // println!("{}", s);            // compile error: s was moved
+    println!("{}", t);               // only t is valid
+
+    // borrowing — temporary access without moving
+    let greeting = String::from("world");
+    let len = calc_len(&greeting);   // lend greeting; we keep ownership
+    println!("{} has {} chars", greeting, len);
+
+    // Copy type — i32 is cheap to copy, so it copies automatically
+    let x: i32 = 42;
+    let y = x;                       // x is NOT moved — it is copied
+    println!("x={} y={}", x, y);    // both valid
+}
+
+fn calc_len(s: &String) -> usize {
+    s.len()
+}`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+## Try it
+
+export const indexCode = `fn main() {
+    // move semantics
+    let s = String::from("hello");
+    let t = s;          // s is moved into t
+    println!("{}", t); // only t is valid
+
+    // borrowing
+    let greeting = String::from("world");
+    let len = calc_len(&greeting);
+    println!("{} has {} chars", greeting, len);
+
+    // Copy type
+    let x: i32 = 42;
+    let y = x;          // i32 is Copy — both x and y are valid
+    println!("x={} y={}", x, y);
+}
+
+fn calc_len(s: &String) -> usize {
+    s.len()
+}`;
+
+<Playground client:visible code={indexCode} />
+
+export const quizIndex = [
+  {
+    q: "Which of the following is handled by the Rust compiler — not a runtime?",
+    options: [
+      "Garbage collection",
+      "Ownership and memory safety",
+      "Dynamic dispatch via vtables only",
+      "Thread scheduling"
+    ],
+    answer: 1
+  },
+  {
+    q: "What happens to `s` after `let t = s;` when `s` is a `String`?",
+    options: [
+      "s is cloned automatically",
+      "Both s and t are valid",
+      "s is moved — it is no longer valid",
+      "s is borrowed by t"
+    ],
+    answer: 2
+  },
+  {
+    q: "Why does TypeScript never need ownership rules?",
+    options: [
+      "TypeScript uses reference counting",
+      "TypeScript values are always immutable",
+      "TypeScript runs on a garbage-collected runtime that tracks lifetimes automatically",
+      "TypeScript only supports primitive types"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rs-only/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="rs-only/index" />

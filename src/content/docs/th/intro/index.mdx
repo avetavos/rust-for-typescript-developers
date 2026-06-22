@@ -1,0 +1,174 @@
+---
+title: "บทนำ — ทำไม Rust ถึงเหมาะสำหรับนักพัฒนา TypeScript"
+description: 'ความปลอดภัยของหน่วยความจำโดยไม่มี GC, Fearless concurrency, เครื่องมือที่ยอดเยี่ยม, และ compiler ที่สอนคุณ — เหตุผลที่ Rust คุ้มค่าแก่การเรียนรู้ควบคู่ TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## คุณรู้วิธีสร้างซอฟต์แวร์อยู่แล้ว
+
+คุณเขียน TypeScript คุณส่งมอบบริการ Node.js, เครื่องมือ CLI, และแอปพลิเคชัน React คุณเข้าใจ types, async/await, modules, และการจัดการ package ความรู้เหล่านั้นถ่ายทอดได้ — คอร์สนี้ใช้สิ่งที่คุณรู้เป็นสะพานสู่ Rust
+
+## ทำไมต้องเรียน Rust?
+
+TypeScript แก้ปัญหาจริง: มันเพิ่ม types ให้ JavaScript เพื่อให้ข้อบกพร่องปรากฏตั้งแต่ขั้น compile แทนที่จะปรากฏใน production Rust นำแนวคิดนั้นไปสู่ระดับสุดขีด — มันทำให้บัก **ทั้งหมวด** (การเสียหายของหน่วยความจำ, data races, null dereferences) **เป็นไปไม่ได้โดยโครงสร้าง** โดยไม่มี garbage collector
+
+นี่คือคุณค่าหลักที่ได้รับ:
+
+- **ความปลอดภัยของหน่วยความจำโดยไม่มี GC** ไม่มี garbage collector มาหยุดโปรแกรมของคุณ หน่วยความจำถูกติดตามตั้งแต่ขั้น compile ผ่านระบบ ownership คุณได้ทั้งความปลอดภัยของภาษา managed และประสิทธิภาพของ C
+- **Fearless concurrency** กฎ ownership เดียวกันที่ป้องกันบักด้านหน่วยความจำยังป้องกัน data races ด้วย ถ้าโค้ดของคุณ compile ได้ การเข้าถึงแบบ concurrent ก็ปลอดภัย — compiler บอกเราเอง
+- **Latency ที่คาดเดาได้และใกล้ศูนย์** ไม่มีการหยุดของ GC, ไม่มีการ warm-up ของ JIT, ไม่มีค่าใช้จ่ายของ VM โปรแกรม Rust เริ่มเร็วและเร็วต่อเนื่อง
+- **เครื่องมือที่ยอดเยี่ยมตั้งแต่วันแรก** `cargo` คือ package manager และ build tool ที่ดีที่สุดในบรรดา systems language `rustfmt` จัดรูปแบบโค้ดของคุณ `clippy` จับข้อผิดพลาดทั่วไป ecosystem จะรู้สึกคุ้นเคย
+- **Compiler ในฐานะครูผู้เป็นประโยชน์** ข้อความแสดงข้อผิดพลาดของ Rust นั้นโด่งดัง เมื่อคุณทำผิด compiler จะอธิบายว่าผิดอะไรและมักเสนอวิธีแก้ที่ชัดเจน มันเข้มงวด แต่ยุติธรรม
+
+## Rust อยู่ตรงไหนเมื่อเทียบกับ TypeScript
+
+TypeScript (และ Node.js) เหมาะสำหรับ:
+- Web API และ backend service ที่ความเร็วในการพัฒนาสำคัญ
+- แอปพลิเคชัน JavaScript แบบ frontend และ full-stack
+- การสร้าง prototype อย่างรวดเร็ว
+
+Rust โดดเด่นใน:
+- Service ที่ต้องการประสิทธิภาพสูง (API ที่ latency ต่ำ, data pipelines)
+- โมดูล WebAssembly ที่ compile จาก Rust แล้วเรียกใช้จาก frontend TypeScript ของคุณ
+- เครื่องมือ CLI และ developer tooling
+- Systems programming, embedded, และทุกที่ที่ GC เป็นสิ่งที่ยอมรับไม่ได้
+
+ข่าวดี: คุณไม่ต้องเลือก ระบบ production หลายระบบใช้ทั้งสอง — TypeScript สำหรับ web layer และ Rust สำหรับ hot path หรือโมดูล WASM
+
+## เนื้อหาที่คอร์สนี้ครอบคลุม
+
+คอร์สนี้มีโครงสร้างเป็นชุดของการเปรียบเทียบแบบเคียงข้างกัน ทุกแนวคิดเริ่มต้นด้วยสิ่งที่คุณรู้อยู่แล้วใน TypeScript แล้วจึงแสดง Rust ที่เทียบเท่ากัน
+
+**โมดูล Intro (คุณอยู่ที่นี่):**
+- ทำไม Rust? การเปลี่ยน mental model
+- การติดตั้ง toolchain (`rustup`, `cargo`)
+- Hello, world
+- โครงสร้างโปรเจกต์ (`Cargo.toml` vs `package.json`)
+
+**Rust 101 — พื้นฐาน:**
+- Variables, mutability, shadowing
+- Functions และ expressions
+- Control flow (`if`, `match`, loops)
+- Structs (vs interfaces และ classes)
+- Enums และ pattern matching
+- Collections (`Vec`, `HashMap`)
+- `Option` และ `Result` (vs `null`/`undefined` และ `try/catch`)
+- Modules และ crates (vs ESM และ npm)
+
+## ลองชิมรสชาติ
+
+ทั้งสอง snippet ทำสิ่งเดียวกัน สังเกตว่า Rust ดูมีโครงสร้างและคุ้นเคย แต่มีความแตกต่างที่น่าสังเกต: ไม่มี semicolon ที่บรรทัดสุดท้ายของ function หมายความว่า "นี่คือค่าที่คืนออกมา", `println!` คือ macro (ไม่ใช่ function), และไม่มี runtime — แค่ machine code แบบ native
+
+export const indexTs = `// TypeScript
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+const result = add(3, 4);
+console.log(\`3 + 4 = \${result}\`);
+
+const language: string = "Rust";
+console.log(\`Time to learn \${language}!\`);`;
+
+export const indexRs = `fn add(a: i32, b: i32) -> i32 {
+    a + b // no semicolon = this is the return value
+}
+
+fn main() {
+    let result = add(3, 4);
+    println!("3 + 4 = {result}");
+
+    let language = "Rust";
+    println!("Time to learn {language}!");
+}`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+## ลองเลย
+
+รัน Rust snippet ด้านบนโดยตรงในเบราว์เซอร์ของคุณ ไม่ต้องติดตั้งอะไร
+
+export const indexCode = `fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn main() {
+    let result = add(3, 4);
+    println!("3 + 4 = {result}");
+
+    let language = "Rust";
+    println!("Time to learn {language}!");
+
+    // No null, no undefined -- use Option
+    let maybe: Option<i32> = Some(42);
+    if let Some(n) = maybe {
+        println!("Got a value: {n}");
+    }
+}`;
+
+<Playground client:visible code={indexCode} />
+
+<RsOnly title="ไม่มี null, ไม่มี undefined — ใช้ Option แทน">
+
+TypeScript มี `null`, `undefined`, optional chaining (`?.`), และ non-null assertion (`!`) Rust ไม่มีสิ่งเหล่านี้เลย แต่ใช้การไม่มีค่าแทนด้วย enum `Option<T>`:
+
+```
+let name: Option<&str> = Some("Alice");
+let missing: Option<&str> = None;
+```
+
+compiler บังคับให้คุณจัดการทั้งสองกรณีก่อนที่จะสามารถใช้ค่าได้ ไม่มีทางที่จะ dereference `None` โดยบังเอิญ — มันเป็น compile error ไม่ใช่ runtime crash
+
+</RsOnly>
+
+export const quizIndex = [
+  {
+    q: "เหตุผลหลักที่ Rust ไม่มี garbage collector คืออะไร?",
+    options: [
+      "โปรแกรม Rust เรียบง่ายเกินไปจนไม่ต้องการการจัดการหน่วยความจำ",
+      "หน่วยความจำถูกติดตามแบบ static ตั้งแต่ขั้น compile ผ่านระบบ ownership",
+      "Rust ใช้ reference counting แต่เพียงอย่างเดียว",
+      "GC มีแผนสำหรับเวอร์ชันในอนาคต"
+    ],
+    answer: 1
+  },
+  {
+    q: "ใน Rust การละเว้น semicolon ที่บรรทัดสุดท้ายของ function หมายความว่าอะไร?",
+    options: [
+      "เป็น syntax error",
+      "บรรทัดนั้นเป็น comment",
+      "expression นั้นคือค่าที่คืนออกมาจาก function",
+      "function คืนค่า unit (ไม่มีอะไร)"
+    ],
+    answer: 2
+  },
+  {
+    q: "คุณลักษณะใดของ Rust ที่ป้องกัน data races ตั้งแต่ขั้น compile?",
+    options: [
+      "Garbage collector",
+      "Async/await",
+      "ระบบ ownership และ borrowing",
+      "Mutexes ที่ compiler แทรกโดยอัตโนมัติ"
+    ],
+    answer: 2
+  },
+  {
+    q: "Rust ใช้อะไรแทน null หรือ undefined?",
+    options: [
+      "keyword null พิเศษ",
+      "enum Option<T> ที่มี variant Some และ None",
+      "Nullable types อย่าง T?",
+      "undefined เป็นค่าที่ถูกต้องใน Rust"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="intro/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="intro/index" />

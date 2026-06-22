@@ -1,0 +1,199 @@
+---
+title: 'Smart Pointers'
+description: '`Box<T>`, `Rc<T>`, `RefCell<T>`, and interior mutability in Rust — compared to JavaScript''s garbage-collected references.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## JavaScript references vs Rust smart pointers
+
+In JavaScript and TypeScript, every object lives on the heap and the garbage collector manages its lifetime. You never think about who owns what — the GC figures it out. Rust has no GC. Instead, it gives you a toolkit of **smart pointers** that express ownership and aliasing rules explicitly, at zero runtime cost.
+
+| Smart pointer | Purpose | JS/TS analogy |
+|---|---|---|
+| `Box<T>` | Heap allocation, single owner | `new MyClass()` — one owner, dropped when out of scope |
+| `Rc<T>` | Reference-counted shared ownership (single-thread) | GC reference counting |
+| `Arc<T>` | Same as `Rc<T>` but thread-safe | Shared reference across async tasks |
+| `RefCell<T>` | Interior mutability (runtime borrow checking) | `{ mutable: T }` wrapper — you control when to borrow |
+| `Rc<RefCell<T>>` | Shared + mutable (single-thread) | Mutable shared state across multiple holders |
+
+## `Box<T>` — heap allocation with single ownership
+
+`Box<T>` is the simplest smart pointer: it puts a value on the heap and gives you a single-owner pointer to it. When the `Box` goes out of scope, the heap memory is freed automatically.
+
+export const boxTs = `// TypeScript — every object is heap-allocated by default
+class Node {
+  constructor(
+    public value: number,
+    public next: Node | null = null
+  ) {}
+}
+
+const list = new Node(1, new Node(2, new Node(3)));
+console.log(list.value);       // 1
+console.log(list.next?.value); // 2`;
+
+export const boxRs = `// Box<T>: explicit heap allocation in Rust
+// Required for recursive types (the compiler needs a fixed-size pointer)
+#[derive(Debug)]
+enum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+
+fn main() {
+    let list = List::Cons(1,
+        Box::new(List::Cons(2,
+            Box::new(List::Cons(3,
+                Box::new(List::Nil))))));
+    println!("{:?}", list);
+
+    // Simple Box usage
+    let b = Box::new(5);
+    println!("b = {b}");
+    // b is freed here (end of scope)
+}`;
+
+<TsGo client:visible ts={boxTs} go={boxRs} />
+
+## `Rc<T>` — shared ownership with reference counting
+
+When multiple parts of your program need to *read* the same value and you cannot determine which will be the last to use it at compile time, use `Rc<T>`. Every `Rc::clone` increments a reference count; when the last `Rc` drops, the value is freed. This is what JavaScript's GC does automatically — `Rc` makes it explicit.
+
+export const rcTs = `// TypeScript — two variables can reference the same object
+const config = { maxRetries: 3 };
+const serviceA = { config };
+const serviceB = { config }; // same object, no copy
+config.maxRetries = 5;
+console.log(serviceA.config.maxRetries); // 5 — shared reference`;
+
+export const rcRs = `use std::rc::Rc;
+
+fn main() {
+    let config = Rc::new(String::from("max_retries=3"));
+
+    let service_a = Rc::clone(&config); // increments ref count
+    let service_b = Rc::clone(&config); // increments ref count
+
+    println!("config = {config}");
+    println!("service_a = {service_a}");
+    println!("service_b = {service_b}");
+    println!("ref count = {}", Rc::strong_count(&config)); // 3
+
+    drop(service_a); // decrements ref count
+    println!("after drop: ref count = {}", Rc::strong_count(&config)); // 2
+}`;
+
+<TsGo client:visible ts={rcTs} go={rcRs} />
+
+## `RefCell<T>` — interior mutability
+
+Rust's borrow checker enforces that you either have one mutable reference OR many immutable references — never both at once. `RefCell<T>` moves this check to **runtime**: you call `.borrow()` for shared access and `.borrow_mut()` for exclusive access. If you violate the rule at runtime, it panics instead of refusing to compile.
+
+```
+use std::cell::RefCell;
+
+let data = RefCell::new(vec![1, 2, 3]);
+{
+    let mut v = data.borrow_mut(); // exclusive borrow
+    v.push(4);
+}   // borrow released here
+println!("{:?}", data.borrow()); // shared borrow: [1, 2, 3, 4]
+```
+
+## `Rc<RefCell<T>>` — shared mutable state
+
+Combine `Rc` (multiple owners) with `RefCell` (interior mutability) to get the closest equivalent to JavaScript's mutable shared references.
+
+<RsOnly title="When to reach for each smart pointer">
+
+- Start with plain references (`&T`, `&mut T`). The borrow checker will tell you when you need more.
+- Use `Box<T>` when you need heap allocation (recursive types, large values you do not want copied on the stack, or returning a trait object).
+- Use `Rc<T>` when multiple parts of your single-threaded code need to share ownership of read-only data and you cannot determine the last owner at compile time.
+- Use `RefCell<T>` (usually inside `Rc`) when you need to mutate shared data but can reason that your borrow patterns are safe — and you accept a runtime panic if you are wrong.
+- Use `Arc<T>` and `Mutex<T>` / `RwLock<T>` instead of `Rc` / `RefCell` when working across threads.
+
+</RsOnly>
+
+## Try it
+
+export const smartPlayground = `use std::rc::Rc;
+use std::cell::RefCell;
+
+fn main() {
+    // Box<T>: heap allocation, single owner
+    let b = Box::new(5);
+    println!("b = {b}");
+
+    // Rc<T>: reference-counted shared ownership
+    let a = Rc::new(String::from("hello"));
+    let b2 = Rc::clone(&a);
+    println!("a = {a}, b2 = {b2}, count = {}", Rc::strong_count(&a));
+
+    // RefCell<T>: interior mutability - borrow checking at runtime
+    let data = RefCell::new(vec![1, 2, 3]);
+    {
+        let mut v = data.borrow_mut();
+        v.push(4);
+    }
+    println!("data = {:?}", data.borrow());
+
+    // Rc<RefCell<T>>: shared mutable state
+    let shared = Rc::new(RefCell::new(0));
+    let clone1 = Rc::clone(&shared);
+    *clone1.borrow_mut() += 10;
+    println!("shared = {}", shared.borrow());
+}`;
+
+<Playground client:visible code={smartPlayground} />
+
+export const quizSmartPointers = [
+  {
+    q: "When do you need `Box<T>` instead of a plain value?",
+    options: [
+      "Whenever you want to share ownership",
+      "When you need heap allocation — for recursive types, large values, or returning trait objects",
+      "When you need thread-safe reference counting",
+      "When you need interior mutability"
+    ],
+    answer: 1
+  },
+  {
+    q: "What does `Rc::clone(&ptr)` do?",
+    options: [
+      "Deeply copies the value on the heap",
+      "Creates a new owned `Rc` pointing to the same heap allocation and increments the reference count",
+      "Transfers ownership of the value to the new variable",
+      "Creates a weak reference that does not affect the reference count"
+    ],
+    answer: 1
+  },
+  {
+    q: "What happens if you call `borrow_mut()` on a `RefCell<T>` when a borrow is already active?",
+    options: [
+      "The compiler rejects the code",
+      "The second borrow waits until the first is released",
+      "The program panics at runtime",
+      "It silently returns a null pointer"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which combination should you use for shared mutable state across multiple threads?",
+    options: [
+      "Rc<RefCell<T>>",
+      "Box<RefCell<T>>",
+      "Arc<Mutex<T>>",
+      "Rc<Mutex<T>>"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="advanced/smart-pointers" questions={quizSmartPointers} />
+
+<ProgressTracker client:visible id="advanced/smart-pointers" />

@@ -1,0 +1,182 @@
+---
+title: 'Shared State'
+description: 'State extractor, Arc, app config and db pool — vs Express app.locals and NestJS providers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## The problem: sharing data across handlers
+
+Your handlers need access to shared resources — a database pool, config, a cache client. In Express you attach things to `app.locals` or pass them via closure. In NestJS, Dependency Injection wires them automatically. In Axum, you use the `State` extractor.
+
+## Express `app.locals` vs Axum `State`
+
+export const tsState = `// Express — attach to app.locals
+import express from 'express';
+import { Pool } from 'pg';
+
+const app = express();
+app.locals.db = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.get('/users', async (req, res) => {
+  const db: Pool = req.app.locals.db; // untyped, runtime cast
+  const { rows } = await db.query('SELECT * FROM users');
+  res.json(rows);
+});`;
+
+export const rsState = `use axum::{extract::State, routing::get, Json, Router};
+use sqlx::PgPool;
+use std::sync::Arc;
+
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,
+}
+
+async fn list_users(
+    State(state): State<Arc<AppState>>,
+) -> Json<Vec<User>> {
+    let users = sqlx::query_as!(User, "SELECT * FROM users")
+        .fetch_all(&state.db)
+        .await
+        .unwrap();
+    Json(users)
+}
+
+#[tokio::main]
+async fn main() {
+    let db = PgPool::connect(&std::env::var("DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+
+    let state = Arc::new(AppState { db });
+
+    let app = Router::new()
+        .route("/users", get(list_users))
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}`;
+
+<TsGo client:visible ts={tsState} go={rsState} />
+
+## NestJS providers vs Axum State
+
+In NestJS, services are singletons created by the IoC container and injected into controllers via the constructor. In Axum, you create the state once in `main`, wrap it in `Arc`, and attach it to the `Router`. Every handler that needs it declares `State(state): State<Arc<AppState>>`.
+
+export const tsNestDI = `// NestJS
+@Injectable()
+export class UsersService {
+  constructor(private readonly db: DatabaseService) {}
+
+  async findAll() {
+    return this.db.query('SELECT * FROM users');
+  }
+}
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  findAll() {
+    return this.usersService.findAll();
+  }
+}`;
+
+export const rsAxumState = `// Axum — no framework magic, just Arc + State
+use axum::{extract::State, Json};
+use std::sync::Arc;
+
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,
+    config: AppConfig,
+}
+
+async fn list_users(
+    State(state): State<Arc<AppState>>,
+) -> Json<Vec<User>> {
+    // state.db and state.config are available here
+    todo!()
+}`;
+
+<TsGo client:visible ts={tsNestDI} go={rsAxumState} />
+
+## Why `Arc`?
+
+`Arc<T>` is an atomically reference-counted smart pointer. Axum handlers run concurrently on multiple Tokio tasks. Without `Arc`, passing `AppState` to multiple handlers would require copying it. With `Arc`, all handlers hold a reference to the same allocation — no copies, no locks for read-only data.
+
+```rust
+// AppState must implement Clone so Axum can clone the Arc per handler
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,           // PgPool is already Clone + Arc internally
+    config: AppConfig,    // derive Clone on AppConfig
+}
+```
+
+If your state contains mutable data (e.g., an in-memory cache), wrap only the mutable part:
+
+```rust
+use std::sync::{Arc, RwLock};
+
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,
+    cache: Arc<RwLock<HashMap<String, String>>>,
+}
+```
+
+<RsOnly title="Arc vs Mutex vs RwLock">
+
+- `Arc<T>` — shared ownership, immutable access. Use for read-only state like config or a DB pool.
+- `Arc<Mutex<T>>` — shared ownership, exclusive (write) access. One task holds the lock at a time. Use for rare writes.
+- `Arc<RwLock<T>>` — shared ownership, concurrent reads **or** one exclusive write. Use when reads are frequent and writes are rare.
+
+For most Axum applications, the database pool (`PgPool`, `MongoClient`) is itself thread-safe and `Clone`, so you can place it directly in `AppState` without extra wrapping.
+
+</RsOnly>
+
+> **Run locally** — `State` requires a running Axum router with `.with_state(state)`. Use `cargo run` and call your endpoint with `curl`.
+
+export const quizState = [
+  {
+    q: "How do you make shared state available to Axum handlers?",
+    options: [
+      "Use a global `static` variable",
+      "Pass it via `.with_state(state)` on `Router` and extract with `State(s): State<T>`",
+      "Use `app.locals` like in Express",
+      "Inject it via a macro attribute"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why do we wrap `AppState` in `Arc` before passing to Axum?",
+    options: [
+      "Axum requires Arc for all state types",
+      "Arc enables shared ownership across concurrent tasks without copying",
+      "Arc makes the state mutable",
+      "Arc automatically serializes the state to JSON"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which type allows many concurrent reads but only one write at a time?",
+    options: [
+      "Arc<Mutex<T>>",
+      "Arc<RefCell<T>>",
+      "Arc<RwLock<T>>",
+      "Arc<Cell<T>>"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/state" questions={quizState} />
+
+<ProgressTracker client:visible id="api-axum/state" />

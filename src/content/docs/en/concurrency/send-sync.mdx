@@ -1,0 +1,176 @@
+---
+title: 'Send and Sync'
+description: 'How Rust''s Send and Sync marker traits give the compiler enough information to prevent data races at compile time — with no equivalent in TypeScript.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## The problem: sharing data across threads
+
+JavaScript sidesteps thread-safety entirely — there is only one thread (per Worker), so the question of "can two threads concurrently access this value?" simply does not arise. There is no type-level concept of thread safety in TypeScript.
+
+Rust supports real parallelism, which means two threads can genuinely access the same memory at the same time. To make this safe without a runtime garbage collector or a lock, Rust uses **marker traits**: `Send` and `Sync`.
+
+## Send and Sync defined
+
+| Trait | Meaning | Example types |
+|---|---|---|
+| `Send` | A value of type `T` can be **moved** to another thread | `i32`, `String`, `Vec<T>`, `Arc<T>` |
+| `Sync` | A shared reference `&T` can be sent to another thread | `i32`, `Arc<T>`, `Mutex<T>` |
+| Not `Send` | Cannot move to another thread | `Rc<T>` (non-atomic reference count) |
+| Not `Sync` | Cannot share a reference across threads | `Cell<T>`, `RefCell<T>` |
+
+These traits are **auto-implemented** by the compiler based on the types inside your struct. You almost never implement them manually. The rules propagate: if your struct contains a field that is not `Send`, your struct is not `Send` either.
+
+export const sendSyncTs = `// TypeScript has no thread-safety types.
+// The language guarantees safety by having only one thread per Worker.
+// There is no type-level concept of Send or Sync.
+
+// In a Worker, you can only communicate via structured-clone (postMessage):
+// plain objects, arrays, ArrayBuffer, etc.
+// You CANNOT pass a class instance with methods, a closure, or a WeakRef.
+
+const worker = new Worker('./worker.js');
+// This WORKS: number is structured-cloneable
+worker.postMessage(42);
+// This FAILS at runtime: functions are not cloneable
+// worker.postMessage(() => 42); // DataCloneError`;
+
+export const sendSyncRs = `// Rust: Send/Sync are compile-time guarantees, not runtime checks.
+
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    // Arc<Mutex<T>> is both Send and Sync:
+    // - Arc: thread-safe reference counting (vs Rc which is NOT Send)
+    // - Mutex: provides interior mutability with a lock
+    let shared: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(vec![]));
+    let mut handles = vec![];
+
+    for i in 0..4 {
+        let data = Arc::clone(&shared); // cheap clone of the Arc pointer
+        let h = thread::spawn(move || {
+            data.lock().unwrap().push(i); // lock, push, auto-unlock
+        });
+        handles.push(h);
+    }
+
+    for h in handles { h.join().unwrap(); }
+
+    let mut result = shared.lock().unwrap().clone();
+    result.sort();
+    println!("collected: {:?}", result); // collected: [0, 1, 2, 3]
+}`;
+
+<TsGo client:visible ts={sendSyncTs} go={sendSyncRs} />
+
+<RsOnly title="Compile-time data race prevention (no JS equivalent)">
+
+The most important thing to understand about `Send` and `Sync` is that they are **zero-cost abstractions**. They produce no runtime overhead — no locks are taken, no reference counts incremented just to check thread safety. The entire guarantee is enforced at compile time.
+
+### What happens when you violate the rules
+
+If you try to send a non-`Send` type (like `Rc<T>`) to another thread, the compiler refuses:
+
+```
+// This does NOT compile:
+use std::rc::Rc;
+use std::thread;
+
+fn main() {
+    let rc = Rc::new(42);
+    thread::spawn(move || {
+        println!("{}", rc); // ERROR
+    });
+}
+```
+
+```
+error[E0277]: `Rc<i32>` cannot be sent between threads safely
+   --> src/main.rs:6:19
+    |
+6   |     thread::spawn(move || {
+    |     ^^^^^^^^^^^^^ `Rc<i32>` cannot be sent between threads safely
+    |
+    = help: the trait `Send` is not implemented for `Rc<i32>`
+```
+
+The fix is to use `Arc<T>` instead of `Rc<T>`. `Arc` is "Atomically Reference Counted" — it uses atomic operations to update the count, making it safe to share across threads. `Rc` uses plain integer operations (cheaper, but not thread-safe).
+
+### The Send + Sync rule for thread::spawn
+
+`thread::spawn` requires the closure and everything it captures to be `Send`. This is checked at the call site — not at runtime, not when you receive the value, but at the moment you write `thread::spawn(...)`.
+
+This is the core of fearless concurrency: the type system knows which types are safe to cross thread boundaries, and it enforces that knowledge statically.
+
+</RsOnly>
+
+## Try it — working version with Arc
+
+export const sendSyncCode = `use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let data: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(vec![]));
+    let mut handles = vec![];
+
+    for i in 0..4 {
+        let d = Arc::clone(&data);
+        let h = thread::spawn(move || {
+            d.lock().unwrap().push(i);
+        });
+        handles.push(h);
+    }
+
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    let mut result = data.lock().unwrap().clone();
+    result.sort();
+    println!("collected: {:?}", result);
+}`;
+
+<Playground client:visible code={sendSyncCode} />
+
+export const quizSendSync = [
+  {
+    q: "What does the `Send` marker trait mean in Rust?",
+    options: [
+      "The type can be serialized to JSON",
+      "A value of the type can be safely moved to another thread",
+      "The type implements the Display trait",
+      "The type has no heap allocation"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why is `Rc<T>` not `Send`, but `Arc<T>` is?",
+    options: [
+      "Rc uses heap allocation; Arc uses the stack",
+      "Rc does not implement Clone; Arc does",
+      "Rc uses non-atomic reference counting which is unsafe across threads; Arc uses atomic operations",
+      "Rc is deprecated in modern Rust"
+    ],
+    answer: 2
+  },
+  {
+    q: "When are Send/Sync violations detected in Rust?",
+    options: [
+      "At runtime, when the thread is spawned",
+      "At link time, when the binary is assembled",
+      "At compile time, before the program can run",
+      "Only when tests are run with --release"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/send-sync" questions={quizSendSync} />
+
+<ProgressTracker client:visible id="concurrency/send-sync" />

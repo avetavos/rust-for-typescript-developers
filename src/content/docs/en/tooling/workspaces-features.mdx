@@ -1,0 +1,167 @@
+---
+title: 'Workspaces & Feature Flags'
+description: 'Cargo workspaces (multi-crate monorepos) and feature flags compared to npm workspaces and optional dependencies.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## npm workspaces → cargo workspaces
+
+When a TypeScript monorepo grows beyond a single package, you reach for npm (or pnpm/yarn) workspaces. Cargo has a first-class equivalent: a **workspace** is a single `Cargo.toml` at the root that lists member crates. All members share a single `Cargo.lock` and a single `target/` build directory.
+
+export const workspacesTs = `# package.json (root)
+{
+  "name": "my-monorepo",
+  "workspaces": [
+    "packages/api",
+    "packages/core",
+    "packages/cli"
+  ]
+}
+
+# packages/core/package.json
+{
+  "name": "@my/core",
+  "version": "1.0.0"
+}`;
+
+export const workspacesRs = `# Cargo.toml (root — the workspace manifest)
+[workspace]
+members = [
+    "crates/api",
+    "crates/core",
+    "crates/cli",
+]
+resolver = "2"   # always use resolver version 2
+
+# crates/core/Cargo.toml
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"`;
+
+<TsGo client:visible ts={workspacesTs} go={workspacesRs} />
+
+## Running commands across the workspace
+
+```bash
+# TypeScript (npm workspaces)
+npm run test --workspaces
+npm run build --workspace packages/api
+
+# Cargo
+cargo build --workspace         # build every member
+cargo test --workspace          # test every member
+cargo build -p api              # build only the "api" crate
+cargo test -p core              # test only the "core" crate
+```
+
+## Sharing a dependency version across crates
+
+```toml
+# Cargo.toml (root workspace manifest)
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+
+# crates/api/Cargo.toml  — inherit without repeating the version
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+```
+
+This prevents version drift across workspace members — a common problem in Node monorepos where different packages silently pull different patch versions.
+
+## Feature flags — conditional compilation
+
+Feature flags are Rust's answer to optional peer dependencies and conditional `require()` calls. They let consumers opt into extra functionality without paying the compile cost when they do not need it.
+
+```toml
+# Cargo.toml
+[features]
+default = ["json"]          # features enabled by default
+json = ["dep:serde_json"]   # "json" feature pulls in serde_json
+async = ["dep:tokio"]       # "async" feature pulls in tokio
+full = ["json", "async"]    # convenience: enable everything
+
+[dependencies]
+serde_json = { version = "1", optional = true }
+tokio = { version = "1", optional = true }
+```
+
+```rust
+// src/lib.rs
+#[cfg(feature = "json")]
+pub mod json_support {
+    pub fn parse(s: &str) -> serde_json::Value {
+        serde_json::from_str(s).unwrap()
+    }
+}
+```
+
+```bash
+# Build with no default features
+cargo build --no-default-features
+
+# Enable specific features
+cargo build --features "async,json"
+
+# Enable all features
+cargo build --all-features
+```
+
+> Workspaces and feature flags require multi-file project layout, so there is no browser Playground for this lesson. Create a workspace locally with `cargo new --lib` and experiment with the examples above.
+
+<RsOnly title="Path dependencies — local crates">
+
+Within a workspace, crates reference each other using `path` dependencies instead of a version number. This is the equivalent of `"@my/core": "*"` with `npm link`.
+
+```toml
+# crates/api/Cargo.toml
+[dependencies]
+core = { path = "../core" }
+```
+
+Cargo resolves the path at build time and recompiles `core` automatically whenever it changes — no `npm link` dance needed.
+
+</RsOnly>
+
+export const quizWorkspaces = [
+  {
+    q: "In a Cargo workspace, where is the single shared Cargo.lock file located?",
+    options: [
+      "Inside each member crate's directory",
+      "At the workspace root, next to the root Cargo.toml",
+      "In the target/ directory",
+      "There is no Cargo.lock in a workspace"
+    ],
+    answer: 1
+  },
+  {
+    q: "How do you build only one specific crate in a workspace?",
+    options: [
+      "cargo build --only api",
+      "cargo build -p api",
+      "cargo build --crate api",
+      "cargo build --member api"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is the purpose of Cargo feature flags?",
+    options: [
+      "They are compile-time flags that enable optional functionality and dependencies",
+      "They are runtime environment variables",
+      "They control which Rust edition a crate uses",
+      "They are used only for testing"
+    ],
+    answer: 0
+  }
+];
+
+<Quiz client:visible id="tooling/workspaces-features" questions={quizWorkspaces} />
+
+<ProgressTracker client:visible id="tooling/workspaces-features" />

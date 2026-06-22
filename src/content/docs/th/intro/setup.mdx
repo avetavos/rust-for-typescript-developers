@@ -1,0 +1,162 @@
+---
+title: "Setup — การติดตั้ง Rust และ Toolchain"
+description: 'การติดตั้ง Rust ด้วย rustup, Workflow ของ cargo เทียบกับ npm/node/tsc, และโปรเจกต์ cargo แรกของคุณ'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+> หมายเหตุ Playground: บทเรียนนี้เกี่ยวกับการตั้งค่าและ Toolchain — คำสั่งต่างๆ รันใน Terminal ของคุณ ไม่ใช่ในเบราว์เซอร์ จึงไม่มี Playground snippet ที่รันได้ในที่นี้
+
+## จาก npm สู่ cargo — การเปรียบเทียบ Toolchain
+
+ในฐานะ TypeScript developer คุณมี Mental model สำหรับ Language toolchain อยู่แล้ว: `nvm` หรือ `volta` จัดการ Node versions, `npm`/`pnpm`/`yarn` จัดการ Packages, `tsc` Compile TypeScript, และ `node` รัน Output Rust มีคำตอบที่สะอาดและเป็น Single-tool สำหรับทั้งหมดนี้: `rustup` และ `cargo`
+
+| TypeScript / Node         | Rust                        | วัตถุประสงค์                              |
+|---------------------------|-----------------------------|-------------------------------------------|
+| `nvm` / `volta`           | `rustup`                    | จัดการเวอร์ชัน Language/Toolchain         |
+| `node`                    | `cargo run`                 | รันโปรแกรม                                |
+| `tsc`                     | `cargo build`               | Compile Source เป็น Output                |
+| `npm install`             | `cargo add <crate>`         | เพิ่ม Dependency                          |
+| `package.json`            | `Cargo.toml`                | Project manifest และรายการ Dependencies   |
+| `node_modules/`           | `~/.cargo/registry/` + `target/` | Cached crates และ Build artifacts   |
+| `npm run <script>`        | `cargo run` / custom tasks  | รัน Project scripts                       |
+| `npx tsc --init`          | `cargo new <name>`          | Scaffold โปรเจกต์ใหม่                    |
+| `eslint` / `prettier`     | `cargo clippy` / `cargo fmt`| Linter และ Formatter                      |
+| `jest` / `vitest`         | `cargo test`                | รัน Tests                                 |
+
+## การติดตั้ง Rust
+
+วิธีการอย่างเป็นทางการในการติดตั้ง Rust คือผ่าน `rustup` ซึ่งเป็น Rust toolchain installer รันคำสั่งนี้ใน Terminal:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+ทำตาม Prompts (การติดตั้งแบบ Default ก็เหมาะสมแล้ว) จากนั้น Restart shell หรือรัน:
+
+```bash
+source $HOME/.cargo/env
+```
+
+ยืนยันการติดตั้ง:
+
+```bash
+rustc --version   # rustc 1.xx.x (...)
+cargo --version   # cargo 1.xx.x (...)
+```
+
+`rustup` ติดตั้ง `stable` toolchain โดยค่าเริ่มต้น คุณสามารถเพิ่ม `nightly` ในภายหลังหากต้องการ Feature ทดลอง — แต่ `stable` คือสิ่งที่ต้องการสำหรับคอร์สนี้
+
+## โปรเจกต์แรก — cargo new
+
+คำสั่ง `cargo new` สร้าง Project เหมือน `npm init` แต่มี Convention ที่มากกว่า:
+
+export const setupTs = `# TypeScript workflow
+mkdir my-project && cd my-project
+npm init -y                   # creates package.json
+npm install typescript --save-dev
+npx tsc --init                # creates tsconfig.json
+# ... write src/index.ts ...
+npx tsc                       # compile
+node dist/index.js            # run`;
+
+export const setupRs = `# Rust workflow
+cargo new my-project          # creates the project
+cd my-project
+# ... edit src/main.rs ...
+cargo run                     # compile + run in one step
+cargo build                   # compile only (output in target/)
+cargo build --release         # optimised production build`;
+
+<TsGo client:visible ts={setupTs} go={setupRs} />
+
+## cargo add — การเพิ่ม Dependencies
+
+การเพิ่ม Dependency ใน Rust ทำได้ด้วยคำสั่งเดียว:
+
+```bash
+cargo add serde            # adds serde to Cargo.toml
+cargo add serde --features derive  # with a feature flag
+cargo add tokio --features full    # tokio async runtime
+```
+
+นี่คือ Equivalent ของ `npm install serde` ไฟล์ `Cargo.toml` จะถูกอัปเดตโดยอัตโนมัติ เหมือนกับ `package.json`
+
+## คำสั่ง cargo หลัก
+
+```bash
+cargo new <name>       # scaffold a binary project
+cargo new --lib <name> # scaffold a library
+cargo build            # compile (debug mode, fast)
+cargo build --release  # compile (release mode, optimised)
+cargo run              # compile + run
+cargo test             # run tests
+cargo add <crate>      # add a dependency
+cargo fmt              # format all source files
+cargo clippy           # lint (like eslint for Rust)
+cargo doc --open       # build and open local docs
+cargo check            # type-check without producing a binary (fast)
+```
+
+`cargo check` มีประโยชน์มากเป็นพิเศษ: มันรัน Borrow checker และ Type checker โดยไม่ Compile เป็น Machine code จริงๆ ทำให้เร็วกว่า `cargo build` มาก นี่คือคำสั่งที่ใช้ระหว่าง Iterate — เทียบเท่ากับการรัน `tsc --noEmit`
+
+## การอัปเดต Rust
+
+เพื่ออัปเดต Toolchain ที่ติดตั้งไว้:
+
+```bash
+rustup update          # update stable (and any other installed toolchains)
+rustup show            # list installed toolchains
+rustup default stable  # set the default toolchain
+```
+
+นี่คือ Equivalent ของ `nvm install --lts && nvm use --lts`
+
+export const quizSetup = [
+  {
+    q: "อะไรคือ Rust เทียบเท่ากับ nvm หรือ volta สำหรับการจัดการเวอร์ชัน Toolchain?",
+    options: [
+      "cargo",
+      "rustc",
+      "rustup",
+      "renv"
+    ],
+    answer: 2
+  },
+  {
+    q: "คำสั่งใด Compile และรัน Rust project ของคุณทันที?",
+    options: [
+      "rustc run",
+      "cargo run",
+      "cargo exec",
+      "rust run"
+    ],
+    answer: 1
+  },
+  {
+    q: "วิธีที่เร็วที่สุดในการ Type-check Rust project โดยไม่สร้าง Binary คืออะไร?",
+    options: [
+      "cargo build",
+      "cargo test",
+      "cargo check",
+      "rustc --check"
+    ],
+    answer: 2
+  },
+  {
+    q: "คุณเพิ่ม Dependency ชื่อ `serde` ให้กับ Rust project ได้อย่างไร?",
+    options: [
+      "แก้ไข Cargo.toml ด้วยตนเอง — ไม่มีคำสั่ง CLI",
+      "cargo install serde",
+      "cargo add serde",
+      "rustup add serde"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="intro/setup" questions={quizSetup} />
+
+<ProgressTracker client:visible id="intro/setup" />

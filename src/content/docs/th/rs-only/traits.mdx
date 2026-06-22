@@ -1,0 +1,190 @@
+---
+title: 'Traits'
+description: 'Rust traits เทียบกับ TypeScript interfaces — nominal typing, coherence, default method, และ derive macro อธิบายสำหรับ TypeScript developers'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript interface เป็น structural — Rust trait เป็น nominal
+
+ใน TypeScript, interface ใช้ **structural typing**: ถ้า object มี shape ที่ถูกต้อง (property และ method ที่ถูกต้อง) มันก็ satisfy interface — ไม่ต้องประกาศ explicit
+
+Rust trait ใช้ **nominal typing**: type จะ implement trait ก็ต่อเมื่อคุณเขียน `impl Trait for Type` ชัดๆ การ match shape ไม่เพียงพอ ความแตกต่างนี้มีผลสำคัญต่อการออกแบบ library และความถูกต้องของโค้ด
+
+export const traitTs = `// TypeScript — structural typing
+interface Greet {
+  name(): string;
+  hello(): string;
+}
+
+// ไม่ต้องประกาศ explicit — แค่ match shape
+const english = {
+  name: () => "world",
+  hello() { return \`Hello, \${this.name()}!\`; }
+};
+
+function greetSomething(g: Greet) {
+  console.log(g.hello());
+}
+
+greetSomething(english); // ทำงานได้ — english มี shape ที่ถูกต้อง`;
+
+export const traitRs = `trait Greet {
+    fn name(&self) -> &str;
+    // Default method — implementation ฟรี สามารถ override ได้
+    fn hello(&self) -> String {
+        format!("Hello, {}!", self.name())
+    }
+}
+
+struct English;
+struct Thai;
+
+impl Greet for English {
+    fn name(&self) -> &str { "world" }
+    // ใช้ default hello()
+}
+
+impl Greet for Thai {
+    fn name(&self) -> &str { "โลก" }
+    // Override default
+    fn hello(&self) -> String {
+        format!("สวัสดี {}!", self.name())
+    }
+}
+
+fn greet_something(g: &dyn Greet) {
+    println!("{}", g.hello());
+}
+
+fn main() {
+    greet_something(&English);
+    greet_something(&Thai);
+}`;
+
+<TsGo client:visible ts={traitTs} go={traitRs} />
+
+<RsOnly title="Trait vs interface — ความแตกต่างสำคัญ">
+
+| | TypeScript interface | Rust trait |
+|---|---|---|
+| Typing | Structural (duck typing) | Nominal (explicit `impl`) |
+| Default method | ไม่มี (ใช้ abstract class) | มี (`fn method(&self) { ... }`) |
+| Implement สำหรับ foreign type | ได้ — แค่เพิ่ม property | ไม่ได้ — **coherence rule** ป้องกัน |
+| Derive / auto-generate | ไม่มี | มี — `#[derive(Debug, Clone, ...)]` |
+| ใช้เป็น generic bound | `function f<T extends Greet>(t: T)` | `fn f<T: Greet>(t: T)` |
+
+**Coherence (orphan) rule:** ใน Rust คุณ implement trait ให้ type ได้ก็ต่อเมื่อคุณเป็น owner ของ **trait หรือ type อย่างใดอย่างหนึ่ง** คุณไม่สามารถ implement third-party trait บน third-party type ได้ ป้องกัน conflicting implementation ข้ามและทำให้ type system consistent ทั่วโลก TypeScript ไม่มีกฎนี้
+
+</RsOnly>
+
+## การ derive trait ทั่วไป
+
+Rust สามารถ auto-generate implementation สำหรับ trait ทั่วไปหลายตัวด้วย `#[derive(...)]` TypeScript ไม่มีเทียบเท่า — คุณ implement interface ด้วยตนเองหรือใช้ class inheritance
+
+export const deriveTs = `// TypeScript — implement interface ด้วยตนเองหรือใช้ class
+interface Printable {
+  toString(): string;
+}
+
+class Point implements Printable {
+  constructor(public x: number, public y: number) {}
+  toString(): string {
+    return \`Point { x: \${this.x}, y: \${this.y} }\`;
+  }
+  clone(): Point {
+    return new Point(this.x, this.y);
+  }
+}
+
+const p = new Point(1, 2);
+console.log(p.toString());`;
+
+export const deriveRs = `// Rust — derive trait ทั่วไปอัตโนมัติ
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();           // Clone derived
+    println!("{:?}", p1);          // Debug derived — แสดง: Point { x: 1.0, y: 2.0 }
+    println!("equal: {}", p1 == p2); // PartialEq derived
+}`;
+
+<TsGo client:visible ts={deriveTs} go={deriveRs} />
+
+## ลองเขียนเอง
+
+export const traitsCode = `trait Greet {
+    fn name(&self) -> &str;
+    fn hello(&self) -> String {
+        format!("Hello, {}!", self.name())
+    }
+}
+
+struct English;
+struct Thai;
+
+impl Greet for English {
+    fn name(&self) -> &str { "world" }
+}
+
+impl Greet for Thai {
+    fn name(&self) -> &str { "โลก" }
+    fn hello(&self) -> String {
+        format!("สวัสดี {}!", self.name())
+    }
+}
+
+fn main() {
+    let e = English;
+    let t = Thai;
+    println!("{}", e.hello());
+    println!("{}", t.hello());
+}`;
+
+<Playground client:visible code={traitsCode} />
+
+export const quizTraits = [
+  {
+    q: "Type system ของ Rust แตกต่างจาก TypeScript ในเรื่อง trait/interface satisfaction อย่างไร?",
+    options: [
+      "Rust ใช้ structural typing — match shape ก็พอ",
+      "Rust ใช้ nominal typing — ต้องเขียน `impl Trait for Type` ชัดๆ",
+      "Rust ตรวจ trait bound ตอน runtime เท่านั้น",
+      "Rust ต้องประกาศ interface ใน file เดียวกัน"
+    ],
+    answer: 1
+  },
+  {
+    q: "Coherence (orphan) rule ของ Rust ป้องกันอะไร?",
+    options: [
+      "การ implement trait ที่คุณสร้างบน type ที่คุณสร้าง",
+      "การ implement third-party trait บน third-party type — ป้องกัน global ambiguity",
+      "การใช้ default trait method",
+      "การ derive trait บน generic struct"
+    ],
+    answer: 1
+  },
+  {
+    q: "`#[derive(Debug)]` ทำอะไร?",
+    options: [
+      "เพิ่ม runtime debugger breakpoint",
+      "Generate implementation ของ `Debug` trait ให้ print value ด้วย `{:?}` ได้",
+      "ทำให้ทุก field ของ struct เป็น public",
+      "เปิด debug mode compilation"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/traits" questions={quizTraits} />
+
+<ProgressTracker client:visible id="rs-only/traits" />

@@ -1,0 +1,74 @@
+---
+title: 'Advanced Rust'
+description: 'An overview of the advanced Rust toolkit — generics, traits, closures, error handling, macros, and smart pointers.'
+---
+
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Welcome to Advanced Rust
+
+You have learned Rust's ownership model, borrowing, and basic types. Now it is time to unlock the tools that make Rust both expressive and zero-cost: a type system powerful enough to replace entire runtime frameworks with compile-time guarantees.
+
+This module maps each concept to something you already know from TypeScript so you can build mental models quickly instead of starting from scratch.
+
+## What you will learn
+
+| Lesson | Rust concept | TypeScript analogy |
+|---|---|---|
+| Generics & Trait Bounds | `fn foo<T: Display>()`, `where` clauses | Generic functions with constraints `<T extends ...>` |
+| Trait Objects | `dyn Trait`, `Box<dyn Trait>` | Interfaces, polymorphism, runtime dispatch |
+| Closures & Iterators | `Fn`/`FnMut`/`FnOnce`, `.map()/.filter()/.collect()` | Arrow functions, `Array.prototype.map/filter/reduce` |
+| Error Handling (Deep) | `?` operator, `thiserror`, `anyhow` | `try/catch`, typed error classes |
+| Macros | `macro_rules!`, derive macros | No direct equivalent — but closer to TypeScript decorators than you think |
+| Smart Pointers | `Box<T>`, `Rc<T>`, `RefCell<T>` | JavaScript's garbage-collected references |
+
+## Why this matters for TypeScript developers
+
+TypeScript gives you generics, interfaces, and union error types. Rust takes all three ideas further:
+
+- **Generics** are monomorphised — the compiler stamps out a specialised copy for each concrete type. Zero virtual dispatch overhead.
+- **Trait objects** (`dyn Trait`) give you the runtime polymorphism you are used to from TypeScript interfaces, but you opt in explicitly.
+- **Closures** capture by reference or by move, and the `Fn*` trait hierarchy tells the compiler exactly what that closure can do.
+- **Error handling** with `?` and `thiserror` is as ergonomic as `async/await` — and the types force you to handle every failure case.
+- **Macros** are hygienic and operate on the AST — more powerful and safer than TypeScript string-template code-generation.
+- **Smart pointers** give you fine-grained control over heap allocation and shared ownership without a garbage collector.
+
+Work through the lessons in order. Each one builds on the last.
+
+export const quizIndex = [
+  {
+    q: "Rust generics are monomorphised. What does that mean?",
+    options: [
+      "The compiler generates one virtual-dispatch function for all types",
+      "The compiler stamps out a concrete specialised function per type used",
+      "Generics are erased at compile time like Java type erasure",
+      "Generic functions run slower than non-generic ones"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which Rust feature is the closest equivalent to TypeScript interface-based polymorphism at runtime?",
+    options: [
+      "Generics with trait bounds",
+      "macro_rules!",
+      "dyn Trait (trait objects)",
+      "RefCell<T>"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is the main advantage of Rust's `?` operator over TypeScript's try/catch?",
+    options: [
+      "It is faster at runtime",
+      "It forces the caller to acknowledge every error path at compile time",
+      "It automatically logs errors",
+      "It retries failed operations"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="advanced/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="advanced/index" />

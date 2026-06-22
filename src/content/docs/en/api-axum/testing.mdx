@@ -1,0 +1,215 @@
+---
+title: 'Testing Handlers'
+description: 'Testing Axum handlers with tower::ServiceExt::oneshot and #[tokio::test] — vs supertest/jest.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## supertest/jest vs `tower::ServiceExt::oneshot`
+
+In Node.js you use `supertest` to send HTTP requests against your Express/Nest app in-process without starting a real server. Axum's equivalent is `tower::ServiceExt::oneshot` — it drives the router as a Tower service, sending a single `Request` and awaiting the `Response`, all in-process with no socket.
+
+export const tsSuper = `// Jest + supertest (NestJS)
+import * as request from 'supertest';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '../src/app.module';
+
+describe('GET /users', () => {
+  let app;
+
+  beforeAll(async () => {
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = module.createNestApplication();
+    await app.init();
+  });
+
+  it('returns 200 with users array', async () => {
+    const res = await request(app.getHttpServer()).get('/users');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  afterAll(() => app.close());
+});`;
+
+export const rsOneshot = `use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+    routing::get,
+    Router,
+};
+use tower::ServiceExt; // provides .oneshot()
+use serde_json::Value;
+
+fn build_app() -> Router {
+    Router::new().route("/users", get(list_users))
+}
+
+#[tokio::test]
+async fn test_list_users_returns_200() {
+    let app = build_app();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/users")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: Value = serde_json::from_slice(&body).unwrap();
+    assert!(json.is_array());
+}`;
+
+<TsGo client:visible ts={tsSuper} go={rsOneshot} />
+
+## Testing a POST endpoint with a JSON body
+
+```rust
+use axum::{
+    body::Body,
+    http::{header, Method, Request, StatusCode},
+};
+use serde_json::json;
+use tower::ServiceExt;
+
+#[tokio::test]
+async fn test_create_user_returns_201() {
+    let app = build_app_with_state(test_state().await);
+
+    let body = json!({ "name": "Alice", "email": "alice@example.com" });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/users")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let user: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(user["name"], "Alice");
+}
+```
+
+## Testing error paths
+
+```rust
+#[tokio::test]
+async fn test_get_nonexistent_user_returns_404() {
+    let app = build_app();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/users/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+```
+
+## Test helper: build the app with mock state
+
+For tests that need a database, inject a test pool pointing at a test database:
+
+```rust
+async fn test_state() -> Arc<AppState> {
+    let pool = PgPool::connect(
+        &std::env::var("TEST_DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://localhost/myapp_test".to_string()),
+    )
+    .await
+    .unwrap();
+    sqlx::migrate!().run(&pool).await.unwrap();
+    Arc::new(AppState { db: pool })
+}
+
+fn build_app_with_state(state: Arc<AppState>) -> Router {
+    Router::new()
+        .route("/users", get(list_users).post(create_user))
+        .route("/users/:id", get(get_user).delete(delete_user))
+        .with_state(state)
+}
+```
+
+<RsOnly title="No running server needed">
+
+`tower::ServiceExt::oneshot` consumes the `Router` (a `Service`) and drives it in-process. There is no TCP socket, no port binding, and no process startup. This makes handler tests:
+
+- **Fast** — no OS round-trip, no network stack.
+- **Deterministic** — no port conflicts, no `EADDRINUSE`.
+- **Parallel** — each test owns its own `Router` instance.
+
+Add `tower` to `[dev-dependencies]` in `Cargo.toml`:
+
+```toml
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+```
+
+</RsOnly>
+
+> **Run locally** — `#[tokio::test]` tests require the Tokio runtime. Run `cargo test` in your project directory. For database tests, set `TEST_DATABASE_URL` and run `cargo test -- --test-threads=1` to avoid concurrent migration conflicts.
+
+export const quizTesting = [
+  {
+    q: "What does `tower::ServiceExt::oneshot` do?",
+    options: [
+      "Starts a real TCP server on a random port for testing",
+      "Sends a single in-process request to the Router without binding a socket",
+      "Runs a load test with one request per second",
+      "Mocks all database calls automatically"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which attribute marks an async Axum handler test?",
+    options: [
+      "`#[test]`",
+      "`#[async_test]`",
+      "`#[tokio::test]`",
+      "`#[axum::test]`"
+    ],
+    answer: 2
+  },
+  {
+    q: "Where should `tower` (for `ServiceExt`) be declared in `Cargo.toml`?",
+    options: [
+      "`[dependencies]`",
+      "`[dev-dependencies]`",
+      "`[build-dependencies]`",
+      "`[features]`"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="api-axum/testing" questions={quizTesting} />
+
+<ProgressTracker client:visible id="api-axum/testing" />

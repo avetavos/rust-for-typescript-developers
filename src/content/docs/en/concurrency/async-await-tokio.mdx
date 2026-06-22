@@ -1,0 +1,221 @@
+---
+title: 'Async/Await and Tokio'
+description: 'Rust''s async/await syntax and the Tokio runtime — compared to JavaScript''s async/await, Promise.all, and the event loop. Key similarities and the critical difference that Rust async needs an explicit runtime.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Async/await: the most familiar Rust concurrency model for TS developers
+
+If you have written TypeScript, you already know the mental model behind Rust async/await. Both languages use the same surface syntax (`async fn`, `.await`) to write non-blocking code that reads like sequential logic. The key concepts map almost one-to-one:
+
+| JavaScript | Rust |
+|---|---|
+| `async function` | `async fn` |
+| `await somePromise` | `someValue.await` |
+| `Promise<T>` | `impl Future<Output = T>` |
+| `Promise.all(...)` | `tokio::join!(...)` or `futures::join_all(...)` |
+| Node.js event loop (built-in) | Tokio runtime (explicit dependency) |
+| `Promise.allSettled` | `tokio::join!` (all always complete) |
+
+The most important difference: JavaScript's runtime (V8, Node.js) is always running. In Rust, there is **no built-in async runtime** — you must bring your own. [Tokio](https://tokio.rs) is the de facto standard for server-side async Rust (web servers, databases, network services).
+
+## async fn and .await
+
+An `async fn` returns a `Future` — a lazy computation that does nothing until it is polled by a runtime. You `.await` a Future to run it and get its result. This is syntactically identical to JavaScript's `await`.
+
+export const asyncTs = `// TypeScript async/await
+async function fetchUser(id: number): Promise<string> {
+  const resp = await fetch(\`/users/\${id}\`);
+  const data = await resp.json();
+  return data.name;
+}
+
+// Run concurrently with Promise.all
+async function main() {
+  const [user1, user2] = await Promise.all([
+    fetchUser(1),
+    fetchUser(2),
+  ]);
+  console.log(user1, user2);
+}`;
+
+export const asyncRs = `use tokio::time::{sleep, Duration};
+
+// async fn returns a Future<Output = String>
+async fn fetch_user(id: u32) -> String {
+    // .await yields control to the runtime while "waiting"
+    sleep(Duration::from_millis(10)).await;
+    format!("user_{id}")
+}
+
+#[tokio::main]  // sets up the Tokio runtime for main()
+async fn main() {
+    // tokio::join! runs both futures concurrently on the same thread pool
+    // — equivalent to Promise.all
+    let (user1, user2) = tokio::join!(
+        fetch_user(1),
+        fetch_user(2),
+    );
+    println!("{user1} {user2}"); // user_1 user_2
+}`;
+
+<TsGo client:visible ts={asyncTs} go={asyncRs} />
+
+## Spawning async tasks (tokio::spawn)
+
+`tokio::spawn` is the async equivalent of `thread::spawn`. It schedules a future on the Tokio thread pool and returns a `JoinHandle<T>`. Unlike `thread::spawn`, the task runs on a thread pool managed by Tokio — typically one thread per CPU core.
+
+export const asyncSpawnTs = `// TypeScript: fire-and-forget with Promise (or await to collect result)
+async function work(id: number): Promise<number> {
+  await new Promise(resolve => setTimeout(resolve, 10));
+  return id * 2;
+}
+
+async function main() {
+  // Spawn all, then await all — equivalent to tokio::spawn + join
+  const handles = [1, 2, 3].map(id => work(id));
+  const results = await Promise.all(handles);
+  const total = results.reduce((a, b) => a + b, 0);
+  console.log('total:', total); // total: 12
+}`;
+
+export const asyncSpawnRs = `use tokio::time::{sleep, Duration};
+
+async fn work(id: u32) -> u32 {
+    sleep(Duration::from_millis(10)).await;
+    id * 2
+}
+
+#[tokio::main]
+async fn main() {
+    let handles: Vec<_> = (1u32..=3)
+        .map(|id| tokio::spawn(work(id)))
+        .collect();
+
+    let mut total = 0u32;
+    for h in handles {
+        total += h.await.unwrap();
+    }
+    println!("total: {total}"); // total: 12
+}`;
+
+<TsGo client:visible ts={asyncSpawnTs} go={asyncSpawnRs} />
+
+## Try it
+
+export const asyncCode = `use tokio::time::{sleep, Duration};
+
+async fn fetch_user(id: u32) -> String {
+    sleep(Duration::from_millis(10)).await;
+    format!("user_{id}")
+}
+
+#[tokio::main]
+async fn main() {
+    let (user1, user2) = tokio::join!(
+        fetch_user(1),
+        fetch_user(2),
+    );
+    println!("{user1} {user2}");
+}`;
+
+<Playground client:visible code={asyncCode} />
+
+<RsOnly title="Rust async needs an explicit runtime — and Futures are lazy">
+
+### Futures are lazy
+
+In JavaScript, creating a Promise immediately starts executing it — the executor function runs right away. In Rust, an `async fn` returns a `Future` that does **nothing** until someone drives it (polls it). Writing:
+
+```rust
+let f = fetch_user(1); // does NOT start the computation
+```
+
+...does nothing. You must either `.await` it or pass it to `tokio::spawn` (or another executor) for it to run. This is an important difference: if you create a Future and never await it, the body of the async function never executes.
+
+### You must choose a runtime
+
+JavaScript has a single built-in runtime. Rust has several async runtimes (`tokio`, `async-std`, `smol`). Tokio is the dominant choice for backend services. You opt in by adding it to `Cargo.toml`:
+
+```toml
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+```
+
+The `#[tokio::main]` attribute macro rewrites your `async fn main()` into a sync `fn main()` that starts the Tokio runtime and blocks on the async body:
+
+```rust
+// What you write:
+#[tokio::main]
+async fn main() { ... }
+
+// What the macro expands to (roughly):
+fn main() {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async { ... })
+}
+```
+
+### tokio::join! vs Promise.all
+
+`tokio::join!(a, b, c)` drives all three futures concurrently on the **same task** (cooperative scheduling — like JS). If you want true parallelism across thread-pool threads, use `tokio::spawn` for each future, then `.await` the `JoinHandle`s.
+
+| Pattern | Concurrent? | Parallel? |
+|---|---|---|
+| `tokio::join!(a, b)` | Yes (interleaved on one task) | No |
+| `tokio::spawn(a); tokio::spawn(b)` | Yes | Yes (may run on different threads) |
+
+</RsOnly>
+
+export const quizAsyncTokio = [
+  {
+    q: "What is the most important difference between Rust async and JavaScript async?",
+    options: [
+      "Rust async uses threads; JavaScript does not",
+      "Rust Futures are lazy and need an explicit runtime; JavaScript Promises start immediately in a built-in runtime",
+      "Rust async is faster than JavaScript async in all cases",
+      "JavaScript async requires an explicit runtime; Rust has a built-in one"
+    ],
+    answer: 1
+  },
+  {
+    q: "What does #[tokio::main] do?",
+    options: [
+      "Adds Tokio as a dependency to Cargo.toml",
+      "Marks the function as Send + Sync",
+      "Rewrites async fn main() into a sync entry point that starts the Tokio runtime",
+      "Compiles the async function to WASM"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is the JavaScript equivalent of tokio::join!(a, b)?",
+    options: [
+      "await a; await b;",
+      "Promise.all([a, b])",
+      "Promise.race([a, b])",
+      "setTimeout(a, 0); setTimeout(b, 0);"
+    ],
+    answer: 1
+  },
+  {
+    q: "What happens if you create a Rust Future but never .await it?",
+    options: [
+      "It runs in the background automatically",
+      "The compiler emits a warning but runs it anyway",
+      "The Future's body never executes",
+      "It panics at runtime"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/async-await-tokio" questions={quizAsyncTokio} />
+
+<ProgressTracker client:visible id="concurrency/async-await-tokio" />

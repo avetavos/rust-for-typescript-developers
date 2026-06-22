@@ -1,0 +1,179 @@
+---
+title: 'Lifetimes'
+description: 'What lifetimes are, why they exist, and how to read ''a annotations on functions and structs — for TypeScript developers who have never seen this concept.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript has no equivalent
+
+TypeScript has no concept of lifetimes. When you hold a reference to an object, the garbage collector keeps the object alive as long as the reference exists. You never have to think about whether a reference is still valid.
+
+Rust has no garbage collector, so it must prove — at compile time — that every reference is valid for exactly as long as it is used. This proof system is called **lifetimes**.
+
+<RsOnly title="What a lifetime actually is">
+
+A **lifetime** is the region of code during which a reference is valid. Every reference in Rust has a lifetime. Most of the time the compiler infers lifetimes automatically (called *lifetime elision*) and you never write them.
+
+You need to write explicit lifetime annotations (`'a`) in two situations:
+
+1. A function returns a reference and the compiler cannot figure out which input it came from.
+2. A struct holds a reference (it must know how long the referenced data lives).
+
+A lifetime annotation does NOT change how long data lives. It is a constraint that tells the compiler: "this output reference lives as long as this input reference."
+
+</RsOnly>
+
+## Why lifetimes exist — the dangling reference problem
+
+TypeScript never has dangling references — the GC prevents the underlying data from being freed while any reference exists. Rust frees data when its owner goes out of scope. Without lifetimes, it would be possible to return a reference to data that has already been freed:
+
+```rust
+// This does NOT compile — and that is the point.
+fn dangle() -> &String {
+    let s = String::from("hello");
+    &s  // error[E0106]: missing lifetime specifier
+        // But even with a lifetime, this would fail:
+        // s is dropped at the end of this function — the reference would dangle!
+}
+// error[E0515]: cannot return reference to local variable `s`
+//  --> src/main.rs:3:5
+//   |
+// 3 |     &s
+//   |     ^^ returns a reference to data owned by the current function
+```
+
+The compiler catches this. There is no equivalent protection in TypeScript because the GC prevents the scenario entirely — but at the cost of a runtime overhead.
+
+## Lifetime annotations on functions
+
+When a function returns a reference derived from its inputs, the compiler needs to know which input the output's lifetime is tied to. You annotate this with `'a`:
+
+export const lifetimesTs = `// TypeScript — no lifetime concept needed
+function longest(x: string, y: string): string {
+  return x.length >= y.length ? x : y;
+}
+
+const result = longest("long string", "xyz");
+console.log(result); // "long string"
+// TypeScript never worries about whether the returned string
+// outlives the inputs. The GC handles it.`;
+
+export const lifetimesRs = `// 'a is a lifetime parameter — it says:
+// "the output lives at least as long as BOTH inputs"
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() >= y.len() { x } else { y }
+}
+
+fn main() {
+    let s1 = String::from("long string");
+    let result;
+    {
+        let s2 = String::from("xyz");
+        result = longest(s1.as_str(), s2.as_str());
+        println!("longest: {}", result);
+        // result must be used before s2 is dropped
+    }
+}`;
+
+<TsGo client:visible ts={lifetimesTs} go={lifetimesRs} />
+
+<RsOnly title="How to read lifetime annotations">
+
+`fn longest<'a>(x: &'a str, y: &'a str) -> &'a str`
+
+Read it as: "For some lifetime `'a`, both `x` and `y` must live at least as long as `'a`, and the returned reference will live for at most `'a`."
+
+In practice: the returned reference will be valid for the **shorter** of `x` and `y`'s lifetimes. If you try to use the result after either input has been dropped, the compiler rejects it.
+
+The name `'a` is just a convention. You could write `'x`, `'input`, or any lowercase identifier prefixed with a tick. Single-letter names are idiomatic.
+
+</RsOnly>
+
+## Lifetimes in structs
+
+If a struct holds a reference, it must declare a lifetime to say "the struct cannot outlive the data it references":
+
+export const lifetimeStructTs = `// TypeScript — a struct holding a reference is just an object property
+interface ImportantExcerpt {
+  part: string;  // just a string — GC keeps it alive as long as needed
+}
+
+const text = "Call me Ishmael. Some years ago...";
+const excerpt: ImportantExcerpt = { part: text.split(".")[0] };
+console.log(excerpt.part);`;
+
+export const lifetimeStructRs = `// The struct holds a reference, not owned data.
+// 'a says: the ImportantExcerpt cannot outlive the &str it references.
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let first_sentence = novel.split('.').next().expect("no period");
+    let excerpt = ImportantExcerpt { part: first_sentence };
+    println!("{}", excerpt.part);
+    // novel is still alive here, so the reference in excerpt is valid
+}`;
+
+<TsGo client:visible ts={lifetimeStructTs} go={lifetimeStructRs} />
+
+## Try it
+
+export const lifetimesCode = `fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+
+fn main() {
+    let s1 = String::from("long string");
+    let result;
+    {
+        let s2 = String::from("xyz");
+        result = longest(s1.as_str(), s2.as_str());
+        println!("longest: {}", result);
+    }
+}`;
+
+<Playground client:visible code={lifetimesCode} />
+
+export const quizLifetimes = [
+  {
+    q: "What does a lifetime annotation like `'a` actually do?",
+    options: [
+      "It extends the lifetime of a value by reference counting",
+      "It is a constraint telling the compiler how long a reference must be valid relative to other references",
+      "It makes a value live for the duration of the entire program",
+      "It is syntax sugar for Arc<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "When do you NEED to write explicit lifetime annotations in Rust?",
+    options: [
+      "Always — the compiler never infers lifetimes",
+      "When a function returns a reference and the compiler cannot determine which input it came from, or when a struct holds a reference",
+      "Only for async functions",
+      "Only when using unsafe code"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why does TypeScript not need lifetimes?",
+    options: [
+      "TypeScript values are always copied, never referenced",
+      "TypeScript's garbage collector keeps data alive as long as any reference exists, preventing dangling references at runtime",
+      "TypeScript only supports primitive types",
+      "TypeScript references are always static"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/lifetimes" questions={quizLifetimes} />
+
+<ProgressTracker client:visible id="rs-only/lifetimes" />

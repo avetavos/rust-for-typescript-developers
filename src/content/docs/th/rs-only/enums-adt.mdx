@@ -1,0 +1,210 @@
+---
+title: 'Enum แบบ Algebraic Data Type'
+description: 'Rust enum พก data ในแต่ละ variant และถูก match แบบ exhaustive — concept ที่ทรงพลังกว่า TypeScript union หรือ string enum มาก'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript union เป็น structural — Rust enum พก data
+
+TypeScript มี union type (`"circle" | "rectangle"`) และ discriminated union (object ที่มี field `kind`) พวกนี้ทรงพลัง แต่เป็น convention — compiler เชื่อว่าคุณ set discriminant ถูกต้อง
+
+Rust enum เป็น **algebraic data type (ADT)** แต่ละ variant พก data ของตัวเองได้ — ต่าง type ต่าง variant Compiler บังคับ exhaustive pattern matching: ถ้าคุณเพิ่ม variant ใหม่ ทุก `match` ในโค้ดที่ handle enum นั้นต้องอัปเดตด้วย มิฉะนั้นโค้ดจะ compile ไม่ได้
+
+## Enum ที่พก data
+
+export const enumTs = `// TypeScript — discriminated union (convention-based)
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number }
+  | { kind: "triangle"; base: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":    return Math.PI * shape.radius ** 2;
+    case "rectangle": return shape.width * shape.height;
+    case "triangle":  return 0.5 * shape.base * shape.height;
+    // ถ้าเพิ่ม variant แล้วลืม case TypeScript
+    // จะ warn เฉพาะเมื่อใช้ never-check pattern
+  }
+}`;
+
+export const enumRs = `#[derive(Debug)]
+enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+    Triangle { base: f64, height: f64 },
+}
+
+impl Shape {
+    fn area(&self) -> f64 {
+        match self {
+            Shape::Circle(r)             => std::f64::consts::PI * r * r,
+            Shape::Rectangle(w, h)       => w * h,
+            Shape::Triangle { base, height } => 0.5 * base * height,
+        }
+    }
+}
+
+fn main() {
+    let shapes = vec![
+        Shape::Circle(3.0),
+        Shape::Rectangle(4.0, 5.0),
+        Shape::Triangle { base: 6.0, height: 4.0 },
+    ];
+    for s in &shapes {
+        println!("{:?} => area = {:.2}", s, s.area());
+    }
+}`;
+
+<TsGo client:visible ts={enumTs} go={enumRs} />
+
+<RsOnly title="Exhaustive match — compiler เป็น safety net">
+
+`match` ของ Rust เป็น **exhaustive**: คุณต้อง handle ทุก variant มิฉะนั้นโค้ดจะ compile ไม่ได้
+
+```rust
+enum Direction { North, South, East, West }
+
+fn describe(d: Direction) -> &'static str {
+    match d {
+        Direction::North => "north",
+        Direction::South => "south",
+        Direction::East  => "east",
+        // Direction::West หายไป!
+    }
+}
+// error[E0004]: non-exhaustive patterns: `West` not covered
+//  --> src/main.rs:4:11
+```
+
+หมายความว่า: เมื่อคุณเพิ่ม enum variant ใหม่ compiler จะบอกทุกที่ในโค้ดที่ต้อง handle มัน TypeScript switch statement ไม่ exhaustive โดย default — ต้องใช้ `never` check อย่าง explicit เพื่อได้ guarantee เดียวกัน และต้องเป็น convention ที่ทีมบังคับใช้
+
+คุณใช้ `_` เป็น catch-all ถ้าตั้งใจจะ ignore variant ที่เหลือ:
+
+```rust
+match d {
+    Direction::North => "north",
+    _ => "not north",
+}
+```
+
+</RsOnly>
+
+## Enum สำหรับ state machine
+
+Enum เป็นวิธี idiomatic ในการ model state machine ใน Rust แต่ละ state variant พก data ที่เกี่ยวข้องกับ state นั้นเท่านั้น:
+
+export const stateTs = `// TypeScript — state machine ด้วย discriminated union
+type ConnectionState =
+  | { status: "disconnected" }
+  | { status: "connecting"; attempt: number }
+  | { status: "connected"; sessionId: string };
+
+function describe(state: ConnectionState): string {
+  switch (state.status) {
+    case "disconnected": return "not connected";
+    case "connecting":   return \`attempt \${state.attempt}\`;
+    case "connected":    return \`session \${state.sessionId}\`;
+  }
+}`;
+
+export const stateRs = `enum ConnectionState {
+    Disconnected,
+    Connecting { attempt: u32 },
+    Connected { session_id: String },
+}
+
+fn describe(state: &ConnectionState) -> String {
+    match state {
+        ConnectionState::Disconnected               => "not connected".to_string(),
+        ConnectionState::Connecting { attempt }     => format!("attempt {}", attempt),
+        ConnectionState::Connected { session_id }   => format!("session {}", session_id),
+    }
+}
+
+fn main() {
+    let states = vec![
+        ConnectionState::Disconnected,
+        ConnectionState::Connecting { attempt: 3 },
+        ConnectionState::Connected { session_id: "abc-123".to_string() },
+    ];
+    for s in &states {
+        println!("{}", describe(s));
+    }
+}`;
+
+<TsGo client:visible ts={stateTs} go={stateRs} />
+
+## ลองเขียนเอง
+
+export const enumsAdtCode = `#[derive(Debug)]
+enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+    Triangle { base: f64, height: f64 },
+}
+
+impl Shape {
+    fn area(&self) -> f64 {
+        match self {
+            Shape::Circle(r)             => std::f64::consts::PI * r * r,
+            Shape::Rectangle(w, h)       => w * h,
+            Shape::Triangle { base, height } => 0.5 * base * height,
+        }
+    }
+}
+
+fn main() {
+    let shapes = vec![
+        Shape::Circle(3.0),
+        Shape::Rectangle(4.0, 5.0),
+        Shape::Triangle { base: 6.0, height: 4.0 },
+    ];
+    for s in &shapes {
+        println!("{:?} => area = {:.2}", s, s.area());
+    }
+}`;
+
+<Playground client:visible code={enumsAdtCode} />
+
+export const quizEnumsAdt = [
+  {
+    q: "เกิดอะไรขึ้นใน Rust ถ้า `match` ไม่ครอบคลุมทุก enum variant?",
+    options: [
+      "Variant ที่ไม่ match คืนค่า default",
+      "โปรแกรม panic ตอน runtime",
+      "โค้ด compile ไม่ได้ — non-exhaustive pattern เป็น compile error",
+      "แสดง warning แต่ยังคอมไพล์ได้"
+    ],
+    answer: 2
+  },
+  {
+    q: "Feature ของ ADT ที่ Rust enum มีแต่ TypeScript enum ไม่มีคืออะไร?",
+    options: [
+      "ค่าตัวเลขต่อ variant",
+      "แต่ละ variant พก data type ต่างกันได้",
+      "เปรียบเทียบด้วย == โดย default",
+      "Iterate ผ่าน variant ทั้งหมดได้"
+    ],
+    answer: 1
+  },
+  {
+    q: "ใน Rust `match` arm `_` ทำอะไร?",
+    options: [
+      "ทำให้เกิด compile error สำหรับ variant ที่หายไป",
+      "Match เฉพาะ variant แรก",
+      "เป็น catch-all สำหรับ variant ที่ยังไม่ได้ match",
+      "เป็น default label เทียบเท่า JavaScript's default"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rs-only/enums-adt" questions={quizEnumsAdt} />
+
+<ProgressTracker client:visible id="rs-only/enums-adt" />

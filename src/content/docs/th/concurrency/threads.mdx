@@ -1,0 +1,186 @@
+---
+title: 'Threads'
+description: 'การ spawn OS threads จริงด้วย std::thread::spawn, การย้ายข้อมูลเข้า thread, และการ join handle — เทียบกับ JavaScript ที่ต้องใช้ Web Workers สำหรับ parallelism จริง'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Threads ใน TypeScript vs Rust
+
+ใน Node.js หรือ browser คุณไม่สามารถรัน JavaScript แบบ parallel บน CPU core อื่นได้โดยตรง คุณสามารถ spawn **Web Worker** ได้ แต่มันรันในกระบวนการแยกต่างหาก: คุณไม่สามารถแชร์ closure หรือส่ง reference ข้ามไปได้ — มีเพียงข้อมูลที่ serialize ได้เท่านั้นที่ผ่าน `postMessage` ได้
+
+Rust ให้ **OS threads จริง** ผ่าน `std::thread::spawn` threads เหล่านี้รันในกระบวนการเดียวกัน แชร์ address space เดียวกัน และสามารถรับค่า (ไม่ใช่สำเนา) จาก parent thread ได้ — ตราบใดที่ ownership rules ถูกต้อง
+
+## std::thread::spawn
+
+`thread::spawn` รับ **closure** และรันบน OS thread ใหม่ closure ต้อง `move` ข้อมูลที่ต้องการจาก scope รอบๆ เพราะ thread อาจมีชีวิตนานกว่า stack frame ปัจจุบัน
+
+การเรียกจะคืนค่า `JoinHandle<T>` โดยที่ `T` คือ return type ของ closure การเรียก `.join()` บน handle จะ block จนกว่า thread จะเสร็จและคืนค่า `Result<T, Box<dyn Any>>`
+
+export const threadsTs = `// TypeScript (Node.js): ไม่มี real threads
+// Web Workers รันในกระบวนการแยก
+// และสื่อสารได้เฉพาะผ่าน postMessage (ข้อมูล serialized)
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+
+if (isMainThread) {
+  const worker = new Worker(__filename, { workerData: { value: 10 } });
+  worker.on('message', (result) => console.log('result:', result));
+} else {
+  // ใน worker — ไม่สามารถแชร์ closure หรือ reference จาก main thread ได้
+  parentPort?.postMessage(workerData.value * 2);
+}`;
+
+export const threadsRs = `use std::thread;
+
+fn main() {
+    let value = 10u32; // owned by main thread
+
+    // move closure รับ ownership ของ 'value'
+    let handle = thread::spawn(move || {
+        // 'value' ถูก own โดย thread นี้แล้ว
+        value * 2
+    });
+
+    // join() block จนกว่า thread จะเสร็จ
+    // และคืนค่า return value ของ closure
+    let result = handle.join().unwrap();
+    println!("result: {result}"); // result: 20
+}`;
+
+<TsGo client:visible ts={threadsTs} go={threadsRs} />
+
+## Spawn หลาย thread และรวบรวมผลลัพธ์
+
+Pattern ที่พบบ่อยคือ spawn worker threads จำนวนหนึ่ง รวบรวม `JoinHandle` ทั้งหมดไว้ใน `Vec` แล้ว join ทั้งหมดและ aggregate ผลลัพธ์
+
+export const threadsMultiTs = `// TypeScript: งาน parallel ผ่าน Promise.all
+async function sumChunks(data: number[][]): Promise<number> {
+  const partials = await Promise.all(
+    data.map(chunk =>
+      new Promise<number>(resolve =>
+        resolve(chunk.reduce((a, b) => a + b, 0))
+      )
+    )
+  );
+  return partials.reduce((a, b) => a + b, 0);
+}`;
+
+export const threadsMultiRs = `use std::thread;
+
+fn main() {
+    let chunks: Vec<Vec<u32>> = vec![
+        vec![1, 2, 3],
+        vec![4, 5, 6],
+        vec![7, 8, 9],
+    ];
+
+    let handles: Vec<_> = chunks
+        .into_iter()
+        .map(|chunk| {
+            thread::spawn(move || chunk.iter().sum::<u32>())
+        })
+        .collect();
+
+    let total: u32 = handles
+        .into_iter()
+        .map(|h| h.join().unwrap())
+        .sum();
+
+    println!("total: {total}"); // total: 45
+}`;
+
+<TsGo client:visible ts={threadsMultiTs} go={threadsMultiRs} />
+
+## ลองรันเลย
+
+export const threadsCode = `use std::thread;
+
+fn main() {
+    let chunks: Vec<Vec<u32>> = vec![
+        vec![1, 2, 3],
+        vec![4, 5, 6],
+        vec![7, 8, 9],
+    ];
+
+    let handles: Vec<_> = chunks
+        .into_iter()
+        .map(|chunk| {
+            thread::spawn(move || chunk.iter().sum::<u32>())
+        })
+        .collect();
+
+    let total: u32 = handles
+        .into_iter()
+        .map(|h| h.join().unwrap())
+        .sum();
+
+    println!("total: {total}");
+}`;
+
+<Playground client:visible code={threadsCode} />
+
+<RsOnly title="move closures และ thread ownership">
+
+เมื่อคุณเรียก `thread::spawn` closure ที่คุณส่งไม่ได้รับอนุญาตให้ borrow จาก parent stack frame เหตุผลคือ compiler ไม่สามารถรับประกันได้ว่า parent stack frame จะยังมีอยู่เมื่อ thread รันในที่สุด keyword `move` บอก compiler ให้ **transfer ownership** ของทุก variable ที่ถูก capture เข้าไปใน closure
+
+ถ้าไม่ใช้ `move` คุณจะได้ compile error:
+
+```
+error[E0373]: closure may outlive the current function,
+but it borrows `value`, which is owned by the current function
+```
+
+ด้วย `move` thread จะ own ข้อมูลของตัวเอง — และ compiler พอใจว่าไม่มี dangling reference อยู่
+
+</RsOnly>
+
+export const quizThreads = [
+  {
+    q: "`thread::spawn` ใน Rust คืนค่าอะไร?",
+    options: [
+      "A Promise<T>",
+      "A JoinHandle<T>",
+      "An Arc<T>",
+      "A Result<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "ทำไม closure ที่ส่งให้ thread::spawn ต้องใช้ keyword `move`?",
+    options: [
+      "เพื่อให้ closure ทำงานเร็วขึ้น",
+      "เพราะ threads เป็น async เสมอ",
+      "เพื่อ transfer ownership ของ variable ที่ capture เข้าไปใน thread ป้องกัน dangling reference",
+      "เพราะ Rust closures ไม่สามารถ borrow ได้โดยปริยาย"
+    ],
+    answer: 2
+  },
+  {
+    q: "`.join()` บน JoinHandle ทำอะไร?",
+    options: [
+      "ยกเลิก thread",
+      "Block จนกว่า thread จะเสร็จและคืนผลลัพธ์เป็น Result<T>",
+      "แชร์ stack ของ thread กับ main thread",
+      "ส่ง message ไปยัง thread"
+    ],
+    answer: 1
+  },
+  {
+    q: "JavaScript ทำงานแบบ CPU-parallel จริงได้อย่างไร?",
+    options: [
+      "ผ่าน Promise.all ซึ่งรันบน CPU หลายคอร์",
+      "ผ่าน async/await ซึ่ง spawn OS threads อัตโนมัติ",
+      "ผ่าน Web Workers ซึ่งรันในกระบวนการแยกและสื่อสารผ่าน postMessage",
+      "ผ่าน setTimeout ซึ่ง schedule งานบน thread ต่างๆ"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/threads" questions={quizThreads} />
+
+<ProgressTracker client:visible id="concurrency/threads" />

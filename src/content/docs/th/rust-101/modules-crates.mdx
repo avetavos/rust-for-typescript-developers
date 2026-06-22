@@ -1,0 +1,120 @@
+---
+title: 'Modules and Crates'
+description: 'mod, use, visibility, crate, Cargo.toml และ cargo add ใน Rust เทียบกับ ESM และ npm'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Modules และ crates ใน TypeScript เทียบกับ Rust
+
+TypeScript ใช้ ESM `import`/`export` สำหรับการจัดระเบียบโค้ด และใช้ `npm` (หรือคล้ายกัน) สำหรับแพ็กเกจจากภายนอก ส่วน Rust มีสองแนวคิดที่ขนานกัน: **modules** (`mod`/`use`) สำหรับจัดระเบียบโค้ดภายในโปรเจกต์ และ **crates** (แพ็กเกจที่จัดการโดย Cargo) สำหรับ dependency จากภายนอก
+
+## Modules: mod และ use
+
+module จัดกลุ่ม item ที่เกี่ยวข้องกันไว้ด้วยกัน ใช้ `pub` เพื่อทำให้ item มองเห็นได้จากภายนอก module — ค่าเริ่มต้นคือ private
+
+```
+// src/math.rs  (a module file)
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+fn helper() { }  // private — not accessible outside
+
+// src/main.rs
+mod math;          // declare the module (pulls in math.rs)
+use math::add;     // bring add into scope
+
+fn main() {
+    println!("{}", add(1, 2));
+}
+```
+
+module ยังประกาศแบบ inline ได้ด้วย `mod name { ... }`
+
+## Crates และ Cargo
+
+**crate** คือตัวเทียบเท่ากับแพ็กเกจ npm ของ Rust ส่วน `Cargo.toml` ก็คือ `package.json` workflow แมปกันได้โดยตรง:
+
+| npm | Cargo |
+|---|---|
+| `npm install serde` | `cargo add serde` |
+| `package.json` | `Cargo.toml` |
+| `node_modules/` | `~/.cargo/registry/` (cache ที่ใช้ร่วมกัน) |
+| `import { x } from 'pkg'` | `use pkg::x;` |
+
+## กฎเรื่อง visibility
+
+- item เป็น **private โดยปริยาย** — เข้าถึงได้เฉพาะใน module เดียวกันและ module ลูกหลานเท่านั้น
+- `pub` ทำให้ item เข้าถึงได้จากทุกที่
+- `pub(crate)` จำกัด visibility ให้อยู่แค่ภายใน crate ปัจจุบันเท่านั้น
+- `pub(super)` จำกัดให้อยู่แค่ module แม่
+
+export const modulesTs = `// math.ts — named exports
+export function add(a: number, b: number): number {
+  return a + b;
+}
+function helper() {}  // not exported = module-private
+
+// main.ts
+import { add } from './math';
+console.log(add(1, 2));
+
+// package.json dependency
+// "serde": "1.0"  (hypothetical)`;
+
+export const modulesRs = `// src/math.rs
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+fn helper() {}  // private
+
+// src/main.rs
+mod math;
+use math::add;
+
+fn main() {
+    println!("{}", add(1, 2));
+}
+
+// Cargo.toml dependency
+// [dependencies]
+// serde = "1"`;
+
+<TsGo client:visible ts={modulesTs} go={modulesRs} />
+
+> หมายเหตุ Playground: โครงสร้าง module หลายไฟล์ต้องใช้ `cargo` — รันบนเครื่องของคุณด้วย `cargo run`
+
+export const quizModules = [
+  {
+    q: "visibility โดยปริยายของ function ใน module ของ Rust คืออะไร?",
+    options: [
+      "Public — มองเห็นได้ทุกที่",
+      "Private — มองเห็นได้เฉพาะภายใน module เดียวกันและ module ลูกหลานเท่านั้น",
+      "Protected — มองเห็นได้ภายใน crate",
+      "Internal — มองเห็นได้ภายในไฟล์"
+    ],
+    answer: 1
+  },
+  {
+    q: "อะไรคือตัวเทียบเท่าของ `npm install serde` ใน Rust?",
+    options: [
+      "rust install serde",
+      "cargo install serde",
+      "cargo add serde",
+      "use serde;"
+    ],
+    answer: 2
+  },
+  {
+    q: "`use std::collections::HashMap;` ทำอะไรใน Rust?",
+    options: [
+      "import crate HashMap จาก crates.io",
+      "ประกาศ module ใหม่ชื่อ HashMap",
+      "นำ HashMap เข้ามาใน scope เพื่อให้ใช้ได้โดยไม่ต้องเขียน path เต็ม",
+      "สร้าง type alias สำหรับ HashMap"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/modules-crates" questions={quizModules} />
+
+<ProgressTracker client:visible id="rust-101/modules-crates" />

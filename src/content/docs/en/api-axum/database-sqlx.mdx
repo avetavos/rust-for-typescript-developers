@@ -1,0 +1,217 @@
+---
+title: 'Database with SQLx'
+description: 'sqlx queries, connection pool, async — vs an ORM in Node.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Prisma/TypeORM vs SQLx
+
+In Node.js you likely use Prisma or TypeORM — ORMs that generate queries from a schema or model decorators. SQLx takes a different approach: you write **raw SQL** but the compiler verifies your queries against a live database at **compile time** using the `sqlx::query!` macro family. No ORM, no query builder — just type-checked SQL.
+
+| Feature | Prisma/TypeORM | SQLx |
+|---|---|---|
+| Query style | ORM API / query builder | Raw SQL |
+| Type safety | Generated types | Compile-time macro verification |
+| Migrations | Built-in CLI | `sqlx migrate` CLI |
+| Connection pool | Managed internally | `PgPool` (explicit) |
+| Async runtime | Node event loop | Tokio |
+
+## Setting up the pool
+
+```toml
+# Cargo.toml
+[dependencies]
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "uuid", "chrono"] }
+```
+
+export const tsPool = `// Node — Prisma client setup
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+export default prisma;`;
+
+export const rsPool = `// Rust — SQLx PgPool setup
+use sqlx::PgPool;
+use std::env;
+
+pub async fn create_pool() -> PgPool {
+    let url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    PgPool::connect(&url)
+        .await
+        .expect("Failed to connect to database")
+}`;
+
+<TsGo client:visible ts={tsPool} go={rsPool} />
+
+## Queries with `query_as!`
+
+`sqlx::query_as!` maps a SQL result row directly to a Rust struct. Column names must match field names. If the schema changes and a column disappears, the code **fails to compile**.
+
+export const tsPrismaQuery = `// Prisma
+const users = await prisma.user.findMany({
+  where: { active: true },
+  orderBy: { createdAt: 'desc' },
+});
+
+const user = await prisma.user.findUnique({
+  where: { id },
+});`;
+
+export const rsSqlxQuery = `use sqlx::PgPool;
+use uuid::Uuid;
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct User {
+    id: Uuid,
+    name: String,
+    email: String,
+    active: bool,
+}
+
+// List query
+async fn list_users(pool: &PgPool) -> sqlx::Result<Vec<User>> {
+    sqlx::query_as!(
+        User,
+        "SELECT id, name, email, active FROM users WHERE active = true ORDER BY id"
+    )
+    .fetch_all(pool)
+    .await
+}
+
+// Get one
+async fn find_user(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<User>> {
+    sqlx::query_as!(
+        User,
+        "SELECT id, name, email, active FROM users WHERE id = $1",
+        id
+    )
+    .fetch_optional(pool)
+    .await
+}`;
+
+<TsGo client:visible ts={tsPrismaQuery} go={rsSqlxQuery} />
+
+## Insert and delete
+
+```rust
+use sqlx::PgPool;
+use uuid::Uuid;
+
+async fn create_user(
+    pool: &PgPool,
+    name: &str,
+    email: &str,
+) -> sqlx::Result<User> {
+    sqlx::query_as!(
+        User,
+        "INSERT INTO users (id, name, email, active)
+         VALUES ($1, $2, $3, true)
+         RETURNING id, name, email, active",
+        Uuid::new_v4(),
+        name,
+        email
+    )
+    .fetch_one(pool)
+    .await
+}
+
+async fn delete_user(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "DELETE FROM users WHERE id = $1",
+        id
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+```
+
+## Wiring the pool into Axum State
+
+```rust
+use axum::{extract::State, routing::get, Json, Router};
+use sqlx::PgPool;
+use std::sync::Arc;
+
+#[derive(Clone)]
+struct AppState { db: PgPool }
+
+async fn list_users_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<User>>, AppError> {
+    let users = list_users(&state.db).await.map_err(AppError::Database)?;
+    Ok(Json(users))
+}
+
+#[tokio::main]
+async fn main() {
+    let pool = create_pool().await;
+    let state = Arc::new(AppState { db: pool });
+
+    let app = Router::new()
+        .route("/users", get(list_users_handler))
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+```
+
+<RsOnly title="Compile-time query verification">
+
+`sqlx::query_as!` and `sqlx::query!` use Rust's procedural macro system to connect to your database **at compile time** (using the `DATABASE_URL` environment variable) and verify:
+
+- The SQL is syntactically valid.
+- Every column referenced exists in the table.
+- The Rust struct fields match the returned column types.
+
+If you rename a column in a migration and forget to update the query, the build fails with a clear error. This eliminates an entire class of production bugs that typically only surface at runtime with Prisma or TypeORM.
+
+Offline mode (`sqlx prepare`) saves query metadata to `sqlx-data.json` so CI can compile without a live database.
+
+</RsOnly>
+
+> **Run locally** — SQLx requires a live PostgreSQL database and the `DATABASE_URL` environment variable. Run `sqlx migrate run` to apply migrations, then `cargo run`.
+
+export const quizDatabase = [
+  {
+    q: "When does SQLx verify that your SQL queries are correct?",
+    options: [
+      "At runtime, when the query executes",
+      "At compile time, using the DATABASE_URL environment variable",
+      "Only during `sqlx test`",
+      "Never — SQLx trusts raw SQL strings"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which SQLx method fetches all rows as a `Vec<T>`?",
+    options: [
+      "`.fetch_one(pool).await`",
+      "`.execute(pool).await`",
+      "`.fetch_all(pool).await`",
+      "`.fetch_optional(pool).await`"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `RETURNING id, name, email` in an `INSERT` statement enable in SQLx?",
+    options: [
+      "It prints the inserted row to stdout",
+      "It allows `fetch_one` to return the inserted struct instead of a row count",
+      "It enables compile-time verification only",
+      "It is required for all INSERT statements in SQLx"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="api-axum/database-sqlx" questions={quizDatabase} />
+
+<ProgressTracker client:visible id="api-axum/database-sqlx" />

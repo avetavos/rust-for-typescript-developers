@@ -1,0 +1,134 @@
+---
+title: 'Control Flow'
+description: 'if ในฐานะ expression, match, loop, while และ for ใน Rust เทียบกับ TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Control flow ใน TypeScript เทียบกับ Rust
+
+Rust มีโครงสร้าง control-flow ที่คุณรู้จักดีอยู่แล้ว — `if`, `while`, `for` — แต่มีความแตกต่างสำคัญสองข้อ: `if` และ `match` เป็น **expression** ที่ให้ค่ากลับมา และ `match` เป็นแบบ **exhaustive** (compiler จะ error ถ้าคุณตกหล่นเคสใดเคสหนึ่ง)
+
+## if ในฐานะ expression
+
+ใน TypeScript คุณจะหันไปใช้ ternary `? :` เมื่อต้องการค่าตามเงื่อนไข ส่วนใน Rust ตัว `if` เองเป็น expression — ทุก branch ต้องให้ค่า type เดียวกัน
+
+```
+// TypeScript
+const label = score >= 60 ? "pass" : "fail";
+
+// Rust
+let label = if score >= 60 { "pass" } else { "fail" };
+```
+
+## match — switch แบบ exhaustive
+
+`match` ใน Rust เหมือน `switch` ของ TypeScript แต่เป็นแบบ exhaustive และ expression-oriented compiler รับประกันว่าทุกค่าที่เป็นไปได้ถูกจัดการ pattern สามารถเป็น range, literal, enum และอื่น ๆ ได้
+
+## loop, while, for
+
+- `loop` รันไปเรื่อย ๆ จนกว่าจะเจอ `break` ต่างจาก `while true` ตรงที่ `loop` สามารถ return ค่ากลับมาได้ผ่าน `break value`
+- `while` ทำงานตามที่คาดหวัง
+- `for item in collection` วนซ้ำบนสิ่งที่ iterate ได้ใด ๆ — ไม่ต้องคำนวณ index เอง
+
+export const controlFlowTs = `const score = 85;
+const grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";
+console.log(grade); // "B"
+
+// switch (not exhaustive by default)
+switch (score) {
+  case 100: console.log("perfect"); break;
+  default:  console.log("ok");
+}`;
+
+export const controlFlowRs = `fn main() {
+    let score = 85;
+    // if is an expression
+    let grade = if score >= 90 { "A" } else if score >= 80 { "B" } else { "C" };
+    println!("{grade}"); // B
+
+    // loop with a break value
+    let mut counter = 0;
+    let result = loop {
+        counter += 1;
+        if counter == 5 { break counter * 2; }
+    };
+    println!("{result}"); // 10
+
+    // for over a range
+    for i in 1..=3 {
+        println!("{i}");
+    }
+
+    // match is exhaustive
+    match score {
+        90..=100 => println!("A"),
+        80..=89  => println!("B"),
+        _        => println!("C or below"),
+    }
+}`;
+
+<TsGo client:visible ts={controlFlowTs} go={controlFlowRs} />
+
+## ลองเล่นดู
+
+export const controlFlowCode = `fn classify(n: i32) -> &'static str {
+    match n {
+        i32::MIN..=-1 => "negative",
+        0 => "zero",
+        1..=9 => "small positive",
+        _ => "large positive",
+    }
+}
+
+fn main() {
+    let score = 85;
+    let grade = if score >= 90 { "A" } else if score >= 80 { "B" } else { "C" };
+    println!("Grade: {grade}");
+
+    for n in [0, -3, 5, 42] {
+        println!("{n} is {}", classify(n));
+    }
+}`;
+
+<Playground client:visible code={controlFlowCode} />
+
+export const quizControlFlow = [
+  {
+    q: "เกิดอะไรขึ้นถ้าคุณลืมเคสใน expression `match` ของ Rust?",
+    options: [
+      "โปรแกรม panic ตอน runtime",
+      "เคสที่ขาดไปจะ return unit ()",
+      "compiler สร้าง error ขึ้นมา",
+      "match จะตกไหลไปยัง arm ถัดไป"
+    ],
+    answer: 2
+  },
+  {
+    q: "คุณ return ค่าจาก `loop` ใน Rust อย่างไร?",
+    options: [
+      "return value; ภายใน loop",
+      "break value; ภายใน loop",
+      "คุณไม่สามารถ return ค่าจาก loop ได้",
+      "yield value;"
+    ],
+    answer: 1
+  },
+  {
+    q: "ข้อใดต่อไปนี้เป็น Rust ที่ถูกต้อง?",
+    options: [
+      "let x = if true { 1 };",
+      "let x = if true { 1 } else { 2 };",
+      "let x = if true { 1 } else { \"two\" };",
+      "let x = if true 1 else 2;"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rust-101/control-flow" questions={quizControlFlow} />
+
+<ProgressTracker client:visible id="rust-101/control-flow" />

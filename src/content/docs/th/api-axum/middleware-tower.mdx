@@ -1,0 +1,161 @@
+---
+title: 'Middleware และ Tower'
+description: 'Tower middleware layers, logging, CORS — เทียบกับ Express middleware'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Express `app.use` vs Tower layers
+
+ใน Express middleware คือ function `(req, res, next) => void` ที่คุณลงทะเบียนด้วย `app.use()` ใน Axum middleware คือ **Tower layer** — เป็น wrapper แบบ composable รอบ `Service` แนวคิดเหมือนกัน (intercept → process → forward) แต่ Tower เป็น protocol-agnostic และทำงานที่ compile time
+
+export const tsMiddleware = `// Express — register middleware globally
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+
+const app = express();
+app.use(cors({ origin: 'https://myapp.com' }));
+app.use(morgan('combined'));
+app.use(express.json());
+
+app.get('/users', listUsers);`;
+
+export const rsMiddleware = `use axum::{routing::get, Router};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower::ServiceBuilder;
+use http::HeaderValue;
+
+let app = Router::new()
+    .route("/users", get(list_users))
+    .layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(
+                CorsLayer::new()
+                    .allow_origin("https://myapp.com".parse::<HeaderValue>().unwrap())
+                    .allow_methods([http::Method::GET, http::Method::POST])
+            )
+    );`;
+
+<TsGo client:visible ts={tsMiddleware} go={rsMiddleware} />
+
+## CORS layer
+
+`tower-http` มี `CorsLayer` ที่ใช้งานได้เหมือน `cors` npm package เพิ่มใน `Cargo.toml` ด้วย `tower-http = { version = "0.5", features = ["cors"] }`
+
+```rust
+use tower_http::cors::{Any, CorsLayer};
+use axum::http::Method;
+
+let cors = CorsLayer::new()
+    .allow_origin(Any)                     // any origin (dev only)
+    .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+    .allow_headers(Any);
+
+let app = Router::new()
+    .route("/users", get(list_users))
+    .layer(cors);
+```
+
+## Request tracing / logging
+
+`TraceLayer` ของ `tower-http` รวมกับ `tracing` เพื่อ log ทุก request/response เพิ่ม `tower-http = { version = "0.5", features = ["trace"] }` ใน `Cargo.toml`
+
+```rust
+use tower_http::trace::TraceLayer;
+
+let app = Router::new()
+    .route("/users", get(list_users))
+    .layer(TraceLayer::new_for_http());
+```
+
+เริ่ม app ด้วย `RUST_LOG=tower_http=debug cargo run` เพื่อดู structured request logs
+
+## Route-scoped vs global layers
+
+Tower layers wrap service **ที่อยู่ด้านล่าง** ของมัน คุณสามารถแนบ layers กับ router ทั้งหมดหรือกับ route group เฉพาะ:
+
+export const tsScoped = `// Express — scoped middleware
+import authMiddleware from './auth';
+
+const protectedRouter = express.Router();
+protectedRouter.use(authMiddleware);
+protectedRouter.get('/profile', getProfile);
+
+app.use('/api', protectedRouter);`;
+
+export const rsScopedLayer = `use axum::Router;
+use tower_http::auth::RequireAuthorizationLayer;
+
+// Layer applied only to the protected sub-router
+let protected_routes = Router::new()
+    .route("/profile", get(get_profile))
+    .layer(RequireAuthorizationLayer::bearer("secret-token"));
+
+let app = Router::new()
+    .route("/health", get(health))
+    .nest("/api", protected_routes);`;
+
+<TsGo client:visible ts={tsScoped} go={rsScopedLayer} />
+
+<RsOnly title="Service model ของ Tower">
+
+Tower `Service` คือ type ใด ๆ ที่ implement:
+
+```rust
+trait Service<Request> {
+    type Response;
+    type Error;
+    type Future: Future<Output = Result<Self::Response, Self::Error>>;
+    fn call(&mut self, req: Request) -> Self::Future;
+}
+```
+
+`Layer` wrap `Service` หนึ่งในอีก `Service` หนึ่ง `ServiceBuilder` เชื่อม layers หลายตัวเข้าด้วยกัน เนื่องจากทุกอย่างเป็น trait Tower middleware จึง compose ได้โดยไม่มี runtime reflection — middleware stack ทั้งหมดถูก resolve ที่ compile time ผลิต monomorphized type เดียว
+
+นี่คือเหตุผลว่าทำไม Tower layers จึง zero-cost: ไม่มี dynamic dispatch ไม่มี `Any` downcasting และไม่มีการ allocation ต่อ request สำหรับ middleware chain เอง
+
+</RsOnly>
+
+> **รันบนเครื่องของคุณ** — middleware ต้องการ Axum server ที่กำลังทำงาน รันด้วย `RUST_LOG=tower_http=debug cargo run`
+
+export const quizMiddleware = [
+  {
+    q: "สิ่งเทียบเท่า `app.use(cors())` ของ Axum/Tower คืออะไร?",
+    options: [
+      "`.middleware(cors)`",
+      "`.layer(CorsLayer::new())`",
+      "`.use_cors()`",
+      "`#[cors]` attribute macro"
+    ],
+    answer: 1
+  },
+  {
+    q: "crate ใดที่ให้ `CorsLayer` และ `TraceLayer`?",
+    options: [
+      "axum",
+      "tokio",
+      "tower",
+      "tower-http"
+    ],
+    answer: 3
+  },
+  {
+    q: "คุณ apply Tower layer กับเฉพาะกลุ่ม routes อย่างไร?",
+    options: [
+      "ส่ง layer เป็น handler argument",
+      "ใช้ `.layer()` บน nested sub-router ก่อน `.nest()` มัน",
+      "ลงทะเบียนด้วย `app.use_scoped()`",
+      "Apply ผ่าน `#[layer]` macro"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="api-axum/middleware-tower" questions={quizMiddleware} />
+
+<ProgressTracker client:visible id="api-axum/middleware-tower" />

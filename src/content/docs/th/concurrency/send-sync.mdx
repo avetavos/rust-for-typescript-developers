@@ -1,0 +1,176 @@
+---
+title: 'Send และ Sync'
+description: 'Marker traits Send และ Sync ของ Rust ให้ข้อมูลเพียงพอแก่ compiler เพื่อป้องกัน data race ณ compile time — ไม่มีสิ่งเทียบเท่าใน TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## ปัญหา: การแชร์ข้อมูลข้าม threads
+
+JavaScript หลีกเลี่ยงปัญหา thread-safety โดยสิ้นเชิง — มีแค่ thread เดียว (ต่อ Worker) ดังนั้นคำถามที่ว่า "สอง thread สามารถเข้าถึงค่านี้พร้อมกันได้ไหม?" จึงไม่เกิดขึ้นเลย ไม่มีแนวคิด thread safety ระดับ type ใน TypeScript
+
+Rust รองรับ parallelism จริง ซึ่งหมายความว่าสอง thread อาจเข้าถึง memory เดียวกันพร้อมกันจริงๆ เพื่อให้ปลอดภัยโดยไม่ต้องใช้ garbage collector หรือ lock แบบ runtime Rust ใช้ **marker traits**: `Send` และ `Sync`
+
+## นิยามของ Send และ Sync
+
+| Trait | ความหมาย | ตัวอย่าง type |
+|---|---|---|
+| `Send` | ค่าของ type `T` สามารถ **ย้าย** ไปยัง thread อื่นได้ | `i32`, `String`, `Vec<T>`, `Arc<T>` |
+| `Sync` | shared reference `&T` สามารถส่งไปยัง thread อื่นได้ | `i32`, `Arc<T>`, `Mutex<T>` |
+| ไม่ใช่ `Send` | ไม่สามารถย้ายไปยัง thread อื่นได้ | `Rc<T>` (non-atomic reference count) |
+| ไม่ใช่ `Sync` | ไม่สามารถแชร์ reference ข้าม threads ได้ | `Cell<T>`, `RefCell<T>` |
+
+traits เหล่านี้ **ถูก implement อัตโนมัติ** โดย compiler ตาม types ภายใน struct ของคุณ คุณแทบไม่เคย implement มันด้วยตนเอง กฎจะ propagate: ถ้า struct ของคุณมี field ที่ไม่ใช่ `Send` struct ของคุณก็จะไม่ใช่ `Send` เช่นกัน
+
+export const sendSyncTs = `// TypeScript ไม่มี type สำหรับ thread-safety
+// ภาษารับประกันความปลอดภัยโดยมีแค่ thread เดียวต่อ Worker
+// ไม่มีแนวคิด Send หรือ Sync ระดับ type
+
+// ใน Worker คุณสื่อสารได้เฉพาะผ่าน structured-clone (postMessage):
+// plain objects, arrays, ArrayBuffer ฯลฯ
+// ไม่สามารถส่ง class instance ที่มี methods, closure, หรือ WeakRef ได้
+
+const worker = new Worker('./worker.js');
+// นี่ ทำงานได้: number เป็น structured-cloneable
+worker.postMessage(42);
+// นี่จะ FAIL ณ runtime: functions ไม่สามารถ clone ได้
+// worker.postMessage(() => 42); // DataCloneError`;
+
+export const sendSyncRs = `// Rust: Send/Sync เป็นการรับประกัน ณ compile time ไม่ใช่ runtime checks
+
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    // Arc<Mutex<T>> ทั้ง Send และ Sync:
+    // - Arc: thread-safe reference counting (vs Rc ที่ไม่ใช่ Send)
+    // - Mutex: ให้ interior mutability พร้อม lock
+    let shared: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(vec![]));
+    let mut handles = vec![];
+
+    for i in 0..4 {
+        let data = Arc::clone(&shared); // clone ราคาถูก — แค่ increment pointer
+        let h = thread::spawn(move || {
+            data.lock().unwrap().push(i); // lock, push, auto-unlock
+        });
+        handles.push(h);
+    }
+
+    for h in handles { h.join().unwrap(); }
+
+    let mut result = shared.lock().unwrap().clone();
+    result.sort();
+    println!("collected: {:?}", result); // collected: [0, 1, 2, 3]
+}`;
+
+<TsGo client:visible ts={sendSyncTs} go={sendSyncRs} />
+
+<RsOnly title="การป้องกัน data race ณ compile time (ไม่มีใน JS)">
+
+สิ่งที่สำคัญที่สุดเกี่ยวกับ `Send` และ `Sync` คือมันเป็น **zero-cost abstractions** ไม่มี overhead ระหว่าง runtime — ไม่มีการ lock ไม่มีการเพิ่ม reference count เพียงเพื่อตรวจสอบ thread safety การรับประกันทั้งหมดถูก enforce ณ compile time
+
+### สิ่งที่เกิดขึ้นเมื่อคุณละเมิดกฎ
+
+ถ้าคุณพยายามส่ง type ที่ไม่ใช่ `Send` (เช่น `Rc<T>`) ไปยัง thread อื่น compiler จะปฏิเสธ:
+
+```
+// โค้ดนี้ compile ไม่ผ่าน:
+use std::rc::Rc;
+use std::thread;
+
+fn main() {
+    let rc = Rc::new(42);
+    thread::spawn(move || {
+        println!("{}", rc); // ERROR
+    });
+}
+```
+
+```
+error[E0277]: `Rc<i32>` cannot be sent between threads safely
+   --> src/main.rs:6:19
+    |
+6   |     thread::spawn(move || {
+    |     ^^^^^^^^^^^^^ `Rc<i32>` cannot be sent between threads safely
+    |
+    = help: the trait `Send` is not implemented for `Rc<i32>`
+```
+
+วิธีแก้คือใช้ `Arc<T>` แทน `Rc<T>` `Arc` ย่อมาจาก "Atomically Reference Counted" — ใช้ atomic operations ในการอัปเดต count ทำให้ปลอดภัยในการแชร์ข้าม threads `Rc` ใช้ plain integer operations (ถูกกว่า แต่ไม่ thread-safe)
+
+### กฎ Send + Sync สำหรับ thread::spawn
+
+`thread::spawn` ต้องการให้ closure และทุกอย่างที่ capture มาเป็น `Send` ซึ่งตรวจสอบ ณ call site — ไม่ใช่ runtime ไม่ใช่ตอนรับค่า แต่ตอนที่คุณเขียน `thread::spawn(...)` นั่นเอง
+
+นี่คือหัวใจของ fearless concurrency: type system รู้ว่า type ไหนปลอดภัยที่จะข้ามขอบเขต thread และมัน enforce ความรู้นั้นแบบ static
+
+</RsOnly>
+
+## ลองรันเลย — เวอร์ชันที่ทำงานได้กับ Arc
+
+export const sendSyncCode = `use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let data: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(vec![]));
+    let mut handles = vec![];
+
+    for i in 0..4 {
+        let d = Arc::clone(&data);
+        let h = thread::spawn(move || {
+            d.lock().unwrap().push(i);
+        });
+        handles.push(h);
+    }
+
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    let mut result = data.lock().unwrap().clone();
+    result.sort();
+    println!("collected: {:?}", result);
+}`;
+
+<Playground client:visible code={sendSyncCode} />
+
+export const quizSendSync = [
+  {
+    q: "Marker trait `Send` ใน Rust หมายความว่าอะไร?",
+    options: [
+      "Type สามารถ serialize เป็น JSON ได้",
+      "ค่าของ type สามารถย้ายไปยัง thread อื่นได้อย่างปลอดภัย",
+      "Type implements trait Display",
+      "Type ไม่มีการจัดสรร heap"
+    ],
+    answer: 1
+  },
+  {
+    q: "ทำไม `Rc<T>` ถึงไม่ใช่ `Send` แต่ `Arc<T>` ใช่?",
+    options: [
+      "Rc ใช้ heap allocation; Arc ใช้ stack",
+      "Rc ไม่ implement Clone; Arc implement",
+      "Rc ใช้ non-atomic reference counting ซึ่งไม่ปลอดภัยข้าม threads; Arc ใช้ atomic operations",
+      "Rc ถูก deprecated ใน Rust สมัยใหม่แล้ว"
+    ],
+    answer: 2
+  },
+  {
+    q: "การละเมิด Send/Sync ถูกตรวจพบเมื่อไหร่ใน Rust?",
+    options: [
+      "ณ runtime เมื่อ thread ถูก spawn",
+      "ณ link time เมื่อ binary ถูกประกอบ",
+      "ณ compile time ก่อนโปรแกรมจะรัน",
+      "เฉพาะเมื่อรัน tests ด้วย --release"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/send-sync" questions={quizSendSync} />
+
+<ProgressTracker client:visible id="concurrency/send-sync" />

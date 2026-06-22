@@ -1,0 +1,172 @@
+---
+title: 'Borrowing & References'
+description: 'Shared and exclusive references in Rust — the borrow checker rules explained for TypeScript developers, with the classic error case shown.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript passes references freely — Rust tracks them
+
+In TypeScript, passing an object to a function gives the function a reference. Both the caller and the callee can read and write the object simultaneously. The language imposes no restriction on how many references exist or what they can do.
+
+Rust's **borrow checker** enforces strict rules about references at compile time. The rules prevent data races, dangling pointers, and use-after-free — all at zero runtime cost.
+
+## Shared references — `&T`
+
+A shared reference (`&T`) lets you read a value without taking ownership. Many shared references can exist at the same time.
+
+export const borrowSharedTs = `// TypeScript — just passing a reference (no rules enforced)
+function getLength(s: string): number {
+  return s.length;
+}
+
+const greeting = "hello";
+const len = getLength(greeting);
+console.log(greeting, len); // both still valid`;
+
+export const borrowSharedRs = `fn get_length(s: &String) -> usize {
+    s.len()  // we borrow s — we cannot move out of it
+}
+
+fn main() {
+    let greeting = String::from("hello");
+    let len = get_length(&greeting); // lend greeting to the function
+    println!("{} has {} chars", greeting, len);
+    // greeting is still valid here — we only borrowed it
+}`;
+
+<TsGo client:visible ts={borrowSharedTs} go={borrowSharedRs} />
+
+## Mutable references — `&mut T`
+
+A mutable reference (`&mut T`) lets you both read and modify a value. But Rust enforces an exclusive rule: **while a `&mut` reference exists, no other reference — shared or mutable — may exist at the same time**.
+
+export const borrowMutTs = `// TypeScript — no restriction on simultaneous read + write
+function appendWorld(s: { value: string }): void {
+  s.value += ", world";
+}
+
+const msg = { value: "hello" };
+appendWorld(msg);
+console.log(msg.value); // "hello, world"`;
+
+export const borrowMutRs = `fn append_world(s: &mut String) {
+    s.push_str(", world");
+}
+
+fn main() {
+    let mut s = String::from("hello");
+    append_world(&mut s);
+    println!("{}", s); // "hello, world"
+
+    // Multiple shared refs are fine — no mutation happening
+    let r1 = &s;
+    let r2 = &s;
+    println!("{} and {}", r1, r2);
+}`;
+
+<TsGo client:visible ts={borrowMutTs} go={borrowMutRs} />
+
+<RsOnly title="The two borrow rules — why they exist">
+
+Rust enforces exactly these two rules about references:
+
+1. **You may have any number of shared (`&T`) references OR exactly one mutable (`&mut T`) reference — never both at the same time.**
+2. **A reference must always be valid (no dangling references).**
+
+These rules eliminate an entire class of bugs that plague C, C++, and even Go:
+
+- **Data races:** Two threads mutating the same data simultaneously → rule 1 prevents this at compile time.
+- **Iterator invalidation:** Mutating a `Vec` while iterating over it → rule 1 catches this.
+- **Use-after-free:** Using a reference after the owner is dropped → rule 2 catches this.
+
+TypeScript has none of these protections. A JS array can be mutated by any code that holds a reference, at any time.
+
+</RsOnly>
+
+## The classic borrow checker error
+
+This is the most common error new Rust developers encounter. The code below tries to hold a shared reference and a mutable reference at the same time:
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &s;      // shared borrow begins
+    let r2 = &s;      // another shared borrow — still fine
+    let r3 = &mut s;  // ERROR: cannot borrow `s` as mutable because it is also borrowed as immutable
+
+    println!("{}, {}, {}", r1, r2, r3);
+}
+// error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable
+//  --> src/main.rs:6:14
+//   |
+// 4 |     let r1 = &s;
+//   |              -- immutable borrow occurs here
+// 6 |     let r3 = &mut s;
+//   |              ^^^^^^ mutable borrow occurs here
+// 7 |     println!("{}, {}, {}", r1, r2, r3);
+//   |                            -- immutable borrow later used here
+```
+
+The fix is simple: make sure shared and mutable borrows do not overlap. End the shared borrows first (they end when they are last used), then take the mutable borrow:
+
+## Try it
+
+export const borrowCode = `fn append_world(s: &mut String) {
+    s.push_str(", world");
+}
+
+fn main() {
+    let mut s = String::from("hello");
+    append_world(&mut s);
+    println!("{}", s);
+
+    // multiple shared refs are fine
+    let r1 = &s;
+    let r2 = &s;
+    println!("{} and {}", r1, r2);
+}`;
+
+<Playground client:visible code={borrowCode} />
+
+export const quizBorrowing = [
+  {
+    q: "How many mutable references (`&mut T`) to the same value can exist at the same time in Rust?",
+    options: [
+      "Unlimited",
+      "Two, as long as they are in different threads",
+      "Exactly one",
+      "None — you must always clone"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `&T` mean in a function signature?",
+    options: [
+      "The function takes ownership of T",
+      "The function receives a shared (read-only) reference to T",
+      "The function receives an exclusive mutable reference to T",
+      "T is a raw pointer"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which borrow checker rule prevents data races at compile time?",
+    options: [
+      "You may not have more than two shared references",
+      "You may have many shared refs OR one mutable ref — never both simultaneously",
+      "Mutable references must be declared at the top of the function",
+      "References must outlive the function that created them"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/borrowing-references" questions={quizBorrowing} />
+
+<ProgressTracker client:visible id="rs-only/borrowing-references" />

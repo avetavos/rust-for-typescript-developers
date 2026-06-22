@@ -1,0 +1,101 @@
+---
+title: 'Tooling, Testing & Deployment'
+description: 'ภาพรวมของ Toolchain แบบ batteries-included ของ Rust (Cargo) เทียบกับ Node.js ที่ต้องประกอบเองทุกอย่าง'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## เครื่องมือเดียวครบจบ
+
+ใน Node.js คุณต้องประกอบ toolchain เองทั้งหมด: `npm` (หรือ `yarn`/`pnpm`) สำหรับ packages, `tsc` สำหรับ compile, `eslint` สำหรับ lint, `prettier` สำหรับ format, `jest`/`vitest` สำหรับ test และ `esbuild`/`webpack`/`rollup` สำหรับ bundle แต่ละตัวมี config file ของตัวเอง, CLI flags ของตัวเอง และ plugin ecosystem ของตัวเอง
+
+Rust มาพร้อมเครื่องมือทางการเพียงตัวเดียวคือ **Cargo** ซึ่งจัดการงานทั้งหมดเหล่านั้น:
+
+| งานใน Node / TS | เทียบเท่าใน Cargo |
+|---|---|
+| `npm install` | `cargo add` / `cargo fetch` |
+| `tsc` | `cargo build` |
+| `node index.js` | `cargo run` |
+| `eslint` | `cargo clippy` |
+| `prettier` | `cargo fmt` |
+| `jest` | `cargo test` |
+| `npm publish` | `cargo publish` |
+| `npx tsdoc` | `cargo doc` |
+
+ไม่มีการ "เลือกเอง" community Rust ใช้ formatter เดียว (rustfmt), linter เดียว (Clippy) และ test runner เดียว ทำให้ทุก Rust project มีหน้าตาคุ้นเคย
+
+## สิ่งที่คุณจะเรียนในโมดูลนี้
+
+- **cargo.mdx** — manifest `Cargo.toml`, `Cargo.lock` และ subcommand ที่สำคัญ
+- **clippy-rustfmt.mdx** — lint ด้วย Clippy และ format ด้วย rustfmt เทียบกับ eslint + prettier
+- **testing.mdx** — unit test ด้วย `#[test]`, integration test และ doctest เทียบกับ Jest
+- **workspaces-features.mdx** — workspace หลาย crate และ feature flag เทียบกับ npm workspaces
+- **release-cross-compile.mdx** — release build และ cross-compilation ไปยัง static binary
+- **docker-ci.mdx** — multi-stage Dockerfile และ GitHub Actions สำหรับ Rust project
+
+## เปรียบเทียบ: เริ่มต้น project
+
+export const indexTs = `# Node / TypeScript
+npm init -y
+npm install typescript --save-dev
+npx tsc --init
+# Now you also need eslint, prettier, jest...`;
+
+export const indexRs = `# Rust
+cargo new my-app
+cd my-app
+cargo build    # compiles
+cargo run      # compiles + runs
+cargo test     # runs all tests
+cargo clippy   # lints
+cargo fmt      # formats`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+> นี่คือบทภาพรวมของโมดูล ไม่มี Playground ในบทนี้ — บทถัดไปแต่ละบทจะสาธิต tool เฉพาะ รัน Cargo command ข้างต้นใน terminal ของคุณหลังจากติดตั้ง Rust ผ่าน [rustup.rs](https://rustup.rs)
+
+<RsOnly title="ทำไม batteries-included จึงสำคัญ">
+
+เมื่อทุก Rust project ใช้ formatter, linter และ test runner เดียวกัน คุณสามารถ contribute ให้กับ open-source crate ใดก็ได้และรู้สึกคุ้นเคยทันที ไม่มีความสับสนแบบ "project นี้ใช้ Prettier แต่อีก project ใช้ dprint" เครื่องมือทางการยังรวดเร็วมาก: `cargo fmt` และ `cargo clippy` รันใน milliseconds สำหรับ project ทั่วไป
+
+</RsOnly>
+
+export const quizIndex = [
+  {
+    q: "Cargo subcommand ใดเทียบเท่ากับการรัน `npx jest`?",
+    options: [
+      "cargo build",
+      "cargo check",
+      "cargo test",
+      "cargo run"
+    ],
+    answer: 2
+  },
+  {
+    q: "เครื่องมือใด format Rust code (เทียบเท่า Prettier)?",
+    options: [
+      "cargo clippy",
+      "cargo fmt",
+      "cargo doc",
+      "rustc"
+    ],
+    answer: 1
+  },
+  {
+    q: "ข้อได้เปรียบหลักของ toolchain ทางการเดียวของ Rust เมื่อเทียบกับ Node.js ecosystem คืออะไร?",
+    options: [
+      "เขียนด้วย JavaScript จึงเร็วกว่า",
+      "ทุก Rust project ใช้ formatter, linter และ test runner เดียวกัน — ไม่มีการถกเถียงเรื่อง configuration",
+      "ไม่ต้องใช้อินเทอร์เน็ต",
+      "สร้าง TypeScript types อัตโนมัติ"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="tooling/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="tooling/index" />

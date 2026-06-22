@@ -1,0 +1,251 @@
+---
+title: "Mental Model — การปรับ Mindset จาก TypeScript"
+description: 'การเปลี่ยน mindset ห้าประการที่สำคัญที่สุดเมื่อมาเรียน Rust จาก TypeScript หรือ Node.js — ownership, compile-time safety, expressions, immutability, และ errors as values'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## ห้าสิ่งที่จะรู้สึกแตกต่าง
+
+ความหงุดหงิดส่วนใหญ่ที่เกิดกับ Rust สำหรับผู้เรียนใหม่มาจากการต่อสู้กับ mental model ไม่ใช่ syntax TypeScript และ Rust ดูคล้ายกันในเชิงผิวเผิน — ทั้งคู่มี types, functions, generics, และ pattern matching — แต่ทำ trade-off ที่แตกต่างกันโดยพื้นฐาน การเข้าใจห้าการเปลี่ยนแปลงนี้ตั้งแต่ต้นจะช่วยให้คุณประหยัดเวลาความสับสนไปได้มาก
+
+## 1. Ownership — ไม่มี garbage collector
+
+ใน JavaScript และ TypeScript หน่วยความจำถูกจัดการโดย garbage collector (GC) คุณสร้าง object ได้อย่างอิสระ GC สแกนหาค่าที่เข้าไม่ถึงแล้ว free มัน คุณไม่เคยคิดเรื่อง allocation
+
+ใน Rust **ทุกค่ามีเจ้าของเพียงหนึ่งเดียว** เมื่อเจ้าของออกไปนอก scope ค่านั้นก็ถูก free — ไม่ต้องมี GC สิ่งนี้ถูกกำหนดทั้งหมดตั้งแต่ขั้น compile
+
+export const ownershipTs = `// TypeScript: GC manages memory
+// You can pass an object anywhere, copy references freely
+function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+let s1 = "hello";
+let s2 = s1;      // s1 is still valid — GC tracks both refs
+console.log(s1, s2);`;
+
+export const ownershipRs = `fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1; // s1 is *moved* into s2 — s1 is gone
+    println!("{s2}"); // fine
+    // println!("{s1}"); // compile error: value was moved
+}`;
+
+<TsGo client:visible ts={ownershipTs} go={ownershipRs} />
+
+ความเข้าใจสำคัญ: การย้ายค่า (การ assign, การส่งให้ function) จะโอน ownership ไป binding เดิมจะไม่ valid อีกต่อไป ฟังดูเข้มงวด — แต่หมายความว่า compiler สามารถรับประกันตั้งแต่ขั้น compile ว่าหน่วยความจำถูก free พอดีหนึ่งครั้ง ไม่มี double-free, ไม่มี use-after-free
+
+## 2. ความปลอดภัยของหน่วยความจำตั้งแต่ขั้น compile — borrow checker
+
+*borrow checker* ของ Rust บังคับใช้กฎ ownership มันอ่านโค้ดของคุณตั้งแต่ขั้น compile และปฏิเสธโปรแกรมที่อาจทำให้เกิดข้อผิดพลาดด้านหน่วยความจำ ไม่มีการตรวจสอบตอน runtime ไม่มี null pointer exception ไม่มี heap corruption
+
+กฎมีดังนี้:
+- คุณสามารถมี **mutable reference หนึ่งอัน** (`&mut T`) **หรือ** จำนวนใดก็ได้ของ **immutable references** (`&T`) — แต่ไม่เกิดขึ้นพร้อมกัน
+- References ต้องมีอายุการใช้งานไม่เกินค่าที่ชี้ถึง
+
+export const borrowTs = `// TypeScript: no borrow checker — races are possible at runtime
+let arr = [1, 2, 3];
+const ref1 = arr;
+const ref2 = arr;
+// both ref1 and ref2 point to the same array
+// mutating through one is invisible to callers expecting stability
+ref1.push(4);
+console.log(ref2); // [1, 2, 3, 4] — maybe surprising`;
+
+export const borrowRs = `fn main() {
+    let mut v = vec![1, 2, 3];
+
+    let r1 = &v;     // immutable borrow
+    let r2 = &v;     // second immutable borrow -- fine
+    println!("{r1:?} {r2:?}");
+    // r1 and r2 are no longer used after this point
+
+    let r3 = &mut v; // mutable borrow -- fine here, r1/r2 are done
+    r3.push(4);
+    println!("{r3:?}");
+}`;
+
+<TsGo client:visible ts={borrowTs} go={borrowRs} />
+
+## 3. Expressions มากกว่า statements
+
+ใน TypeScript `if`, `match`, และ blocks เป็น statements — มันไม่ produce ค่า ใน Rust เกือบทุกอย่างเป็น expression ที่ produce ค่า ซึ่งหมายความว่าคุณสามารถ assign ผลลัพธ์ของ `if` หรือ `match` ได้โดยตรง
+
+export const expressionsTs = `// TypeScript: if is a statement, need ternary for expressions
+const score = 85;
+const grade = score >= 90 ? "A" : score >= 75 ? "B" : "C";
+console.log(grade);`;
+
+export const expressionsRs = `fn main() {
+    let score = 85;
+
+    // if is an expression in Rust -- assign its result directly
+    let grade = if score >= 90 {
+        "A"
+    } else if score >= 75 {
+        "B"
+    } else {
+        "C"
+    };
+
+    println!("{grade}");
+}`;
+
+<TsGo client:visible ts={expressionsTs} go={expressionsRs} />
+
+## 4. Immutability เป็นค่าเริ่มต้น
+
+`let` ของ TypeScript สร้าง binding แบบ mutable `let` ของ Rust สร้าง binding แบบ **immutable** คุณต้องเลือกใช้ mutability ด้วย `let mut` อย่างชัดเจน
+
+export const immutTs = `// TypeScript: let is mutable by default
+let count = 0;
+count = count + 1; // fine, let is mutable
+console.log(count); // 1`;
+
+export const immutRs = `fn main() {
+    let count = 0;
+    // count = count + 1; // compile error: cannot assign twice to immutable variable
+
+    let mut mutable_count = 0;
+    mutable_count += 1; // fine, explicitly mutable
+    println!("{mutable_count}");
+}`;
+
+<TsGo client:visible ts={immutTs} go={immutRs} />
+
+Immutability เป็นค่าเริ่มต้นไม่ใช่แค่แบบแผน (เช่น `const` ใน TypeScript) — มันถูกบังคับใช้โดย compiler สิ่งนี้ทำให้โค้ดเหตุผลง่ายขึ้นและทำให้ borrow checker ทำงานได้ถูกต้อง
+
+## 5. Errors เป็นค่า — ไม่มี exceptions
+
+TypeScript ใช้ `throw` และ `try/catch` สำหรับการจัดการข้อผิดพลาด Rust ไม่มี **exceptions** เลย Errors ถูกคืนออกมาเป็นค่าโดยใช้ enum `Result<T, E>` function ที่อาจล้มเหลวจะคืน `Result<Success, Error>` และ caller ต้องจัดการทั้งสองกรณี
+
+export const errorsTs = `// TypeScript: exceptions are thrown, not returned
+function parseAge(s: string): number {
+  const n = parseInt(s, 10);
+  if (isNaN(n)) throw new Error(\`Invalid age: \${s}\`);
+  return n;
+}
+
+try {
+  const age = parseAge("abc");
+  console.log(age);
+} catch (e) {
+  console.error(e); // Error: Invalid age: abc
+}`;
+
+export const errorsRs = `fn parse_age(s: &str) -> Result<u32, String> {
+    s.parse::<u32>().map_err(|e| format!("Invalid age '{}': {}", s, e))
+}
+
+fn main() {
+    match parse_age("25") {
+        Ok(age) => println!("age = {age}"),
+        Err(e) => println!("error: {e}"),
+    }
+
+    match parse_age("abc") {
+        Ok(age) => println!("age = {age}"),
+        Err(e) => println!("error: {e}"),
+    }
+}`;
+
+<TsGo client:visible ts={errorsTs} go={errorsRs} />
+
+## ลองเลย
+
+ทดลองกับ expressions และการจัดการข้อผิดพลาดแบบ Result ในเบราว์เซอร์
+
+export const mentalModelCode = `fn parse_number(s: &str) -> Result<i32, String> {
+    s.parse::<i32>().map_err(|e| format!("Cannot parse '{}': {}", s, e))
+}
+
+fn main() {
+    // expressions: if produces a value
+    let score = 85;
+    let grade = if score >= 90 { "A" } else if score >= 75 { "B" } else { "C" };
+    println!("grade = {grade}");
+
+    // errors as values
+    match parse_number("42") {
+        Ok(n) => println!("parsed: {n}"),
+        Err(e) => println!("error: {e}"),
+    }
+
+    match parse_number("oops") {
+        Ok(n) => println!("parsed: {n}"),
+        Err(e) => println!("error: {e}"),
+    }
+}`;
+
+<Playground client:visible code={mentalModelCode} />
+
+<RsOnly title="ตัวดำเนินการ ? — การส่งต่อ errors อย่างสะดวก">
+
+การ match ทุก `Result` อาจทำให้โค้ดยืดยาว Rust มีตัวดำเนินการ `?`: วางหลัง `Result` จะ unwrap ค่า `Ok` หรือ return `Err` ทันทีให้ caller สิ่งนี้คือเทียบเท่ากับการ re-throw exception ของ Rust แต่ชัดเจนใน function signature
+
+```
+fn read_number(s: &str) -> Result<i32, String> {
+    let n = s.parse::<i32>().map_err(|e| e.to_string())?;
+    Ok(n * 2)
+}
+```
+
+`?` ใช้งานได้เฉพาะภายใน functions ที่คืน `Result` (หรือ `Option`) ทำให้การส่งต่อข้อผิดพลาดมองเห็นได้และมีเจตนาชัดเจน
+
+</RsOnly>
+
+export const quizMentalModel = [
+  {
+    q: "เมื่อคุณ assign `let s2 = s1;` ใน Rust (โดยที่ s1 เป็น String) เกิดอะไรขึ้นกับ s1?",
+    options: [
+      "s1 ถูก clone ดังนั้นทั้งสองยังคง valid",
+      "s1 ถูก move เข้าสู่ s2 และไม่ valid อีกต่อไป",
+      "s1 และ s2 แชร์ reference ไปยัง heap allocation เดียวกัน",
+      "s1 กลายเป็น immutable"
+    ],
+    answer: 1
+  },
+  {
+    q: "มี mutable references ไปยังค่าหนึ่งได้กี่อันในเวลาเดียวกันใน Rust?",
+    options: [
+      "ไม่จำกัด — เหมือนกับ TypeScript",
+      "ศูนย์ — ค่าต่างๆ เป็น immutable เสมอ",
+      "หนึ่งอันเท่านั้น และไม่สามารถมี immutable references อยู่ร่วมกับมันได้",
+      "สอง — หนึ่งสำหรับอ่าน หนึ่งสำหรับเขียน"
+    ],
+    answer: 2
+  },
+  {
+    q: "ใน Rust `let x = if condition { 1 } else { 2 };` ใช้ได้เพราะ:",
+    options: [
+      "มันเป็น ternary syntax พิเศษที่มีเฉพาะใน Rust",
+      "if เป็น expression ที่ produce ค่า",
+      "compiler เขียนใหม่เป็น ternary operator",
+      "x ต้องถูกประกาศเป็น mut จึงจะใช้ได้"
+    ],
+    answer: 1
+  },
+  {
+    q: "Rust บ่งบอกอย่างไรว่า function สามารถล้มเหลวได้?",
+    options: [
+      "function throw exception",
+      "function คืน nullable type T?",
+      "function คืน Result<T, E> และ caller ต้องจัดการทั้งสอง variant",
+      "function panic และ caller ใช้ recover()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="intro/mental-model" questions={quizMentalModel} />
+
+<ProgressTracker client:visible id="intro/mental-model" />

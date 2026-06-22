@@ -1,0 +1,208 @@
+---
+title: 'Arc and Mutex'
+description: 'Sharing mutable state across threads safely with Arc<Mutex<T>> in Rust — compared to JavaScript''s lack of shared mutable state between Workers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Shared mutable state: TypeScript vs Rust
+
+In JavaScript, Workers do not share memory by default. Each Worker has its own heap. The only way to share mutable state is via `SharedArrayBuffer` with `Atomics`, which is low-level, error-prone, and rarely used in application code.
+
+Rust supports shared mutable state across threads through two types that compose together:
+
+- **`Arc<T>`** — Atomically Reference Counted. A thread-safe smart pointer that lets multiple threads own the same heap-allocated value. When the last `Arc` clone is dropped, the value is freed.
+- **`Mutex<T>`** — Mutual exclusion lock. Wraps a value `T` and ensures only one thread can access the inner value at a time.
+
+Together, `Arc<Mutex<T>>` is the standard Rust idiom for shared mutable state across threads.
+
+## Arc — thread-safe reference counting
+
+`Arc` is Rust's answer to "I need multiple owners across threads". It is similar to `Rc<T>` (the single-threaded reference counter), but uses **atomic operations** for the reference count — safe to update from multiple threads simultaneously.
+
+You clone an `Arc` to give another thread a handle to the same allocation. Cloning is cheap: it only increments an atomic integer.
+
+## Mutex — interior mutability with a lock
+
+`Mutex<T>` wraps a value and protects it with a lock. To access the inner `T`, you call `.lock()`, which:
+
+1. Blocks until no other thread holds the lock.
+2. Returns a `MutexGuard<T>` — a smart pointer that dereferences to `&mut T`.
+3. Automatically releases the lock when the `MutexGuard` is dropped (end of scope).
+
+This is **RAII locking** — the same pattern Rust uses for memory: the resource is released automatically when the guard goes out of scope.
+
+export const arcMutexTs = `// TypeScript: no shared mutable state between Workers by default
+// SharedArrayBuffer + Atomics is the low-level primitive
+const sab = new SharedArrayBuffer(4);
+const arr = new Int32Array(sab);
+
+// Worker 1
+Atomics.add(arr, 0, 1); // atomic increment
+
+// Worker 2
+Atomics.add(arr, 0, 1); // atomic increment
+
+// Main thread
+console.log(Atomics.load(arr, 0)); // 2
+
+// In practice, most TS apps avoid shared memory between Workers
+// and use message passing (postMessage) instead.`;
+
+export const arcMutexRs = `use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    // Arc<Mutex<u32>>: shared, mutable counter across threads
+    let counter = Arc::new(Mutex::new(0u32));
+    let mut handles = vec![];
+
+    for _ in 0..5 {
+        let c = Arc::clone(&counter); // cheap: just increments atomic refcount
+        let h = thread::spawn(move || {
+            let mut val = c.lock().unwrap(); // acquire lock
+            *val += 1;                       // mutate inner value
+            // MutexGuard 'val' is dropped here — lock is released
+        });
+        handles.push(h);
+    }
+
+    for h in handles { h.join().unwrap(); }
+
+    // Only one owner remains — safe to read the final value
+    println!("final counter = {}", *counter.lock().unwrap()); // 5
+}`;
+
+<TsGo client:visible ts={arcMutexTs} go={arcMutexRs} />
+
+## Collecting results from multiple threads
+
+A common pattern is to let each thread push a result into a shared `Vec`, then read the aggregate after all threads have joined.
+
+export const arcMutexCollectTs = `// TypeScript: collect results with Promise.all
+async function processAll(items: number[]): Promise<number[]> {
+  return Promise.all(items.map(item =>
+    Promise.resolve(item * item) // simulate async work
+  ));
+}`;
+
+export const arcMutexCollectRs = `use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let results: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(vec![]));
+    let items = vec![1u32, 2, 3, 4, 5];
+    let mut handles = vec![];
+
+    for item in items {
+        let r = Arc::clone(&results);
+        let h = thread::spawn(move || {
+            r.lock().unwrap().push(item * item);
+        });
+        handles.push(h);
+    }
+
+    for h in handles { h.join().unwrap(); }
+
+    let mut res = results.lock().unwrap().clone();
+    res.sort(); // sort for deterministic output
+    println!("squares: {:?}", res); // squares: [1, 4, 9, 16, 25]
+}`;
+
+<TsGo client:visible ts={arcMutexCollectTs} go={arcMutexCollectRs} />
+
+## Try it
+
+export const arcMutexCode = `use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let counter = Arc::new(Mutex::new(0u32));
+    let mut handles = vec![];
+
+    for _ in 0..5 {
+        let c = Arc::clone(&counter);
+        let h = thread::spawn(move || {
+            let mut val = c.lock().unwrap();
+            *val += 1;
+        });
+        handles.push(h);
+    }
+
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    println!("final counter = {}", *counter.lock().unwrap());
+}`;
+
+<Playground client:visible code={arcMutexCode} />
+
+<RsOnly title="RAII locking and poison">
+
+### RAII locking — automatic unlock
+
+`MutexGuard<T>` implements `Drop`. When the guard goes out of scope — whether the scope exits normally or via a panic — the lock is released. You cannot accidentally forget to unlock a Mutex in Rust.
+
+This is identical to the RAII memory pattern: just as `Box<T>` frees memory when it goes out of scope, `MutexGuard<T>` releases the lock.
+
+### Poisoned Mutex
+
+`lock()` returns `Result<MutexGuard<T>, PoisonError>`. A Mutex becomes **poisoned** if a thread panics while holding the lock. The rationale: the protected data may be in an inconsistent state. Calling `.unwrap()` will panic in the current thread too. In production code you can handle the `PoisonError` by calling `.into_inner()` on it to recover the guard if you know the data is actually consistent.
+
+### Arc vs Rc — never use Rc across threads
+
+`Rc<T>` uses plain (non-atomic) integer operations for reference counting — cheaper than `Arc`, but **not `Send`**. The compiler will reject any attempt to move an `Rc` into a thread. Use `Rc` within a single thread (or a `!Send` async context) and `Arc` whenever you need to cross thread boundaries.
+
+</RsOnly>
+
+export const quizArcMutex = [
+  {
+    q: "What does Arc stand for in Rust?",
+    options: [
+      "Async Reference Counter",
+      "Atomically Reference Counted",
+      "Allocated Reference Cell",
+      "Automatic Resource Control"
+    ],
+    answer: 1
+  },
+  {
+    q: "How do you release a Mutex lock in Rust?",
+    options: [
+      "Call mutex.unlock()",
+      "Call drop(guard) explicitly",
+      "The MutexGuard is dropped automatically when it goes out of scope (RAII)",
+      "Call mutex.release() at the end of the thread"
+    ],
+    answer: 2
+  },
+  {
+    q: "When does a Mutex become 'poisoned'?",
+    options: [
+      "When it is locked for more than 100 milliseconds",
+      "When two threads try to lock it at the same time",
+      "When a thread panics while holding the lock",
+      "When the Arc reference count reaches zero"
+    ],
+    answer: 2
+  },
+  {
+    q: "Why use Arc<Mutex<T>> instead of just Mutex<T>?",
+    options: [
+      "Mutex<T> does not implement Send",
+      "Arc allows multiple threads to own a reference to the same Mutex",
+      "Mutex<T> cannot be used with threads at all",
+      "Arc provides better performance than Mutex alone"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="concurrency/arc-mutex" questions={quizArcMutex} />
+
+<ProgressTracker client:visible id="concurrency/arc-mutex" />

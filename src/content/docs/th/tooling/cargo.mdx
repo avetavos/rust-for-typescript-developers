@@ -1,0 +1,157 @@
+---
+title: 'Cargo — Package Manager & Build Tool ของ Rust'
+description: 'cargo new, build, run, add, test, doc, Cargo.toml และ Cargo.lock เทียบกับ npm และ package.json'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Cargo คือ npm + tsc + jest ในเครื่องเดียว
+
+ถ้าคุณเคยใช้ `npm` (หรือ `yarn`/`pnpm`) Cargo จะรู้สึกคุ้นเคยทันที มันจัดการ dependencies, build project, รัน code และรัน test — ทั้งหมดอยู่ในที่เดียว
+
+## สร้าง project ใหม่
+
+```bash
+# Node / TypeScript
+mkdir my-app && cd my-app
+npm init -y
+npm install typescript --save-dev
+
+# Rust
+cargo new my-app   # สร้าง binary (มี fn main)
+cargo new my-lib --lib   # สร้าง library (ไม่มี fn main)
+cd my-app
+```
+
+`cargo new` สร้างโครงสร้าง:
+```
+my-app/
+├── Cargo.toml      # ← เหมือน package.json
+├── Cargo.lock      # ← เหมือน package-lock.json
+└── src/
+    └── main.rs     # ← entry point
+```
+
+## Cargo.toml เทียบกับ package.json
+
+export const cargoTs = `// package.json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/express": "^4.17.0"
+  }
+}`;
+
+export const cargoRs = `# Cargo.toml
+[package]
+name = "my-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# crate สำหรับ test เท่านั้นใส่ที่นี่`;
+
+<TsGo client:visible ts={cargoTs} go={cargoRs} />
+
+## เพิ่ม dependencies
+
+```bash
+# npm
+npm install serde_json        # runtime dep
+npm install --save-dev vitest # dev dep
+
+# Cargo
+cargo add serde_json          # runtime dep
+cargo add --dev pretty_assertions  # dev dep
+```
+
+`cargo add` อัปเดต `Cargo.toml` อัตโนมัติ เหมือนกับ `npm install` ทุกประการ
+
+## Subcommand หลัก
+
+```bash
+cargo build          # compile (debug, เร็ว, ไม่ optimise)
+cargo build --release  # compile (optimise, build ช้ากว่า)
+cargo run            # compile + execute
+cargo run -- --port 8080  # ส่ง args ให้ binary
+cargo check          # type-check เท่านั้น ไม่สร้าง binary (เร็วมาก)
+cargo test           # รัน test ทั้งหมด
+cargo test my_fn     # รัน test ที่ชื่อมี "my_fn"
+cargo doc --open     # สร้าง + เปิด HTML docs
+cargo clean          # ลบ directory target/
+```
+
+## Cargo.lock — commit หรือไม่?
+
+```
+# Binary / application  →  COMMIT Cargo.lock (build ที่ reproducible)
+# Library crate         →  ไม่ commit Cargo.lock (ให้ผู้ใช้เลือก version)
+```
+
+นี่สอดคล้องกับ convention ของ npm: application commit `package-lock.json` แต่ library ที่ publish มักไม่ commit
+
+<RsOnly title="edition = 2021">
+
+Rust ออก **edition** ใหม่ทุก 3 ปี (2015, 2018, 2021) edition อาจมี syntax change ที่ breaking แต่ compiler สามารถ migrate code ให้อัตโนมัติด้วย `cargo fix --edition` สำหรับ project ใหม่ให้ใช้ `edition = "2021"` เสมอ — รองรับ let-else, prelude ที่ปรับปรุงแล้ว และ closure capture ที่ดีขึ้น
+
+</RsOnly>
+
+export const quizCargo = [
+  {
+    q: "Command ใดเพิ่ม crate ลงใน project (เทียบเท่า `npm install <pkg>`)?",
+    options: [
+      "cargo install",
+      "cargo fetch",
+      "cargo add",
+      "cargo get"
+    ],
+    answer: 2
+  },
+  {
+    q: "`cargo check` ต่างจาก `cargo build` อย่างไร?",
+    options: [
+      "รัน test เท่านั้น",
+      "Type-check และรายงาน error โดยไม่สร้าง binary",
+      "ตรวจสอบ dependencies ที่ล้าสมัย",
+      "ตรวจสอบ syntax ของ Cargo.toml เท่านั้น"
+    ],
+    answer: 1
+  },
+  {
+    q: "ควร commit Cargo.lock สำหรับ binary application หรือไม่?",
+    options: [
+      "ไม่ — มันถูกสร้างอัตโนมัติและควร ignore",
+      "ใช่ — มันรับประกัน reproducible build ข้ามเครื่อง",
+      "เฉพาะบน CI เท่านั้น ไม่ใช่ local",
+      "เฉพาะเมื่อใช้ workspace"
+    ],
+    answer: 1
+  },
+  {
+    q: "File ใดใน Cargo คล้าย package.json มากที่สุด?",
+    options: [
+      "Cargo.lock",
+      "src/main.rs",
+      "Cargo.toml",
+      ".cargo/config.toml"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="tooling/cargo" questions={quizCargo} />
+
+<ProgressTracker client:visible id="tooling/cargo" />

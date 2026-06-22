@@ -1,0 +1,172 @@
+---
+title: 'Macros'
+description: 'Declarative `macro_rules!` และ derive macros ใน Rust — คืออะไร ทำไมถึงมี และเทียบกับ TypeScript decorators และ code generation อย่างไร'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## ไม่มีคู่เทียบตรงๆ ใน TypeScript — แต่ decorators ใกล้เคียงที่สุด
+
+Rust macros ไม่มีคู่เทียบเดียวใน TypeScript คู่เทียบที่ใกล้เคียงที่สุด:
+
+- **TypeScript decorators** (`@Injectable()`, `@Column()`) — เหมือนกับ `#[derive(...)]` มัน annotate code และ trigger behaviour ที่ถูกสร้างขึ้น
+- **Template literal types / type-level metaprogramming** — เหมือนกับ `macro_rules!` ทำงานบน syntax ก่อน runtime
+- **Babel / esbuild plugins** — transformations ที่ apply ตอน build time
+
+ความแตกต่างหลัก: Rust macros มีความ **hygienic** และทำงานบน **AST** พวกมันเป็นส่วนหนึ่งของภาษา ไม่ใช่ระบบ annotation ที่แปะเพิ่มทีหลัง และทำงานตอน compile time พร้อม access เต็มที่ไปยัง token tree ของ compiler
+
+## Macros สองประเภท
+
+| ประเภท | Syntax | ทำอะไร |
+|---|---|---|
+| Declarative (`macro_rules!`) | `macro_rules! my_macro { ... }` | Pattern-match บน token trees และ generate code |
+| Procedural (`#[derive]`, `#[attribute]`, function-like) | `#[derive(Debug, Clone)]` | รับ AST node และ emit AST nodes ใหม่ |
+
+บทเรียนนี้เน้น `macro_rules!` (ประเภทที่ง่ายกว่า) และ `derive` macros (ซึ่งคุณได้ใช้แล้วโดยไม่รู้ตัว)
+
+## `macro_rules!` — declarative macros
+
+`macro_rules!` ทำงานเหมือน `match` expression สำหรับ syntax แต่ละ arm กำหนด **pattern** ของ tokens ที่จะ match และ **template** ของ tokens ที่จะ emit
+
+export const macroTs = `// TypeScript — no direct equivalent.
+// Closest: a generic utility function or a build-time code generator.
+function repeat<T>(value: T, times: number): T[] {
+  return Array.from({ length: times }, () => value);
+}
+
+console.log(repeat("hi", 3)); // ["hi", "hi", "hi"]
+
+// TypeScript decorators (stage 3) annotate classes at runtime:
+// @Injectable() class MyService { ... }`;
+
+export const macroRs = `// macro_rules! — match on syntax, emit code
+macro_rules! say_hello {
+    // arm 1: no arguments
+    () => {
+        println!("Hello!");
+    };
+    // arm 2: one expression argument
+    ($name:expr) => {
+        println!("Hello, {}!", $name);
+    };
+}
+
+// #[derive] macro — auto-implement traits at compile time
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    say_hello!();
+    say_hello!("Rustacean");
+
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();            // Clone derived
+    println!("{:?}", p1);            // Debug derived
+    println!("p1 == p2: {}", p1 == p2); // PartialEq derived
+}`;
+
+<TsGo client:visible ts={macroTs} go={macroRs} />
+
+## `vec![]` — macro ที่คุณใช้ทุกวัน
+
+`vec![1, 2, 3]` เป็น `macro_rules!` macro จาก standard library มัน expand เป็น code ที่สร้าง `Vec`, เรียก `push` สำหรับแต่ละ element และ return vector ถ้าไม่มีมันคุณต้องเขียน:
+
+```
+let mut v = Vec::new();
+v.push(1);
+v.push(2);
+v.push(3);
+```
+
+`println!` และ `format!` macros ก็เป็น declarative macros เช่นกัน — พวกมัน parse format string ตอน compile time และ generate type-safe formatting code
+
+## Derive macros — ที่คุณใช้บ่อยที่สุด
+
+ทุกครั้งที่คุณเขียน `#[derive(Debug, Clone, Serialize, Deserialize)]` คุณกำลัง invoke procedural macro สิ่งเหล่านี้มีพลังมากกว่า `macro_rules!` เพราะรับ AST ทั้งหมดของ struct หรือ enum และ emit code ใหม่ที่ต้องการ
+
+| Derive | สิ่งที่ generate |
+|---|---|
+| `Debug` | `fmt::Debug` impl — เปิดใช้ `{:?}` printing |
+| `Clone` | `clone()` method |
+| `PartialEq` / `Eq` | operators `==` และ `!=` |
+| `PartialOrd` / `Ord` | `<`, `>`, `<=`, `>=` |
+| `serde::Serialize` / `Deserialize` | JSON (และ format อื่น) serialisation |
+| `thiserror::Error` | `Display` และ `From` impls สำหรับ error enums |
+
+<RsOnly title="Macro hygiene">
+
+Rust macros มีความ **hygienic**: ตัวแปรที่ถูก introduce ภายใน macro ไม่ clash กับตัวแปรใน calling scope โดยบังเอิญ ถ้า macro introduce ตัวแปรชื่อ `x` มันไม่สามารถ shadow `x` ของผู้เรียกได้ เว้นแต่ผู้เรียกจะส่ง identifier นั้นมาอย่างชัดเจน นี่เป็นการปรับปรุงสำคัญจาก C preprocessor macros ซึ่งเป็น textual substitution และขึ้นชื่อเรื่อง name-clash bugs
+
+</RsOnly>
+
+## ลองเล่นดู
+
+export const macroPlayground = `macro_rules! say_hello {
+    () => {
+        println!("Hello!");
+    };
+    ($name:expr) => {
+        println!("Hello, {}!", $name);
+    };
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    say_hello!();
+    say_hello!("Rustacean");
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();
+    println!("{:?}", p1);
+    println!("p1 == p2: {}", p1 == p2);
+}`;
+
+<Playground client:visible code={macroPlayground} />
+
+export const quizMacros = [
+  {
+    q: "`#[derive(Debug)]` ทำอะไร?",
+    options: [
+      "เพิ่ม runtime debug logging ให้กับทุก method calls",
+      "Generate `fmt::Debug` implementation เพื่อให้ print ค่าด้วย `{:?}` ได้",
+      "Compile struct ในโหมด debug เท่านั้น",
+      "เปิดใช้ assertions ใน release builds"
+    ],
+    answer: 1
+  },
+  {
+    q: "ฟีเจอร์ใดของ TypeScript ที่คล้ายกับ `#[derive(...)]` ของ Rust มากที่สุด?",
+    options: [
+      "Generic type parameters",
+      "TypeScript decorators — annotations ที่ trigger generated หรือ modified behaviour",
+      "Union types",
+      "Optional chaining (?.)"
+    ],
+    answer: 1
+  },
+  {
+    q: "'macro hygiene' ใน Rust คืออะไร?",
+    options: [
+      "Macros format output ด้วย rustfmt อัตโนมัติ",
+      "ตัวแปรที่ introduce ภายใน macro ไม่ clash กับตัวแปรใน calling scope",
+      "Macros อนุญาตเฉพาะใน safe Rust blocks",
+      "Macros ต้องไม่มี unsafe code"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="advanced/macros" questions={quizMacros} />
+
+<ProgressTracker client:visible id="advanced/macros" />

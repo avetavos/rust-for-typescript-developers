@@ -1,0 +1,123 @@
+---
+title: 'Collections'
+description: 'Vec, HashMap, array, tuple, slice และการ iterate ใน Rust เทียบกับ array และ object ของ JavaScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Collections ใน JavaScript เทียบกับ Rust
+
+`Array`, `Object` และ `Map` ของ JavaScript ครอบคลุมความต้องการด้าน collection เกือบทั้งหมด Rust มีตัวเทียบเท่าโดยตรงพร้อมความแตกต่างสำคัญหนึ่งข้อ: collection เป็นแบบ **มี type และ element แบบตายตัว** — `Vec<i32>` เก็บได้เฉพาะค่า `i32` และ compiler บังคับเรื่องนี้
+
+## Vec — array ที่ขยายได้
+
+`Vec<T>` คือ array ที่ขยายได้และจองบน heap ของ Rust เทียบเท่ากับ array ของ JS (เมื่อทุก element มี type เดียวกัน) สร้างได้ด้วย macro `vec!` หรือ `Vec::new()`
+
+## Array และ tuple
+
+array ขนาดคงที่ `[T; N]` อยู่บน stack ส่วน tuple `(T1, T2, ...)` เก็บค่าที่ต่างชนิดกัน — คล้ายกับ tuple type ของ TypeScript
+
+## HashMap — ที่เก็บแบบ key/value
+
+`HashMap<K, V>` คือตัวเทียบเท่ากับ `Map` ของ JS หรือ `Record<string, V>` ของ TS ใน Rust มันอยู่ใน `std::collections`
+
+## การ iterate
+
+iterator ของ Rust เป็นแบบ lazy และประกอบกันได้ — `filter`, `map`, `collect` ทำงานเหมือนเมธอด array ของ JS แต่จะถูกประเมินผลก็ต่อเมื่อถูก consume เท่านั้น
+
+export const collectionsTs = `// Array
+const numbers = [1, 2, 3, 4, 5];
+const odds = numbers.filter(x => x % 2 !== 0);
+console.log(odds); // [1, 3, 5]
+
+// Map
+const scores = new Map<string, number>();
+scores.set("Alice", 95);
+scores.set("Bob", 87);
+console.log(scores.get("Alice")); // 95
+
+// Tuple (TypeScript)
+const pair: [string, number] = ["Alice", 95];`;
+
+export const collectionsRs = `use std::collections::HashMap;
+
+fn main() {
+    // Vec
+    let numbers = vec![1, 2, 3, 4, 5];
+    let odds: Vec<i32> = numbers.iter()
+        .filter(|&&x| x % 2 != 0)
+        .copied()
+        .collect();
+    println!("{:?}", odds); // [1, 3, 5]
+
+    // HashMap
+    let mut scores: HashMap<&str, i32> = HashMap::new();
+    scores.insert("Alice", 95);
+    scores.insert("Bob", 87);
+    if let Some(s) = scores.get("Alice") {
+        println!("{s}"); // 95
+    }
+
+    // Tuple
+    let pair: (&str, i32) = ("Alice", 95);
+    println!("{} scored {}", pair.0, pair.1);
+}`;
+
+<TsGo client:visible ts={collectionsTs} go={collectionsRs} />
+
+## ลองเล่นดู
+
+export const collectionsCode = `fn main() {
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let odds: Vec<i32> = numbers.iter().filter(|&&x| x % 2 != 0).copied().collect();
+    println!("Odd numbers: {:?}", odds);
+
+    let mut scores = std::collections::HashMap::new();
+    scores.insert("Alice", 95);
+    scores.insert("Bob", 87);
+    if let Some(s) = scores.get("Alice") {
+        println!("Alice scored {s}");
+    }
+}`;
+
+<Playground client:visible code={collectionsCode} />
+
+export const quizCollections = [
+  {
+    q: "อะไรคือตัวเทียบเท่าของ array ที่ขยายได้แบบ JavaScript ใน Rust?",
+    options: [
+      "[T; N]",
+      "Vec<T>",
+      "Slice<T>",
+      "Array<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "`.collect()` ทำอะไรเมื่ออยู่ท้าย iterator chain ของ Rust?",
+    options: [
+      "ประเมินผล iterator ทันทีแล้วทิ้งไป",
+      "แปลง iterator แบบ lazy ให้เป็น collection ที่เป็นรูปธรรมอย่าง Vec",
+      "นับจำนวน element",
+      "เรียงลำดับ element"
+    ],
+    answer: 1
+  },
+  {
+    q: "คุณเข้าถึง element ตัวที่สองของ tuple `t` ใน Rust อย่างไร?",
+    options: [
+      "t[1]",
+      "t.get(1)",
+      "t.1",
+      "t.second()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/collections" questions={quizCollections} />
+
+<ProgressTracker client:visible id="rust-101/collections" />

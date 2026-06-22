@@ -1,0 +1,161 @@
+---
+title: 'Middleware and Tower'
+description: 'Tower middleware layers, logging, CORS — vs Express middleware.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Express `app.use` vs Tower layers
+
+In Express, middleware is a function `(req, res, next) => void` that you register with `app.use()`. In Axum, middleware is a **Tower layer** — a composable wrapper around a `Service`. The concept is the same (intercept → process → forward), but Tower is protocol-agnostic and works at compile time.
+
+export const tsMiddleware = `// Express — register middleware globally
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+
+const app = express();
+app.use(cors({ origin: 'https://myapp.com' }));
+app.use(morgan('combined'));
+app.use(express.json());
+
+app.get('/users', listUsers);`;
+
+export const rsMiddleware = `use axum::{routing::get, Router};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower::ServiceBuilder;
+use http::HeaderValue;
+
+let app = Router::new()
+    .route("/users", get(list_users))
+    .layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(
+                CorsLayer::new()
+                    .allow_origin("https://myapp.com".parse::<HeaderValue>().unwrap())
+                    .allow_methods([http::Method::GET, http::Method::POST])
+            )
+    );`;
+
+<TsGo client:visible ts={tsMiddleware} go={rsMiddleware} />
+
+## CORS layer
+
+`tower-http` ships a `CorsLayer` that mirrors the `cors` npm package. Add it to `Cargo.toml` with `tower-http = { version = "0.5", features = ["cors"] }`.
+
+```rust
+use tower_http::cors::{Any, CorsLayer};
+use axum::http::Method;
+
+let cors = CorsLayer::new()
+    .allow_origin(Any)                     // any origin (dev only)
+    .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+    .allow_headers(Any);
+
+let app = Router::new()
+    .route("/users", get(list_users))
+    .layer(cors);
+```
+
+## Request tracing / logging
+
+`tower-http`'s `TraceLayer` integrates with `tracing` to log every request/response. Add `tower-http = { version = "0.5", features = ["trace"] }` to `Cargo.toml`.
+
+```rust
+use tower_http::trace::TraceLayer;
+
+let app = Router::new()
+    .route("/users", get(list_users))
+    .layer(TraceLayer::new_for_http());
+```
+
+Start the app with `RUST_LOG=tower_http=debug cargo run` to see structured request logs.
+
+## Route-scoped vs global layers
+
+Tower layers wrap the service **below** them. You can attach layers to the whole router or to a specific route group:
+
+export const tsScoped = `// Express — scoped middleware
+import authMiddleware from './auth';
+
+const protectedRouter = express.Router();
+protectedRouter.use(authMiddleware);
+protectedRouter.get('/profile', getProfile);
+
+app.use('/api', protectedRouter);`;
+
+export const rsScopedLayer = `use axum::Router;
+use tower_http::auth::RequireAuthorizationLayer;
+
+// Layer applied only to the protected sub-router
+let protected_routes = Router::new()
+    .route("/profile", get(get_profile))
+    .layer(RequireAuthorizationLayer::bearer("secret-token"));
+
+let app = Router::new()
+    .route("/health", get(health))
+    .nest("/api", protected_routes);`;
+
+<TsGo client:visible ts={tsScoped} go={rsScopedLayer} />
+
+<RsOnly title="Tower's service model">
+
+A Tower `Service` is any type that implements:
+
+```rust
+trait Service<Request> {
+    type Response;
+    type Error;
+    type Future: Future<Output = Result<Self::Response, Self::Error>>;
+    fn call(&mut self, req: Request) -> Self::Future;
+}
+```
+
+A `Layer` wraps one `Service` in another. `ServiceBuilder` chains multiple layers together. Because everything is a trait, Tower middleware composes without any runtime reflection — the entire middleware stack is resolved at compile time, producing a single monomorphized type.
+
+This is why Tower layers are zero-cost: there is no dynamic dispatch, no `Any` downcasting, and no allocation per request for the middleware chain itself.
+
+</RsOnly>
+
+> **Run locally** — middleware requires a running Axum server. Run with `RUST_LOG=tower_http=debug cargo run`.
+
+export const quizMiddleware = [
+  {
+    q: "What is the Axum/Tower equivalent of `app.use(cors())`?",
+    options: [
+      "`.middleware(cors)`",
+      "`.layer(CorsLayer::new())`",
+      "`.use_cors()`",
+      "`#[cors]` attribute macro"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which crate provides `CorsLayer` and `TraceLayer`?",
+    options: [
+      "axum",
+      "tokio",
+      "tower",
+      "tower-http"
+    ],
+    answer: 3
+  },
+  {
+    q: "How do you apply a Tower layer to only a specific group of routes?",
+    options: [
+      "Pass the layer as a handler argument",
+      "Use `.layer()` on a nested sub-router before `.nest()`ing it",
+      "Register it with `app.use_scoped()`",
+      "Apply it via a `#[layer]` macro"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="api-axum/middleware-tower" questions={quizMiddleware} />
+
+<ProgressTracker client:visible id="api-axum/middleware-tower" />

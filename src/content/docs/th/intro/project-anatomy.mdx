@@ -1,0 +1,208 @@
+---
+title: "โครงสร้างโปรเจกต์ — Cargo.toml, src/, และระบบ Module"
+description: 'Cargo.toml vs package.json, src/main.rs และ src/lib.rs, ไดเรกทอรี target/, Crates vs node_modules, และการแนะนำ Rust modules เบื้องต้น'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+> หมายเหตุ Playground: โครงสร้างโปรเจกต์เกี่ยวข้องกับหลายไฟล์และโครงสร้างไดเรกทอรีโดยเนื้อหา — ไม่สามารถสาธิตในไฟล์เดี่ยวของเบราว์เซอร์ได้ รันตัวอย่างในเครื่องด้วย `cargo new` และ `cargo run`
+
+## สิ่งที่ cargo new ให้คุณ
+
+เมื่อคุณรัน `cargo new my-app` Cargo จะสร้างโปรเจกต์ที่เล็กแต่ครบถ้วน:
+
+```
+my-app/
+├── Cargo.toml      ← project manifest (= package.json)
+├── Cargo.lock      ← pinned dependency versions (= package-lock.json)
+└── src/
+    └── main.rs     ← entry point (= src/index.ts)
+```
+
+สำหรับ Library (ไม่มี `main` แค่เป็น API สำหรับ Crate อื่นใช้):
+
+```bash
+cargo new --lib my-lib
+```
+
+```
+my-lib/
+├── Cargo.toml
+└── src/
+    └── lib.rs      ← library entry point (= index.ts that only exports)
+```
+
+## Cargo.toml vs package.json
+
+export const cargoTomlTs = `// package.json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "description": "A Node.js app",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/express": "^4.17.0"
+  }
+}`;
+
+export const cargoTomlRs = `# Cargo.toml
+[package]
+name = "my-app"
+version = "0.1.0"
+edition = "2021"     # Rust edition (like target in tsconfig)
+
+# No separate devDependencies:
+# [dependencies] = runtime deps
+# [dev-dependencies] = test-only deps
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+pretty_assertions = "1"`;
+
+<TsGo client:visible ts={cargoTomlTs} go={cargoTomlRs} />
+
+ความแตกต่างหลัก:
+- ไม่มี Section `scripts` คุณรัน `cargo run`, `cargo test` ฯลฯ โดยตรง
+- `edition` สอดคล้องกับ Rust language edition (2015, 2018, 2021) ใช้ `2021` เสมอสำหรับโปรเจกต์ใหม่
+- Dependencies ไม่ต้องมี Package `@types/` Rust types เป็นส่วนหนึ่งของ Crate เสมอ
+- **Feature flags** (`features = ["derive"]`) คือ Equivalent ของ Rust สำหรับ Optional peer dependencies หรือ Configuration flags มันให้ Crates เปิดเผย API เพิ่มเติมที่ Compile เฉพาะเมื่อร้องขอ
+
+## src/main.rs และ src/lib.rs
+
+Binary crate มี `src/main.rs` Library crate มี `src/lib.rs` คุณสามารถมีทั้งคู่ในโปรเจกต์เดียวกัน — `src/lib.rs` มี Logic ที่แชร์, `src/main.rs` เรียกใช้มัน
+
+```
+my-app/
+└── src/
+    ├── main.rs         ← fn main() { ... }
+    ├── lib.rs          ← pub fn library_code() { ... }
+    ├── utils.rs        ← a module (pub mod utils;)
+    └── models/
+        ├── mod.rs      ← module root (or models.rs in Rust 2018+)
+        └── user.rs     ← pub struct User { ... }
+```
+
+ใน TypeScript คุณใช้ `import/export` ใน Rust คุณใช้ `mod` เพื่อประกาศ Module และ `use` เพื่อนำ Items เข้า Scope:
+
+export const modulesTs = `// TypeScript ESM
+// src/utils.ts
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+// src/main.ts
+import { add } from './utils';
+console.log(add(1, 2));`;
+
+export const modulesRs = `// src/utils.rs
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// src/main.rs
+mod utils;  // declares the module (looks for src/utils.rs)
+use utils::add;
+
+fn main() {
+    println!("{}", add(1, 2));
+}`;
+
+<TsGo client:visible ts={modulesTs} go={modulesRs} />
+
+## ไดเรกทอรี target/
+
+เมื่อคุณรัน `cargo build` Rust จะ Compile ทุกอย่างลงใน `target/` นี่คือ Equivalent ของ `dist/` บวก `node_modules/.cache/` คุณไม่ควร Commit มันลง Version control
+
+```
+target/
+├── debug/           ← cargo build (fast compile, no optimisation)
+│   └── my-app       ← the executable
+└── release/         ← cargo build --release (slower compile, fast binary)
+    └── my-app
+```
+
+เพิ่ม `target/` ลงใน `.gitignore` Cargo จะทำสิ่งนี้โดยอัตโนมัติเมื่อคุณรัน `cargo new`
+
+## Crates vs node_modules
+
+ใน JavaScript `npm install` ดาวน์โหลด Packages ลงใน `node_modules/` ภายในโปรเจกต์ของคุณ ใน Rust `cargo add <crate>` ดาวน์โหลด Packages (เรียกว่า **Crates**) ลงใน Global registry cache ที่ `~/.cargo/registry/` ไดเรกทอรี `target/` ของโปรเจกต์มี Compiled artifacts แต่ Source แชร์กันในทุกโปรเจกต์บนเครื่องของคุณ
+
+Global cache หมายความว่า:
+- ไม่มีการ Duplicate Crate เดิมต่อโปรเจกต์
+- `cargo clean` ลบ `target/` แต่เก็บ Download cache ไว้
+- การ Build Crate เดิม Version เดิมสองครั้งนั้นเกือบจะทันที (Compile ไปแล้ว)
+
+## Cargo.lock
+
+เหมือน `package-lock.json` `Cargo.lock` จะ Pin Version ที่แน่นอนของทุก Transitive dependency สำหรับโปรเจกต์ Binary ให้ Commit `Cargo.lock` สำหรับ Libraries ที่ Publish ไปยัง crates.io ให้เพิ่มลงใน `.gitignore` — เหมือนกับที่คุณไม่ Commit `package-lock.json` ใน Published npm package
+
+<RsOnly title="Editions — เรื่องราวความเข้ากันได้ของ Rust">
+
+Rust ใช้ **Editions** เพื่อนำ Breaking changes เข้ามาในภาษาในขณะที่รักษา Backward compatibility Edition ถูกกำหนดต่อโปรเจกต์ใน `Cargo.toml` และไม่ส่งผลต่อ ABI — Crates บน Edition ต่างกันทำงานร่วมกันได้อย่างอิสระ
+
+Edition ปัจจุบัน: 2015, 2018, 2021 เสมอเริ่มโปรเจกต์ใหม่ด้วย `edition = "2021"`
+
+สิ่งนี้คล้ายคลึงกับ `target` และ `lib` settings ของ TypeScript ใน `tsconfig.json` แต่ง่ายกว่า: คุณตั้งค่าครั้งเดียวและ Compiler จัดการทุกอย่าง
+
+</RsOnly>
+
+export const quizAnatomy = [
+  {
+    q: "อะไรคือ Rust เทียบเท่ากับ package.json?",
+    options: [
+      "Cargo.lock",
+      "Cargo.toml",
+      "src/main.rs",
+      "rustfmt.toml"
+    ],
+    answer: 1
+  },
+  {
+    q: "Rust เก็บ Compiled build artifacts ไว้ที่ไหน?",
+    options: [
+      "dist/",
+      "build/",
+      "target/",
+      "~/.cargo/"
+    ],
+    answer: 2
+  },
+  {
+    q: "`mod utils;` ใน Rust ทำอะไร?",
+    options: [
+      "ติดตั้ง utils crate จาก crates.io",
+      "ประกาศและโหลด utils module จาก src/utils.rs",
+      "Import สัญลักษณ์ Public ทั้งหมดจาก utils เข้า Scope",
+      "สร้างไฟล์ใหม่ชื่อ utils.rs"
+    ],
+    answer: 1
+  },
+  {
+    q: "สำหรับ Rust library crate ที่ Publish แล้ว ควร Commit Cargo.lock หรือไม่?",
+    options: [
+      "ใช่ Commit Cargo.lock เสมอ",
+      "ไม่ เพิ่มลงใน .gitignore เหมือน package-lock.json ใน Published npm package",
+      "Commit เฉพาะเมื่อใช้ nightly Rust",
+      "Cargo.lock ไม่ถูกสร้างสำหรับ Library crates"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="intro/project-anatomy" questions={quizAnatomy} />
+
+<ProgressTracker client:visible id="intro/project-anatomy" />

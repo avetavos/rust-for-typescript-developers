@@ -1,0 +1,183 @@
+---
+title: 'Option and Result'
+description: 'Option<T>, Result<T,E>, match, unwrap_or และ operator ? ใน Rust เทียบกับ null/undefined และ try/catch'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Option และ Result ใน TypeScript เทียบกับ Rust
+
+TypeScript ใช้ `T | null | undefined` สำหรับค่าที่อาจมีหรือไม่มี และใช้ `try/catch` สำหรับ error ส่วน Rust เข้ารหัสทั้งสองอย่างไว้ในระบบ type:
+
+- `Option<T>` — เป็นได้ทั้ง `Some(value)` หรือ `None` ไม่มี null ไม่มี undefined
+- `Result<T, E>` — เป็นได้ทั้ง `Ok(value)` หรือ `Err(error)` ไม่มี exception
+
+ระบบ type บังคับให้คุณจัดการทั้งสองกรณีก่อนที่จะใช้ค่าได้
+
+## Option — การไม่มีค่าโดยไม่ต้องมี null
+
+```
+// TypeScript: null can silently propagate
+function findUser(id: number): User | null { ... }
+const user = findUser(42);
+console.log(user.name); // runtime crash if null
+
+// Rust: the compiler won't let you use the value without handling None
+fn find_user(id: u32) -> Option<User> { ... }
+match find_user(42) {
+    Some(user) => println!("{}", user.name),
+    None       => println!("not found"),
+}
+```
+
+## Result — error ในฐานะค่า
+
+```
+// TypeScript: error can be thrown anywhere
+function divide(a: number, b: number): number {
+  if (b === 0) throw new Error("division by zero");
+  return a / b;
+}
+
+// Rust: error is part of the return type
+fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 { Err("division by zero".to_string()) }
+    else { Ok(a / b) }
+}
+```
+
+## เมธอดอำนวยความสะดวก
+
+| TypeScript | Rust |
+|---|---|
+| `value ?? defaultVal` | `option.unwrap_or(defaultVal)` |
+| `value!` (non-null assertion) | `option.unwrap()` (panic ถ้าเป็น None) |
+| `value ?? (() => { throw ... })()` | `option.expect("msg")` (panic พร้อมข้อความ) |
+
+## operator ?
+
+ใน function ที่ return `Result` นั้น `?` บนค่า `Result` จะทำการ unwrap `Ok` หรือไม่ก็ return `Err` ออกไปก่อนกำหนด — ช่วยกำจัดการซ้อน `match` หลายชั้น:
+
+```
+fn read_number(s: &str) -> Result<i32, std::num::ParseIntError> {
+    let n = s.trim().parse::<i32>()?; // returns Err early if parse fails
+    Ok(n * 2)
+}
+```
+
+export const optionResultTs = `// Option-like: null / undefined
+function divide(a: number, b: number): number | null {
+  if (b === 0) return null;
+  return a / b;
+}
+const r = divide(10, 2) ?? 0;
+console.log(r); // 5
+
+// Error handling: try/catch
+try {
+  const val = JSON.parse("bad json");
+} catch (e) {
+  console.error("parse error", e);
+}`;
+
+export const optionResultRs = `fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 {
+        Err(String::from("division by zero"))
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    match divide(10.0, 2.0) {
+        Ok(v)  => println!("{v}"),    // 5
+        Err(e) => println!("{e}"),
+    }
+
+    let maybe: Option<i32> = Some(42);
+    let value = maybe.unwrap_or(0);
+    println!("{value}"); // 42
+}`;
+
+<TsGo client:visible ts={optionResultTs} go={optionResultRs} />
+
+## ลองเล่นดู
+
+export const optionResultCode = `fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 {
+        Err(String::from("division by zero"))
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    match divide(10.0, 2.0) {
+        Ok(result) => println!("10 / 2 = {result}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    match divide(5.0, 0.0) {
+        Ok(result) => println!("5 / 0 = {result}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    let maybe: Option<i32> = Some(42);
+    let value = maybe.unwrap_or(0);
+    println!("Option value: {value}");
+}`;
+
+<Playground client:visible code={optionResultCode} />
+
+<RsOnly title="ไม่มี null — error คือค่า">
+
+Rust **ไม่มี null และไม่มี undefined** ไม่มีทางที่จะมีค่าของ type `String` ที่จริง ๆ แล้วไม่มีค่าอยู่อย่างลับ ๆ — type `String` เก็บ string จริงเสมอ การไม่มีค่าถูกเข้ารหัสเป็น `Option<String>` และ compiler บังคับให้คุณตรวจสอบก่อนใช้
+
+ในทำนองเดียวกัน Rust **ไม่มี exception** function ที่อาจล้มเหลวจะ return `Result<T, E>` error เป็นค่าในระบบ type ไม่ใช่ control flow ที่มองไม่เห็นซึ่งสามารถ propagate ขึ้นไปตาม call stack อย่างเงียบ ๆ คุณรู้เสมอว่า function ใดอาจล้มเหลวได้ เพราะ signature ของมันบอกว่าเป็น `Result`
+
+สิ่งนี้กำจัดบั๊กบน production ทั้งสองกลุ่มออกไป:
+- การ crash จาก null pointer / การ dereference undefined
+- exception ที่ไม่ถูกจับ ทำให้เกิดพฤติกรรมไม่คาดคิดตอน runtime
+
+ในโค้ด Rust บน production นั้น `unwrap()` และ `expect()` ควรปรากฏเฉพาะใน test หรือ prototype เท่านั้น โค้ดจริงใช้ `match`, `unwrap_or`, `unwrap_or_else`, `?` หรือ crate จัดการ error เฉพาะทางอย่าง `thiserror` และ `anyhow`
+
+</RsOnly>
+
+export const quizOptionResult = [
+  {
+    q: "`Option<T>` แทนอะไรใน Rust?",
+    options: [
+      "ค่าที่อาจ throw exception",
+      "ค่าที่เป็นได้ทั้ง Some(T) หรือ None โดยไม่มี null",
+      "ค่าที่เป็นได้ทั้ง Ok(T) หรือ Err(E)",
+      "pointer ที่เป็น null ได้"
+    ],
+    answer: 1
+  },
+  {
+    q: "operator `?` ทำอะไรกับ `Result` ใน Rust?",
+    options: [
+      "แปลง Result ให้เป็น Option",
+      "panic ถ้า Result เป็น Err",
+      "unwrap Ok หรือไม่ก็ return Err ออกจาก function ปัจจุบันก่อนกำหนด",
+      "log error แล้วทำงานต่อ"
+    ],
+    answer: 2
+  },
+  {
+    q: "เมธอดใดที่ return ค่า default หาก Option เป็น None?",
+    options: [
+      "option.default()",
+      "option.or_else()",
+      "option.unwrap()",
+      "option.unwrap_or(default)"
+    ],
+    answer: 3
+  }
+];
+
+<Quiz client:visible id="rust-101/option-result" questions={quizOptionResult} />
+
+<ProgressTracker client:visible id="rust-101/option-result" />

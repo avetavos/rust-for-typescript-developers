@@ -1,0 +1,186 @@
+---
+title: 'Threads'
+description: 'Spawning real OS threads with std::thread::spawn, moving data into threads, and joining handles — compared to JavaScript where true parallelism requires Web Workers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Threads in TypeScript vs Rust
+
+In Node.js or the browser, you cannot run arbitrary JavaScript in parallel on another CPU core. You can spawn a **Web Worker**, but it runs in a completely separate process: you cannot share a closure or pass a reference — only serializable data can cross the boundary via `postMessage`.
+
+Rust gives you **real OS threads** via `std::thread::spawn`. These threads run in the same process, share the same memory address space, and can receive values (not serialized copies) from the parent thread — as long as the ownership rules are satisfied.
+
+## std::thread::spawn
+
+`thread::spawn` takes a **closure** and runs it on a new OS thread. The closure must `move` any data it needs from the surrounding scope, because the thread might outlive the current stack frame.
+
+The call returns a `JoinHandle<T>` where `T` is the return type of the closure. Calling `.join()` on the handle blocks until the thread finishes and returns `Result<T, Box<dyn Any>>`.
+
+export const threadsTs = `// TypeScript (Node.js): no real threads
+// Web Workers run in a separate process
+// and communicate only via postMessage (serialized data)
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+
+if (isMainThread) {
+  const worker = new Worker(__filename, { workerData: { value: 10 } });
+  worker.on('message', (result) => console.log('result:', result));
+} else {
+  // In worker — cannot share closures or references from main thread
+  parentPort?.postMessage(workerData.value * 2);
+}`;
+
+export const threadsRs = `use std::thread;
+
+fn main() {
+    let value = 10u32; // owned by main thread
+
+    // move closure takes ownership of 'value'
+    let handle = thread::spawn(move || {
+        // 'value' is now owned by this thread
+        value * 2
+    });
+
+    // join() blocks until the thread completes
+    // and returns the closure's return value
+    let result = handle.join().unwrap();
+    println!("result: {result}"); // result: 20
+}`;
+
+<TsGo client:visible ts={threadsTs} go={threadsRs} />
+
+## Spawning multiple threads and collecting results
+
+A common pattern is to spawn a fixed number of worker threads, collect all `JoinHandle`s into a `Vec`, then join them all and aggregate the results.
+
+export const threadsMultiTs = `// TypeScript: parallel work via Promise.all
+async function sumChunks(data: number[][]): Promise<number> {
+  const partials = await Promise.all(
+    data.map(chunk =>
+      new Promise<number>(resolve =>
+        resolve(chunk.reduce((a, b) => a + b, 0))
+      )
+    )
+  );
+  return partials.reduce((a, b) => a + b, 0);
+}`;
+
+export const threadsMultiRs = `use std::thread;
+
+fn main() {
+    let chunks: Vec<Vec<u32>> = vec![
+        vec![1, 2, 3],
+        vec![4, 5, 6],
+        vec![7, 8, 9],
+    ];
+
+    let handles: Vec<_> = chunks
+        .into_iter()
+        .map(|chunk| {
+            thread::spawn(move || chunk.iter().sum::<u32>())
+        })
+        .collect();
+
+    let total: u32 = handles
+        .into_iter()
+        .map(|h| h.join().unwrap())
+        .sum();
+
+    println!("total: {total}"); // total: 45
+}`;
+
+<TsGo client:visible ts={threadsMultiTs} go={threadsMultiRs} />
+
+## Try it
+
+export const threadsCode = `use std::thread;
+
+fn main() {
+    let chunks: Vec<Vec<u32>> = vec![
+        vec![1, 2, 3],
+        vec![4, 5, 6],
+        vec![7, 8, 9],
+    ];
+
+    let handles: Vec<_> = chunks
+        .into_iter()
+        .map(|chunk| {
+            thread::spawn(move || chunk.iter().sum::<u32>())
+        })
+        .collect();
+
+    let total: u32 = handles
+        .into_iter()
+        .map(|h| h.join().unwrap())
+        .sum();
+
+    println!("total: {total}");
+}`;
+
+<Playground client:visible code={threadsCode} />
+
+<RsOnly title="move closures and thread ownership">
+
+When you call `thread::spawn`, the closure you pass is not allowed to borrow from the parent stack frame. The reason: the compiler cannot guarantee the parent stack frame will still be alive when the thread eventually runs. The `move` keyword tells the compiler to **transfer ownership** of every captured variable into the closure.
+
+Without `move`, you get a compile error:
+
+```
+error[E0373]: closure may outlive the current function,
+but it borrows `value`, which is owned by the current function
+```
+
+With `move`, the thread owns its data — and the compiler is satisfied that no dangling reference can exist.
+
+</RsOnly>
+
+export const quizThreads = [
+  {
+    q: "What does `thread::spawn` return in Rust?",
+    options: [
+      "A Promise<T>",
+      "A JoinHandle<T>",
+      "An Arc<T>",
+      "A Result<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why must closures passed to thread::spawn use the `move` keyword?",
+    options: [
+      "To make the closure run faster",
+      "Because threads are always async",
+      "To transfer ownership of captured variables into the thread, preventing dangling references",
+      "Because Rust closures cannot borrow by default"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `.join()` on a JoinHandle do?",
+    options: [
+      "Cancels the thread",
+      "Blocks until the thread finishes and returns its result as Result<T>",
+      "Shares the thread's stack with the main thread",
+      "Sends a message to the thread"
+    ],
+    answer: 1
+  },
+  {
+    q: "How does JavaScript achieve true CPU-parallel work?",
+    options: [
+      "Via Promise.all, which runs on multiple CPU cores",
+      "Via async/await, which spawns OS threads automatically",
+      "Via Web Workers, which run in a separate process communicating via postMessage",
+      "Via setTimeout, which schedules work on different threads"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/threads" questions={quizThreads} />
+
+<ProgressTracker client:visible id="concurrency/threads" />

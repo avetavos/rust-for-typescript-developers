@@ -1,0 +1,202 @@
+---
+title: 'Docker & CI — Shipping Rust to Production'
+description: 'Multi-stage Dockerfiles for Rust binaries (builder + distroless) and a GitHub Actions workflow (fmt, clippy, test, build), compared to Node Docker and CI.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Why multi-stage Docker matters for Rust
+
+A Node.js Docker image must include the Node runtime at ~180 MB (Alpine) just to run. A Rust binary has no runtime dependency, so you can copy it into a **distroless** or **scratch** image. The result is a production image that is often 5–30 MB.
+
+The trick is a **multi-stage build**: a full Rust toolchain in the builder stage, and only the compiled binary in the final stage.
+
+## Dockerfile comparison
+
+export const dockerTs = `# Node / TypeScript Dockerfile (multi-stage)
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
+# Final image: ~180 MB (Node runtime required)`;
+
+export const dockerRs = `# Rust Dockerfile (multi-stage → distroless)
+FROM rust:1.80-slim AS builder
+WORKDIR /app
+# Cache dependencies separately from source code
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release --locked
+RUN rm -rf src
+
+# Now build the real source
+COPY src ./src
+RUN touch src/main.rs && cargo build --release --locked
+
+FROM gcr.io/distroless/cc-debian12 AS runtime
+COPY --from=builder /app/target/release/my-app /usr/local/bin/my-app
+EXPOSE 8080
+CMD ["/usr/local/bin/my-app"]
+# Final image: ~20 MB (no runtime needed)`;
+
+<TsGo client:visible ts={dockerTs} go={dockerRs} />
+
+## The dependency-caching trick explained
+
+The two-step `COPY` pattern above is critical for fast rebuilds:
+
+```dockerfile
+# Step 1: copy only manifests and build a stub main.rs
+# Docker layer-caches this — only invalidated when Cargo.toml/Cargo.lock changes
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release --locked
+
+# Step 2: copy real source — this layer is invalidated on every code change
+# but dependency compilation is already cached
+COPY src ./src
+RUN touch src/main.rs && cargo build --release --locked
+```
+
+This is equivalent to the Node pattern of `COPY package*.json ./` then `RUN npm ci` before `COPY . .`.
+
+## GitHub Actions workflow
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check, Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (lint)
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Build release binary
+        run: cargo build --release --locked
+```
+
+## Node CI comparison
+
+```yaml
+# .github/workflows/ci.yml (Node / TypeScript)
+name: CI
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx eslint src/
+      - run: npx prettier --check "src/**/*.ts"
+      - run: npm test
+      - run: npm run build
+```
+
+The Rust workflow uses `dtolnay/rust-toolchain` (the official action) and `Swatinem/rust-cache` to cache the `~/.cargo` registry and `target/` between runs — the equivalent of `actions/setup-node` with `cache: 'npm'`.
+
+> These are Dockerfile and YAML configurations. There is no browser Playground for Docker builds — use these files in your project and push to GitHub to trigger the Actions workflow.
+
+<RsOnly title="distroless vs scratch vs Alpine">
+
+Three common choices for the Rust final image:
+
+- **`scratch`** — absolutely empty. Use only for fully static musl binaries (no C runtime at all). Smallest possible image.
+- **`gcr.io/distroless/cc-debian12`** — Google's minimal image with the C runtime (`libgcc`, `libssl`). Needed when your binary links against glibc dynamically. ~20 MB.
+- **`alpine:3`** — small (~5 MB), has a shell and package manager. Useful when you need to run shell scripts alongside the binary, but requires musl-linked binaries (or `apk add gcompat`).
+
+For most Axum/Tokio HTTP services compiled with the default glibc target, `gcr.io/distroless/cc-debian12` is the right choice.
+
+</RsOnly>
+
+export const quizDocker = [
+  {
+    q: "Why do Rust Docker images end up much smaller than Node.js Docker images?",
+    options: [
+      "Rust code compresses better",
+      "Rust binaries have no runtime dependency — you only ship the compiled binary",
+      "Docker automatically removes unused files from Rust images",
+      "Rust does not support dynamic linking"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is the purpose of the stub `fn main() {}` step in the Rust Dockerfile?",
+    options: [
+      "It verifies the Rust toolchain is installed",
+      "It runs unit tests before building",
+      "It caches compiled dependencies in a Docker layer, separate from your source code",
+      "It initialises the distroless base image"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which GitHub Action installs the Rust toolchain in CI?",
+    options: [
+      "actions/setup-rust@v1",
+      "rust-lang/rust-toolchain@stable",
+      "dtolnay/rust-toolchain@stable",
+      "cargo/install-toolchain@v2"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which distroless base image should you use for an Axum service compiled against glibc?",
+    options: [
+      "scratch",
+      "alpine:3",
+      "ubuntu:22.04",
+      "gcr.io/distroless/cc-debian12"
+    ],
+    answer: 3
+  }
+];
+
+<Quiz client:visible id="tooling/docker-ci" questions={quizDocker} />
+
+<ProgressTracker client:visible id="tooling/docker-ci" />

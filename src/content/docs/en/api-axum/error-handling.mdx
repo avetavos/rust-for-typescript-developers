@@ -1,0 +1,175 @@
+---
+title: 'Error Handling'
+description: 'Returning Result, custom error types implementing IntoResponse — vs Express error middleware.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Express error middleware vs Axum `Result`
+
+In Express, errors propagate via `next(err)` to a 4-argument error handler registered at the bottom of the middleware stack. In Axum, there is no global error handler — instead, handlers return `Result<T, E>` where `E` implements `IntoResponse`. If the handler returns `Err(e)`, Axum calls `e.into_response()` automatically.
+
+export const tsError = `// Express — propagate error to error handler
+app.get('/users/:id', async (req, res, next) => {
+  try {
+    const user = await db.findUser(req.params.id);
+    if (!user) return next(new NotFoundError('User not found'));
+    res.json(user);
+  } catch (err) {
+    next(err); // pass to error middleware
+  }
+});
+
+// 4-argument error handler
+app.use((err, req, res, next) => {
+  const status = err.status ?? 500;
+  res.status(status).json({ error: err.message });
+});`;
+
+export const rsError = `use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Json, Response},
+};
+use serde_json::json;
+
+// Custom error type
+#[derive(thiserror::Error, Debug)]
+enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+}
+
+// Implement IntoResponse so Axum can convert errors to HTTP responses
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, message) = match &self {
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+            AppError::Database(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            ),
+        };
+        (status, Json(json!({ "error": message }))).into_response()
+    }
+}
+
+// Handler returns Result<Json<User>, AppError>
+async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
+    let user = db_find(id).await.map_err(AppError::Database)?;
+    user.ok_or_else(|| AppError::NotFound(format!("user {} not found", id)))
+        .map(Json)
+}`;
+
+<TsGo client:visible ts={tsError} go={rsError} />
+
+## The `?` operator
+
+The `?` operator is Rust's early-return shorthand for `Result`. It replaces try/catch for recoverable errors:
+
+```rust
+async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
+    // ? returns Err(AppError::Database(...)) early if the query fails
+    let user = db_find(id).await?;
+
+    // Option::ok_or converts None to Err
+    let user = user.ok_or_else(|| AppError::NotFound(format!("user {id} not found")))?;
+
+    Ok(Json(user))
+}
+```
+
+## Using `thiserror` for clean error types
+
+`thiserror` generates `Display` and `Error` implementations from attribute macros — equivalent to defining a discriminated union of error cases in TypeScript:
+
+export const tsErrorUnion = `// TypeScript — discriminated union
+type AppError =
+  | { kind: 'NotFound'; message: string }
+  | { kind: 'Validation'; fields: string[] }
+  | { kind: 'Database'; cause: Error };
+
+function toHttpError(err: AppError): [number, string] {
+  switch (err.kind) {
+    case 'NotFound':    return [404, err.message];
+    case 'Validation':  return [422, err.fields.join(', ')];
+    case 'Database':    return [500, 'Internal server error'];
+  }
+}`;
+
+export const rsThiserror = `use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+
+    #[error("validation error: {0}")]
+    Validation(String),
+
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        match self {
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            AppError::Validation(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response(),
+            AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    }
+}`;
+
+<TsGo client:visible ts={tsErrorUnion} go={rsThiserror} />
+
+<RsOnly title="Why no global error handler?">
+
+Express has a global 4-arg error handler because JavaScript exceptions unwind through the middleware stack and must be caught somewhere. Axum handlers cannot panic (or rather, panics are treated as 500s), and errors are just `Result::Err` values — they are type-safe data, not exceptions.
+
+This means every possible error your handler can produce is **visible in its return type**. There are no implicit error paths, no uncaught async rejections, and no "oops I forgot to call `next(err)`" bugs. The compiler verifies that every error variant is handled — either by `?`-propagating to the handler's `Result`, or by mapping it to a different variant.
+
+</RsOnly>
+
+> **Run locally** — error handling requires a running Axum server. Test with `curl -v http://localhost:3000/users/999` to see the error response.
+
+export const quizErrors = [
+  {
+    q: "What does `?` do when used in an `async fn` that returns `Result<T, AppError>`?",
+    options: [
+      "Unwraps the value or panics",
+      "Early-returns `Err(...)` if the value is an error, converting via `From`",
+      "Logs the error and continues",
+      "Converts the error to a string"
+    ],
+    answer: 1
+  },
+  {
+    q: "What trait must a custom error type implement to be returned from an Axum handler?",
+    options: [
+      "Display",
+      "Error",
+      "IntoResponse",
+      "Serialize"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which crate provides the `#[error(\"...\")]` derive macro for cleaner error enums?",
+    options: [
+      "anyhow",
+      "thiserror",
+      "serde",
+      "axum"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="api-axum/error-handling" questions={quizErrors} />
+
+<ProgressTracker client:visible id="api-axum/error-handling" />

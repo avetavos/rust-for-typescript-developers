@@ -1,0 +1,143 @@
+---
+title: 'Release Builds & Cross-Compilation'
+description: 'cargo build --release, cross-compilation with --target, and producing a single static binary with musl, compared to shipping the Node.js runtime.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## The Node.js deployment problem
+
+When you ship a Node.js application you must also ship Node itself — the runtime, `node_modules`, and all transitive dependencies. The result is typically hundreds of megabytes. Deployment usually means bundling with `esbuild`/`webpack`, writing a Dockerfile that installs Node, or using a PaaS that knows how to run Node.
+
+Rust compiles to a **single self-contained binary**. There is no runtime to ship, no `node_modules`, and no interpreter. The binary runs directly on the OS.
+
+export const releaseTs = `# TypeScript / Node.js deployment
+# You must ship the runtime + all packages
+dist/
+  index.js         # your bundled app
+node_modules/      # 300+ MB of dependencies
+# ... plus you need Node installed on the server
+
+# Or use Docker:
+FROM node:20-alpine
+COPY package*.json ./
+RUN npm ci --only=production
+COPY dist/ ./dist/
+CMD ["node", "dist/index.js"]`;
+
+export const releaseRs = `# Rust deployment
+# Build once, ship the binary
+cargo build --release
+# → target/release/my-app   (single static binary, ~5 MB)
+
+# Copy the binary to the server — that's it.
+# No runtime, no package manager, no node_modules.
+scp target/release/my-app user@server:/usr/local/bin/`;
+
+<TsGo client:visible ts={releaseTs} go={releaseRs} />
+
+## Debug vs release builds
+
+```bash
+cargo build          # debug build: fast compile, unoptimised, includes debug info
+cargo build --release  # release build: slow compile, fully optimised (LLVM -O3)
+cargo run --release    # compile in release mode and run
+```
+
+The debug build is what you use during development — it compiles in seconds. The release build can take minutes on large projects but produces a binary that is often 10–100× faster at runtime.
+
+## Cross-compilation
+
+Rust supports cross-compilation out of the box. A **target triple** identifies the OS + architecture + ABI combination.
+
+```bash
+# Add a cross-compilation target
+rustup target add x86_64-unknown-linux-musl   # Linux, statically linked (musl libc)
+rustup target add aarch64-unknown-linux-gnu    # Linux, ARM64 (Raspberry Pi, AWS Graviton)
+rustup target add x86_64-pc-windows-gnu       # Windows from macOS/Linux
+
+# Compile for a different target
+cargo build --release --target x86_64-unknown-linux-musl
+# → target/x86_64-unknown-linux-musl/release/my-app
+```
+
+## Static binaries with musl
+
+The `x86_64-unknown-linux-musl` target links against **musl libc** instead of glibc, producing a fully static binary that runs on any Linux distribution — including Alpine Linux containers — without any shared library dependencies.
+
+```bash
+# One-time setup
+rustup target add x86_64-unknown-linux-musl
+
+# On macOS you need a cross-linker; easiest via cargo-zigbuild:
+cargo install cargo-zigbuild
+cargo zigbuild --release --target x86_64-unknown-linux-musl
+
+# Verify: the binary has no dynamic dependencies
+ldd target/x86_64-unknown-linux-musl/release/my-app
+# → not a dynamic executable
+```
+
+## Optimisation profile in Cargo.toml
+
+```toml
+[profile.release]
+opt-level = 3        # maximum LLVM optimisation (default)
+lto = true           # link-time optimisation: smaller + faster binary
+codegen-units = 1    # single codegen unit: slower compile, better optimisation
+strip = true         # strip debug symbols from the binary
+panic = "abort"      # abort on panic instead of unwinding (smaller binary)
+```
+
+> These are all `bash`/`toml` configurations. There is no browser Playground for cross-compilation — run these commands in your terminal after installing Rust via [rustup.rs](https://rustup.rs).
+
+<RsOnly title="cargo-zigbuild and cross">
+
+Two popular tools simplify cross-compilation from macOS or CI:
+
+- **`cargo-zigbuild`** (`cargo install cargo-zigbuild`) uses the [Zig](https://ziglang.org) C compiler as a drop-in cross-linker. Works for most targets with no extra setup.
+- **`cross`** (`cargo install cross`) runs the Rust cross-compilation toolchain inside a Docker container. Great for targets that need a specific glibc version.
+
+For GitHub Actions, the [`cross-platform-actions/action`](https://github.com/cross-platform-actions/action) and the official [`dtolnay/rust-toolchain`](https://github.com/dtolnay/rust-toolchain) action handle target installation automatically.
+
+</RsOnly>
+
+export const quizRelease = [
+  {
+    q: "What command produces an optimised Rust binary for production?",
+    options: [
+      "cargo build",
+      "cargo build --optimise",
+      "cargo build --release",
+      "cargo compile --prod"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is the key advantage of the `x86_64-unknown-linux-musl` target?",
+    options: [
+      "It produces a Windows-compatible binary",
+      "It enables GPU acceleration",
+      "It produces a fully static binary with no shared library dependencies",
+      "It targets ARM processors"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which `[profile.release]` setting removes debug symbols from the binary?",
+    options: [
+      "lto = true",
+      "strip = true",
+      "opt-level = 3",
+      "codegen-units = 1"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="tooling/release-cross-compile" questions={quizRelease} />
+
+<ProgressTracker client:visible id="tooling/release-cross-compile" />

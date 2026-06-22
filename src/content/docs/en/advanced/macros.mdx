@@ -1,0 +1,172 @@
+---
+title: 'Macros'
+description: 'Declarative `macro_rules!` and derive macros in Rust — what they are, why they exist, and how they compare to TypeScript decorators and code generation.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## No direct TypeScript equivalent — but decorators come close
+
+Rust macros have no single TypeScript equivalent. The closest analogies are:
+
+- **TypeScript decorators** (`@Injectable()`, `@Column()`) — like `#[derive(...)]`, they annotate code and trigger generated behaviour.
+- **Template literal types / type-level metaprogramming** — like `macro_rules!`, they operate on syntax before runtime.
+- **Babel / esbuild plugins** — transformations applied at build time.
+
+The key difference: Rust macros are **hygienic** and operate on the **AST**. They are part of the language, not a bolted-on annotation system, and they run at compile time with full access to the compiler's token tree.
+
+## Two kinds of macros
+
+| Kind | Syntax | What it does |
+|---|---|---|
+| Declarative (`macro_rules!`) | `macro_rules! my_macro { ... }` | Pattern-matches on token trees and generates code |
+| Procedural (`#[derive]`, `#[attribute]`, function-like) | `#[derive(Debug, Clone)]` | Receives an AST node and emits new AST nodes |
+
+This lesson focuses on `macro_rules!` (the simpler kind) and `derive` macros (which you have already used without thinking about them).
+
+## `macro_rules!` — declarative macros
+
+`macro_rules!` works like a `match` expression for syntax. Each arm defines a **pattern** of tokens to match and a **template** of tokens to emit.
+
+export const macroTs = `// TypeScript — no direct equivalent.
+// Closest: a generic utility function or a build-time code generator.
+function repeat<T>(value: T, times: number): T[] {
+  return Array.from({ length: times }, () => value);
+}
+
+console.log(repeat("hi", 3)); // ["hi", "hi", "hi"]
+
+// TypeScript decorators (stage 3) annotate classes at runtime:
+// @Injectable() class MyService { ... }`;
+
+export const macroRs = `// macro_rules! — match on syntax, emit code
+macro_rules! say_hello {
+    // arm 1: no arguments
+    () => {
+        println!("Hello!");
+    };
+    // arm 2: one expression argument
+    ($name:expr) => {
+        println!("Hello, {}!", $name);
+    };
+}
+
+// #[derive] macro — auto-implement traits at compile time
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    say_hello!();
+    say_hello!("Rustacean");
+
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();            // Clone derived
+    println!("{:?}", p1);            // Debug derived
+    println!("p1 == p2: {}", p1 == p2); // PartialEq derived
+}`;
+
+<TsGo client:visible ts={macroTs} go={macroRs} />
+
+## `vec![]` — a macro you use every day
+
+`vec![1, 2, 3]` is itself a `macro_rules!` macro from the standard library. It expands to code that creates a `Vec`, calls `push` for each element, and returns the vector. Without it you would write:
+
+```
+let mut v = Vec::new();
+v.push(1);
+v.push(2);
+v.push(3);
+```
+
+The `println!` and `format!` macros are also declarative macros — they parse the format string at compile time and generate type-safe formatting code.
+
+## Derive macros — the ones you use most
+
+Every time you write `#[derive(Debug, Clone, Serialize, Deserialize)]`, you are invoking a procedural macro. These are more powerful than `macro_rules!` because they receive the full AST of your struct or enum and emit arbitrary new code.
+
+| Derive | What it generates |
+|---|---|
+| `Debug` | `fmt::Debug` impl — enables `{:?}` printing |
+| `Clone` | `clone()` method |
+| `PartialEq` / `Eq` | `==` and `!=` operators |
+| `PartialOrd` / `Ord` | `<`, `>`, `<=`, `>=` |
+| `serde::Serialize` / `Deserialize` | JSON (and other format) serialisation |
+| `thiserror::Error` | `Display` and `From` impls for error enums |
+
+<RsOnly title="Macro hygiene">
+
+Rust macros are **hygienic**: variables introduced inside a macro do not accidentally clash with variables in the calling scope. If a macro introduces a variable named `x`, it cannot shadow the caller's `x` unless the caller explicitly passes the identifier in. This is a significant improvement over C preprocessor macros, which are textual substitution and are notorious for name-clash bugs.
+
+</RsOnly>
+
+## Try it
+
+export const macroPlayground = `macro_rules! say_hello {
+    () => {
+        println!("Hello!");
+    };
+    ($name:expr) => {
+        println!("Hello, {}!", $name);
+    };
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    say_hello!();
+    say_hello!("Rustacean");
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();
+    println!("{:?}", p1);
+    println!("p1 == p2: {}", p1 == p2);
+}`;
+
+<Playground client:visible code={macroPlayground} />
+
+export const quizMacros = [
+  {
+    q: "What does `#[derive(Debug)]` do?",
+    options: [
+      "Adds runtime debug logging to all method calls",
+      "Generates a `fmt::Debug` implementation so you can print the value with `{:?}`",
+      "Compiles the struct in debug mode only",
+      "Enables assertions in release builds"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which TypeScript feature is most similar to Rust's `#[derive(...)]`?",
+    options: [
+      "Generic type parameters",
+      "TypeScript decorators — annotations that trigger generated or modified behaviour",
+      "Union types",
+      "Optional chaining (?.)"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is 'macro hygiene' in Rust?",
+    options: [
+      "Macros automatically format their output with rustfmt",
+      "Variables introduced inside a macro do not clash with variables in the calling scope",
+      "Macros are only allowed in safe Rust blocks",
+      "Macros must not contain unsafe code"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="advanced/macros" questions={quizMacros} />
+
+<ProgressTracker client:visible id="advanced/macros" />

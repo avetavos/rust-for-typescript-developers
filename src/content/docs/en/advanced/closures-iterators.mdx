@@ -1,0 +1,205 @@
+---
+title: 'Closures & Iterators'
+description: 'Rust closures (`Fn`/`FnMut`/`FnOnce`), iterator adapters (`map`/`filter`/`collect`, lazy evaluation), compared to TypeScript arrow functions and array methods.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript arrow functions vs Rust closures
+
+In TypeScript, arrow functions can capture variables from their enclosing scope freely. Rust closures do the same, but the compiler tracks exactly *how* the closure uses its captured values and enforces ownership rules at compile time.
+
+export const closureTs = `// TypeScript — arrow function captures 'factor' by reference
+const factor = 3;
+const triple = (x: number) => x * factor;
+console.log(triple(5)); // 15
+
+// Closures in higher-order functions
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(x => x * 2);
+console.log(doubled); // [2, 4, 6, 8, 10]
+
+// Capturing mutable state — counter
+let count = 0;
+const increment = () => { count++; };
+increment();
+increment();
+console.log(count); // 2`;
+
+export const closureRs = `fn main() {
+    // Closure captures 'factor' by reference (immutable)
+    let factor = 3;
+    let triple = |x| x * factor;
+    println!("{}", triple(5)); // 15
+
+    // Iterator adapters: map, filter, collect
+    let numbers = vec![1, 2, 3, 4, 5];
+    let doubled: Vec<i32> = numbers.iter().map(|&x| x * 2).collect();
+    println!("{:?}", doubled); // [2, 4, 6, 8, 10]
+
+    // FnMut closure — captures count mutably
+    let mut count = 0;
+    let mut increment = || { count += 1; };
+    increment();
+    increment();
+    drop(increment); // release borrow so we can use count again
+    println!("{count}"); // 2
+}`;
+
+<TsGo client:visible ts={closureTs} go={closureRs} />
+
+## The `Fn` trait hierarchy
+
+Rust models closure capabilities as three traits. Understanding them is important when you pass closures to functions or store them in structs.
+
+| Trait | What it can do | TypeScript analogy |
+|---|---|---|
+| `FnOnce` | Called at most once; can move captured values out | A one-shot callback that consumes its captures |
+| `FnMut` | Called multiple times; mutates captures | A stateful callback that modifies closed-over variables |
+| `Fn` | Called multiple times; only reads captures (or captures nothing) | A pure arrow function with no side effects on captured vars |
+
+Every `Fn` is also `FnMut`; every `FnMut` is also `FnOnce`. When you take a `&dyn Fn(T) -> U` parameter, you accept the most restrictive requirement — the closure must be callable multiple times without mutating.
+
+```
+fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
+    f(f(x))
+}
+
+fn main() {
+    let double = |x| x * 2;
+    println!("{}", apply_twice(double, 3)); // 12
+}
+```
+
+## Iterator adapters — lazy by default
+
+TypeScript's `.map()`, `.filter()`, and `.reduce()` are **eager**: they allocate a new array at each step. Rust's iterator adapters are **lazy**: nothing is computed until you call a consuming method like `.collect()`, `.sum()`, or `.for_each()`. This means a long chain of `.map().filter().take()` allocates no intermediate vectors.
+
+export const iterTs = `// TypeScript — each step allocates a new array
+const result = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  .filter(x => x % 2 === 0)   // new array [2,4,6,8,10]
+  .map(x => x * x)             // new array [4,16,36,64,100]
+  .slice(0, 3);                // new array [4,16,36]
+console.log(result);`;
+
+export const iterRs = `fn main() {
+    // Rust — no intermediate allocations until collect()
+    let result: Vec<i32> = (1..=10)
+        .filter(|x| x % 2 == 0)   // lazy
+        .map(|x| x * x)            // lazy
+        .take(3)                   // lazy
+        .collect();                // ONE allocation here
+    println!("{:?}", result); // [4, 16, 36]
+
+    // Common adapters
+    let sum: i32 = (1..=100).sum();
+    println!("sum 1..100 = {sum}");
+
+    let words = vec!["hello", "world", "rust"];
+    let upper: Vec<String> = words.iter()
+        .map(|w| w.to_uppercase())
+        .collect();
+    println!("{:?}", upper);
+
+    // flat_map (like Array.flatMap)
+    let sentences = vec!["hello world", "foo bar"];
+    let all_words: Vec<&str> = sentences.iter()
+        .flat_map(|s| s.split_whitespace())
+        .collect();
+    println!("{:?}", all_words);
+}`;
+
+<TsGo client:visible ts={iterTs} go={iterRs} />
+
+<RsOnly title="move closures">
+
+By default a closure borrows its captures. To force it to *own* them (necessary when the closure must outlive the current scope, e.g., passed to `std::thread::spawn`), prefix it with `move`:
+
+```
+let name = String::from("Alice");
+let greeting = move || println!("Hello, {name}!");
+// name is moved into the closure; we can no longer use it here
+greeting();
+```
+
+This is commonly required when spawning threads or async tasks that outlive their enclosing function.
+
+</RsOnly>
+
+## Try it
+
+export const iterPlayground = `fn main() {
+    let multiplier = 3;
+    let triple = |x| x * multiplier;
+    println!("triple(5) = {}", triple(5));
+
+    let numbers = vec![1, 2, 3, 4, 5, 6];
+    let evens_doubled: Vec<i32> = numbers
+        .iter()
+        .filter(|&&x| x % 2 == 0)
+        .map(|&x| x * 2)
+        .collect();
+    println!("evens_doubled = {:?}", evens_doubled);
+
+    let sum: i32 = numbers.iter().sum();
+    println!("sum = {sum}");
+
+    let result: Vec<String> = (1..=3)
+        .map(|x| x * x)
+        .map(|x| format!("sq:{x}"))
+        .collect();
+    println!("{:?}", result);
+}`;
+
+<Playground client:visible code={iterPlayground} />
+
+export const quizClosures = [
+  {
+    q: "Which `Fn` trait should you use when a closure only reads (does not mutate) its captured variables and can be called multiple times?",
+    options: [
+      "FnOnce",
+      "FnMut",
+      "Fn",
+      "FnRef"
+    ],
+    answer: 2
+  },
+  {
+    q: "When does Rust's iterator chain actually execute its computations?",
+    options: [
+      "When you call the first adapter like `.map()`",
+      "Immediately, just like TypeScript's Array methods",
+      "When a consuming method like `.collect()` or `.sum()` is called",
+      "At compile time"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does the `move` keyword do when used before a closure?",
+    options: [
+      "It makes the closure callable only once",
+      "It forces the closure to take ownership of its captured variables",
+      "It makes the closure `FnMut`",
+      "It prevents the closure from capturing any variables"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which Rust iterator adapter is equivalent to JavaScript's `Array.prototype.flatMap`?",
+    options: [
+      ".map()",
+      ".chain()",
+      ".flat_map()",
+      ".extend()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="advanced/closures-iterators" questions={quizClosures} />
+
+<ProgressTracker client:visible id="advanced/closures-iterators" />

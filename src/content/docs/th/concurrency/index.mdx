@@ -1,0 +1,122 @@
+---
+title: 'ภาพรวม Concurrency'
+description: 'โมเดล "fearless concurrency" ของ Rust — OS threads จริง, async/await, และการป้องกัน data race ณ compile time — เทียบกับ single-threaded event loop และ Web Workers ของ JavaScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Concurrency ใน TypeScript vs Rust
+
+JavaScript ทำงานบน **single thread** เพียง thread เดียว Event loop จะประมวลผลทีละ task และมอบหมายงาน I/O ให้ระบบปฏิบัติการจัดการ Concurrency ใน JS เป็นแบบ *cooperative*: โค้ดของคุณยอมคืน control เมื่อถึง `await` และ event loop จะหยิบ callback ตัวถัดไปมาทำงาน ไม่มีอะไรทำงานแบบ parallel อย่างแท้จริงภายใน JS process เดียว เว้นแต่จะเปิด Web Worker ซึ่งเป็นกระบวนการแยกต่างหากที่สื่อสารผ่าน `postMessage` เท่านั้น
+
+Rust ใช้แนวทางที่แตกต่างออกไปอย่างสิ้นเชิง คุณได้ **OS threads จริง** ตั้งแต่เริ่มต้น ระบบ `async`/`await` ที่ทำงานบน user-space runtime (Tokio คือตัวเลือกมาตรฐาน) และ compiler ที่ **ป้องกัน data race แบบ static** ณ compile time Rust เรียกสิ่งนี้ว่า *fearless concurrency* — คุณเขียนโค้ด concurrent ได้ และ compiler จะปฏิเสธการ compile โปรแกรมที่มี data-race bug
+
+## สองโมเดล concurrency ใน Rust
+
+| โมเดล | Primitive ใน Rust | คู่เทียบใน JS |
+|---|---|---|
+| OS threads (ทำงานแบบ parallel บน CPU) | `std::thread::spawn` | Web Workers (จำกัด) |
+| Async I/O (tasks จำนวนมาก, thread pool เดียว) | `async`/`await` + Tokio | `Promise` / `async`/`await` |
+| Shared mutable state (ข้าม threads) | `Arc<Mutex<T>>` | `SharedArrayBuffer` + `Atomics` |
+| Message passing (ข้าม threads) | `std::sync::mpsc` | `worker.postMessage` |
+
+## ทำไมถึงเรียกว่า "fearless"?
+
+ระบบ ownership และ type ของ Rust บังคับกฎสองข้อ ณ compile time:
+
+- ค่าหนึ่งค่าสามารถมี **ผู้อ่านหลายคน** *หรือ* **ผู้เขียนหนึ่งคน** — ไม่ใช่ทั้งคู่พร้อมกัน
+- ข้อมูลที่แชร์ข้าม threads ต้อง implement marker traits `Send` และ `Sync` ซึ่ง compiler ตรวจสอบให้อัตโนมัติ
+
+ถ้าคุณพยายามแชร์ `&mut T` ดิบๆ ข้าม threads โปรแกรม **จะ compile ไม่ผ่าน** ไม่มี runtime lock ไม่มีการ corrupt แบบเงียบๆ — bug ถูกจับก่อนโค้ดจะรัน
+
+export const overviewTs = `// JavaScript: single-threaded, concurrency via event loop
+async function fetchAll(urls: string[]): Promise<string[]> {
+  // All fetches start "in parallel" (concurrent I/O)
+  // but JS code itself runs on one thread
+  return Promise.all(urls.map(url => fetch(url).then(r => r.text())));
+}
+
+// Web Worker for CPU-bound parallelism (separate process)
+const worker = new Worker('./worker.js');
+worker.postMessage({ data: [1, 2, 3] });
+worker.onmessage = (e) => console.log(e.data);`;
+
+export const overviewRs = `use std::thread;
+
+fn main() {
+    // Real OS thread — runs truly in parallel on another CPU core
+    let h1 = thread::spawn(|| "fearless");
+    let h2 = thread::spawn(|| "concurrency");
+
+    // join() waits for the thread and returns its result
+    let r1 = h1.join().unwrap();
+    let r2 = h2.join().unwrap();
+    println!("{r1} {r2}"); // fearless concurrency
+}`;
+
+<TsGo client:visible ts={overviewTs} go={overviewRs} />
+
+## ลองรันเลย
+
+export const overviewCode = `use std::thread;
+
+fn main() {
+    let h1 = thread::spawn(|| "fearless");
+    let h2 = thread::spawn(|| "concurrency");
+    let r1 = h1.join().unwrap();
+    let r2 = h2.join().unwrap();
+    println!("{r1} {r2}");
+}`;
+
+<Playground client:visible code={overviewCode} />
+
+<RsOnly title="Fearless concurrency — ความปลอดภัยระดับ compile time">
+
+โมเดล concurrency ของ JavaScript ป้องกัน data race โดยธรรมชาติ — มี thread เดียว ดังนั้นสองส่วนของโค้ดจึงไม่มีทางทำงานพร้อมกันและ corrupt shared state ได้จริง
+
+Rust ก้าวไปไกลกว่านั้น: รองรับ *parallelism จริง* (CPU หลายคอร์ทำงานพร้อมกัน) ในขณะที่ยังป้องกัน data race — ไม่ใช่ผ่านการจำกัดให้มี thread เดียว แต่ผ่าน **type system** Marker traits `Send` และ `Sync` ถูกตรวจสอบ ณ compile time ถ้า type ของคุณไม่ใช่ `Send` compiler จะปฏิเสธการย้ายมันไปยัง thread อื่น ถ้าไม่ใช่ `Sync` คุณจะไม่สามารถแชร์ reference ข้าม threads ได้
+
+ผลคือคุณได้ประสิทธิภาพของ parallelism จริงพร้อมความปลอดภัยที่ปกติทำได้เฉพาะในโมเดล single-threaded
+
+</RsOnly>
+
+export const quizConcurrencyIndex = [
+  {
+    q: "JavaScript บรรลุ concurrency ได้อย่างไร?",
+    options: [
+      "โดยรัน OS threads หลายตัวใน thread pool",
+      "โดยใช้ single-threaded event loop ที่ yield แบบ cooperative ผ่าน await",
+      "โดยใช้ Arc<Mutex<T>> เพื่อแชร์ state",
+      "โดย compile ไปเป็น WebAssembly"
+    ],
+    answer: 1
+  },
+  {
+    q: "'Fearless concurrency' ของ Rust หมายความว่าอะไร?",
+    options: [
+      "โปรแกรม Rust จะไม่มี deadlock เลย",
+      "Rust compiler ป้องกัน data race ณ compile time ผ่าน type system",
+      "Rust threads ทำงานเร็วกว่า JavaScript Promises เสมอ",
+      "Rust ห้าม shared mutable state ทั้งหมด"
+    ],
+    answer: 1
+  },
+  {
+    q: "Rust primitive ตัวไหนที่คล้ายกับ JS's async/await + Promise.all มากที่สุด?",
+    options: [
+      "std::thread::spawn",
+      "std::sync::mpsc",
+      "async/await กับ tokio::join!",
+      "Arc<Mutex<T>>"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/index" questions={quizConcurrencyIndex} />
+
+<ProgressTracker client:visible id="concurrency/index" />

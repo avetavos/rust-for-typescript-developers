@@ -1,0 +1,164 @@
+---
+title: 'Move vs Copy'
+description: 'Rust แยกแยะ Copy type (stack value ราคาถูก) จาก move type (heap value) อย่างไร และเมื่อไหร่ควรใช้ Clone — สำหรับ TypeScript developers'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## เส้นแบ่งที่เลือนลางของ JavaScript ระหว่าง value และ reference
+
+ใน JavaScript, primitive (`number`, `boolean`, `string`) ถูกส่ง by value — การ copy ราคาถูกและอัตโนมัติ Object และ array ถูกส่ง by reference — ทั้งสองตัวแปรชี้ไปที่ heap data เดียวกัน
+
+TypeScript แสดงสิ่งนี้ผ่าน type system แต่ไม่ได้ให้คุณควบคุมมัน คุณไม่สามารถทำให้ type ของตัวเองทำงานเหมือน primitive ได้
+
+Rust ชัดเจน: type ไม่ implement `Copy` trait (และถูก duplicate อัตโนมัติเมื่อ assign) ก็จะ follow **move semantics** (ownership โอน) คุณสามารถ derive `Clone` สำหรับ explicit deep copy ได้ด้วย
+
+## Copy type — stack value ที่ duplicate อัตโนมัติ
+
+`Copy` type เป็น stack-allocated และ duplicate ราคาถูก การ assign หรือส่งมันสร้าง copy อิสระอย่างสมบูรณ์โดยไม่ต้องใช้ syntax พิเศษ
+
+export const copyTs = `// TypeScript — primitive copy อัตโนมัติ (เหมือน Rust Copy)
+let a = 42;
+let b = a;    // b เป็น copy อิสระ
+b = 100;
+console.log(a); // 42 — a ไม่เปลี่ยน
+
+// แต่ TypeScript ไม่มีวิธีให้ struct ทำงานแบบนี้:
+const p1 = { x: 1, y: 2 };
+const p2 = p1;   // p2 เป็น reference — share object เดียวกัน
+p2.x = 99;
+console.log(p1.x); // 99 — p1 ถูก mutate ผ่าน p2`;
+
+export const copyRs = `fn main() {
+    // i32, f64, bool, char ล้วนเป็น Copy
+    let a: i32 = 42;
+    let b = a;          // copied — a ยังใช้ได้
+    println!("a={} b={}", a, b);
+
+    // Tuple ของ Copy type ก็เป็น Copy
+    let t1 = (1, 2.0, true);
+    let t2 = t1;
+    println!("t1={:?} t2={:?}", t1, t2);
+}`;
+
+<TsGo client:visible ts={copyTs} go={copyRs} />
+
+<RsOnly title="Type ไหนบ้างที่ implement Copy?">
+
+Type ที่ implement `Copy` เป็น stack-allocated เสมอและ duplicate ราคาถูก:
+
+- Integer ทั้งหมด: `i8`, `i16`, `i32`, `i64`, `i128`, `u8`, `u16`, `u32`, `u64`, `u128`, `usize`, `isize`
+- Floating point: `f32`, `f64`
+- `bool`
+- `char`
+- Reference: `&T` (แต่ไม่ใช่ `&mut T`)
+- Array และ tuple **ถ้า element ทั้งหมดเป็น Copy**: `[i32; 3]`, `(i32, bool)`
+
+Type ที่ไม่ implement `Copy` ได้แก่ `String`, `Vec<T>`, `Box<T>`, และ type ใดก็ตามที่เป็น owner ของ heap data การ copy อาจแพง (ขนาด `Vec` ใหญ่อาจมี element หลายล้านตัว) ดังนั้น Rust ทำให้คุณ explicit ผ่าน `.clone()`
+
+</RsOnly>
+
+## Move type — heap value ที่โอน ownership
+
+Type อย่าง `String` และ `Vec<T>` เป็น owner ของ heap-allocated data การ assign พวกมัน move ownership ถ้าต้องการสอง copy อิสระ คุณต้องเรียก `.clone()` ชัดๆ
+
+export const moveTs = `// TypeScript — string เป็น primitive copy อัตโนมัติ
+let s1 = "hello";
+let s2 = s1;
+console.log(s1, s2); // ทั้งคู่ใช้ได้ — string เป็น primitive ใน JS
+
+// Object ต้องใช้ spread สำหรับ shallow copy
+const obj1 = { items: [1, 2, 3] };
+const obj2 = { ...obj1 };      // shallow clone
+const obj3 = structuredClone(obj1); // deep clone (ES2022)
+console.log(obj1.items, obj2.items);`;
+
+export const moveRs = `#[derive(Debug, Clone)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    // String — heap value ใช้ move semantics
+    let s1 = String::from("hello");
+    let s2 = s1.clone();          // explicit deep copy
+    println!("s1={} s2={}", s1, s2); // ทั้งคู่ใช้ได้
+
+    // struct ของคุณ — derive Clone เพื่อใช้ .clone()
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();
+    println!("p1={:?} p2={:?}", p1, p2);
+
+    // ถ้าไม่มี Clone การ assign จะ move ownership:
+    let p3 = Point { x: 3.0, y: 4.0 };
+    let p4 = p3;    // p3 ถูก move — p3 ใช้ไม่ได้แล้ว
+    println!("p4={:?}", p4);
+}`;
+
+<TsGo client:visible ts={moveTs} go={moveRs} />
+
+## ลองเขียนเอง
+
+export const moveCopyCode = `#[derive(Debug, Clone)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    let a: i32 = 42;
+    let b = a;
+    println!("a={} b={} (both valid, i32 is Copy)", a, b);
+
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();
+    println!("p1={:?} p2={:?}", p1, p2);
+
+    let s1 = String::from("hello");
+    let s2 = s1.clone();
+    println!("s1={} s2={}", s1, s2);
+}`;
+
+<Playground client:visible code={moveCopyCode} />
+
+export const quizMoveCopy = [
+  {
+    q: "Type ไหนที่ implement `Copy` trait?",
+    options: [
+      "String",
+      "Vec<i32>",
+      "i32",
+      "Box<i32>"
+    ],
+    answer: 2
+  },
+  {
+    q: "วิธี idiomatic ในการสร้าง copy อิสระของ `String` ใน Rust คืออะไร?",
+    options: [
+      "let s2 = s1; — assignment copy อัตโนมัติ",
+      "let s2 = s1.clone();",
+      "let s2 = &s1;",
+      "let s2 = *s1;"
+    ],
+    answer: 1
+  },
+  {
+    q: "ทำไม `String` ถึงไม่ implement `Copy`?",
+    options: [
+      "String เป็น immutable ใน Rust",
+      "การ copy String จะต้อง duplicate heap data ซึ่งอาจแพง",
+      "Copy ใช้ได้แค่กับ type ที่ขนาดไม่เกิน 8 bytes",
+      "String implement Display แทน"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/move-vs-copy" questions={quizMoveCopy} />
+
+<ProgressTracker client:visible id="rs-only/move-vs-copy" />

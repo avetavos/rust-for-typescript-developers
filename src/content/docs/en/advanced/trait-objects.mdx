@@ -1,0 +1,203 @@
+---
+title: 'Trait Objects'
+description: 'Dynamic dispatch with `dyn Trait` and `Box<dyn Trait>`, static vs dynamic dispatch, compared to TypeScript interfaces and polymorphism.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript interfaces vs Rust trait objects
+
+TypeScript interfaces enable runtime polymorphism with zero ceremony — you pass any object that satisfies the interface's shape. Rust's equivalent is a **trait object**: a value preceded by `dyn`, which tells the compiler to use a **vtable** for dynamic dispatch instead of monomorphising.
+
+You have two choices in Rust:
+
+| Approach | Syntax | Dispatch | When to use |
+|---|---|---|---|
+| Generic with bound | `fn foo<T: Animal>(a: T)` | Static (monomorphised) | When all types are known at compile time |
+| Trait object | `fn foo(a: &dyn Animal)` | Dynamic (vtable) | When the concrete type is unknown at compile time |
+
+export const dynTs = `// TypeScript — interface polymorphism
+interface Animal {
+  speak(): string;
+  name(): string;
+}
+
+class Dog implements Animal {
+  speak() { return "Woof"; }
+  name() { return "Rex"; }
+}
+
+class Cat implements Animal {
+  speak() { return "Meow"; }
+  name() { return "Whiskers"; }
+}
+
+function makeNoise(animal: Animal): void {
+  console.log(\`\${animal.name()} says \${animal.speak()}\`);
+}
+
+const animals: Animal[] = [new Dog(), new Cat()];
+animals.forEach(makeNoise);`;
+
+export const dynRs = `trait Animal {
+    fn speak(&self) -> &str;
+    fn name(&self) -> &str;
+}
+
+struct Dog { name: String }
+struct Cat { name: String }
+
+impl Animal for Dog {
+    fn speak(&self) -> &str { "Woof" }
+    fn name(&self) -> &str { &self.name }
+}
+impl Animal for Cat {
+    fn speak(&self) -> &str { "Meow" }
+    fn name(&self) -> &str { &self.name }
+}
+
+// &dyn Animal = reference to any type implementing Animal
+fn make_noise(animal: &dyn Animal) {
+    println!("{} says {}", animal.name(), animal.speak());
+}
+
+fn main() {
+    // Vec of boxed trait objects — types can differ at runtime
+    let animals: Vec<Box<dyn Animal>> = vec![
+        Box::new(Dog { name: String::from("Rex") }),
+        Box::new(Cat { name: String::from("Whiskers") }),
+    ];
+    for a in &animals {
+        make_noise(a.as_ref());
+    }
+}`;
+
+<TsGo client:visible ts={dynTs} go={dynRs} />
+
+## `Box<dyn Trait>` — heap-allocated trait objects
+
+When you need to store trait objects in a collection (like a `Vec`) or return them from a function, you must box them. `Box<dyn Trait>` is a fat pointer: it holds the address of the data on the heap and a pointer to the vtable.
+
+```
+// Returning a trait object from a function
+fn new_animal(kind: &str) -> Box<dyn Animal> {
+    match kind {
+        "dog" => Box::new(Dog { name: String::from("Rex") }),
+        _     => Box::new(Cat { name: String::from("Whiskers") }),
+    }
+}
+```
+
+This is the Rust equivalent of returning an interface type from a TypeScript factory function.
+
+## Object-safety rules
+
+Not every trait can be made into a trait object. A trait is **object-safe** if:
+
+1. It has no generic methods (generics would require monomorphisation, breaking the vtable).
+2. Its methods do not return `Self` by value.
+
+The standard library's `Clone` trait is **not** object-safe because `clone()` returns `Self`. `Display` and `Debug` are object-safe.
+
+<RsOnly title="Static vs dynamic dispatch — choosing the right tool">
+
+**Static dispatch** (`impl Trait` or `<T: Trait>`) is the default. The compiler generates specialised machine code per type — no vtable, no indirection, fully inlinable. Choose this when you know all types at compile time and performance is critical.
+
+**Dynamic dispatch** (`dyn Trait`) adds one pointer indirection through the vtable per method call. The trade-off: binary size shrinks (one function instead of N) and you can put heterogeneous types in the same collection. Choose this when:
+
+- You need a `Vec` (or any collection) of mixed concrete types behind a common interface.
+- You return a trait object from a function and the concrete type depends on runtime input.
+- You are building a plugin system or dependency-injection pattern.
+
+</RsOnly>
+
+## Try it
+
+export const dynPlayground = `trait Shape {
+    fn area(&self) -> f64;
+    fn name(&self) -> &str;
+}
+
+struct Circle { radius: f64 }
+struct Rectangle { width: f64, height: f64 }
+
+impl Shape for Circle {
+    fn area(&self) -> f64 { std::f64::consts::PI * self.radius * self.radius }
+    fn name(&self) -> &str { "Circle" }
+}
+impl Shape for Rectangle {
+    fn area(&self) -> f64 { self.width * self.height }
+    fn name(&self) -> &str { "Rectangle" }
+}
+
+fn print_area(shape: &dyn Shape) {
+    println!("{}: area = {:.2}", shape.name(), shape.area());
+}
+
+fn main() {
+    let shapes: Vec<Box<dyn Shape>> = vec![
+        Box::new(Circle { radius: 3.0 }),
+        Box::new(Rectangle { width: 4.0, height: 5.0 }),
+        Box::new(Circle { radius: 1.5 }),
+    ];
+
+    for s in &shapes {
+        print_area(s.as_ref());
+    }
+
+    let total: f64 = shapes.iter().map(|s| s.area()).sum();
+    println!("Total area: {:.2}", total);
+}`;
+
+<Playground client:visible code={dynPlayground} />
+
+export const quizDyn = [
+  {
+    q: "What is a trait object in Rust?",
+    options: [
+      "A generic function monomorphised for a specific type",
+      "A value behind a `dyn Trait` pointer that supports dynamic dispatch via a vtable",
+      "A compile-time constant implementing a trait",
+      "A struct that automatically derives all traits"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why must trait objects usually be stored as `Box<dyn Trait>` rather than `dyn Trait` directly?",
+    options: [
+      "Box is faster than a plain reference",
+      "Rust cannot know the size of a trait object at compile time, so it must be heap-allocated behind a pointer",
+      "Box provides automatic garbage collection",
+      "dyn Trait is deprecated in favour of Box"
+    ],
+    answer: 1
+  },
+  {
+    q: "When should you prefer `&dyn Trait` over `<T: Trait>`?",
+    options: [
+      "Always, because dynamic dispatch is more idiomatic",
+      "When all types are known at compile time",
+      "When you need a collection of mixed concrete types or the type is determined at runtime",
+      "Only when the trait is not object-safe"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which of the following standard-library traits is NOT object-safe?",
+    options: [
+      "Display",
+      "Debug",
+      "Clone",
+      "Iterator"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="advanced/trait-objects" questions={quizDyn} />
+
+<ProgressTracker client:visible id="advanced/trait-objects" />

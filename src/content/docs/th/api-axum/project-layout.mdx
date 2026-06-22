@@ -1,0 +1,148 @@
+---
+title: 'โครงสร้างโปรเจกต์'
+description: 'โครงสร้างโปรเจกต์ Cargo สำหรับ Axum service, main.rs และ dependencies — เทียบกับโปรเจกต์ Express/Nest'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## จาก `package.json` ถึง `Cargo.toml`
+
+ทุกโปรเจกต์ Node.js เริ่มต้นด้วย `package.json` ใน Rust สิ่งเทียบเท่าคือ `Cargo.toml` มันประกาศชื่อ crate, version และ dependencies Cargo เป็นทั้ง package manager และ build tool — ไม่ต้องแยก `npm` กับ `tsc` กับ `ts-node`
+
+export const tsLayout = `# Express/NestJS project
+my-api/
+├── package.json        # dependencies + scripts
+├── tsconfig.json       # TypeScript compiler config
+├── src/
+│   ├── main.ts         # entry point
+│   ├── app.module.ts   # (NestJS) root module
+│   └── users/
+│       ├── users.controller.ts
+│       ├── users.service.ts
+│       └── users.module.ts
+└── dist/               # compiled output`;
+
+export const rsLayout = `# Axum project
+my-api/
+├── Cargo.toml          # dependencies + metadata (= package.json)
+├── Cargo.lock          # lockfile (= package-lock.json)
+└── src/
+    ├── main.rs         # entry point
+    ├── routes/
+    │   └── mod.rs      # route definitions
+    ├── handlers/
+    │   └── users.rs    # handler functions
+    ├── models.rs       # serde structs (request/response types)
+    ├── state.rs        # shared AppState
+    └── errors.rs       # custom error types`;
+
+<TsGo client:visible ts={tsLayout} go={rsLayout} />
+
+## `Cargo.toml` สำหรับ Axum service
+
+```toml
+[package]
+name = "my-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum        = "0.7"
+tokio       = { version = "1", features = ["full"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+tower       = "0.4"
+tower-http  = { version = "0.5", features = ["cors", "trace"] }
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+sqlx        = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "uuid"] }
+uuid        = { version = "1", features = ["v4", "serde"] }
+thiserror   = "1"
+```
+
+เทียบกับ `npm install express` คุณประกาศทุกอย่างในไฟล์เดียวและ Cargo จะแก้ไข dependency graph, compile ทุกอย่าง และ link เข้าด้วยกัน — ไม่ต้องมีขั้นตอน build แยกต่างหาก
+
+## `main.rs` — entry point
+
+```rust
+use axum::Router;
+use std::net::SocketAddr;
+
+mod errors;
+mod handlers;
+mod models;
+mod routes;
+mod state;
+
+#[tokio::main]
+async fn main() {
+    // initialise structured logging
+    tracing_subscriber::fmt()
+        .with_env_filter("my_api=debug,tower_http=debug")
+        .init();
+
+    let state = state::AppState::new().await;
+    let app = routes::create_router(state);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    tracing::info!("Listening on {addr}");
+
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+```
+
+`#[tokio::main]` คือ macro ที่ wrap `main` ใน Tokio async runtime — เทียบได้กับ event loop ของ Node ที่เริ่มต้นโดยอัตโนมัติ
+
+## แนวคิดสำคัญ
+
+| Node/TS | Rust/Axum |
+|---|---|
+| `package.json` | `Cargo.toml` |
+| `npm install` | `cargo add` / `cargo build` |
+| `ts-node src/main.ts` | `cargo run` |
+| `tsc --build` | `cargo build --release` |
+| `nodemon` | `cargo-watch -x run` |
+| `src/app.ts` | `src/main.rs` |
+| `process.env.PORT` | `std::env::var("PORT")` |
+
+> **รันบนเครื่องของคุณ** — นี่คือบทเรื่องโครงสร้างโปรเจกต์ ไม่มี snippet ที่รันใน browser ได้ สร้างโปรเจกต์ด้วย `cargo new my-api` และเพิ่ม dependencies ด้วย `cargo add axum tokio serde serde_json`
+
+export const quizLayout = [
+  {
+    q: "อะไรคือสิ่งเทียบเท่า `package.json` ใน Rust?",
+    options: [
+      "Cargo.lock",
+      "build.rs",
+      "Cargo.toml",
+      "rustfmt.toml"
+    ],
+    answer: 2
+  },
+  {
+    q: "`#[tokio::main]` ทำหน้าที่อะไร?",
+    options: [
+      "ประกาศขนาด Tokio thread pool",
+      "Wrap `main` ใน Tokio async runtime เพื่อให้ `async fn main` ทำงานได้",
+      "Import crate Tokio โดยอัตโนมัติ",
+      "Spawn OS thread ใหม่ต่อแต่ละ request"
+    ],
+    answer: 1
+  },
+  {
+    q: "คำสั่งใดรัน Axum project ระหว่าง development?",
+    options: [
+      "npm start",
+      "cargo serve",
+      "cargo run",
+      "axum start"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/project-layout" questions={quizLayout} />
+
+<ProgressTracker client:visible id="api-axum/project-layout" />

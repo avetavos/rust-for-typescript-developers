@@ -1,0 +1,257 @@
+---
+title: 'Error Handling (Deep Dive)'
+description: 'The `?` operator, custom error types, `thiserror` and `anyhow` crates — compared to TypeScript try/catch and typed error classes.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript try/catch vs Rust `Result<T, E>`
+
+TypeScript errors are invisible at the type level — any function can throw anything at any time, and the compiler does not force you to handle it. Rust encodes fallibility directly in the return type: a function that can fail returns `Result<T, E>`, where `T` is the success value and `E` is the error. If you ignore the `Result`, the compiler warns you.
+
+export const errTs = `// TypeScript — errors are invisible in the signature
+function parseId(s: string): number {
+  const n = parseInt(s, 10);
+  if (isNaN(n)) throw new Error(\`Invalid id: \${s}\`);
+  if (n === 0) throw new Error("id zero not allowed");
+  return n;
+}
+
+try {
+  console.log(parseId("42"));  // 42
+  console.log(parseId("abc")); // throws
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+}`;
+
+export const errRs = `use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Parse(ParseIntError),
+    NotFound(String),
+}
+
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AppError::Parse(e)    => write!(f, "parse error: {e}"),
+            AppError::NotFound(s) => write!(f, "not found: {s}"),
+        }
+    }
+}
+
+impl From<ParseIntError> for AppError {
+    fn from(e: ParseIntError) -> Self { AppError::Parse(e) }
+}
+
+fn parse_id(s: &str) -> Result<u32, AppError> {
+    let n: u32 = s.trim().parse()?; // ? converts ParseIntError via From
+    if n == 0 {
+        return Err(AppError::NotFound(String::from("id zero not allowed")));
+    }
+    Ok(n)
+}
+
+fn main() {
+    println!("{:?}", parse_id("42"));
+    println!("{:?}", parse_id("abc"));
+    println!("{:?}", parse_id("0"));
+}`;
+
+<TsGo client:visible ts={errTs} go={errRs} />
+
+## The `?` operator
+
+The `?` at the end of a `Result`-returning expression is syntactic sugar for "if this is `Err`, convert the error and return early; otherwise unwrap the `Ok` value." It replaces dozens of explicit `match` branches.
+
+```
+// Without ?
+let n = match s.trim().parse::<u32>() {
+    Ok(val) => val,
+    Err(e)  => return Err(AppError::from(e)),
+};
+
+// With ?  — identical behaviour, one character
+let n: u32 = s.trim().parse()?;
+```
+
+For `?` to work across different error types, the target error type must implement `From<SourceError>`. The standard library and `thiserror` handle this automatically.
+
+## `thiserror` — ergonomic custom errors
+
+The `thiserror` crate eliminates the boilerplate of writing `Display` and `From` by hand. A `#[derive(Error)]` annotation and a `#[error("...")]` attribute on each variant is all you need.
+
+export const thiserrorTs = `// TypeScript — custom error class hierarchy
+class AppError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AppError";
+  }
+}
+
+class ParseError extends AppError {
+  constructor(public input: string) {
+    super(\`Invalid input: \${input}\`);
+  }
+}
+
+class NotFoundError extends AppError {
+  constructor(public id: string) {
+    super(\`Not found: \${id}\`);
+  }
+}`;
+
+export const thiserrorRs = `use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
+}
+
+fn parse_id(s: &str) -> Result<u32, AppError> {
+    let n: u32 = s.trim().parse()?; // ParseIntError -> AppError::Parse via #[from]
+    if n == 0 {
+        return Err(AppError::NotFound(String::from("id zero not allowed")));
+    }
+    Ok(n)
+}
+
+fn main() {
+    match parse_id("42") {
+        Ok(id)  => println!("Parsed: {id}"),
+        Err(e)  => println!("Error: {e}"),
+    }
+    match parse_id("abc") {
+        Ok(id)  => println!("Parsed: {id}"),
+        Err(e)  => println!("Error: {e}"),
+    }
+    match parse_id("0") {
+        Ok(id)  => println!("Parsed: {id}"),
+        Err(e)  => println!("Error: {e}"),
+    }
+}`;
+
+<TsGo client:visible ts={thiserrorTs} go={thiserrorRs} />
+
+## `anyhow` — application-level error handling
+
+`thiserror` is for **library** code where callers need to inspect the error type. `anyhow` is for **application/binary** code where you just want errors to propagate cleanly with good context messages and you do not need to match on specific variants.
+
+```
+use anyhow::{Context, Result};
+
+fn read_config(path: &str) -> Result<String> {
+    std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read config at {path}"))
+}
+```
+
+`anyhow::Result<T>` is an alias for `Result<T, anyhow::Error>`. Any error that implements `std::error::Error` can be converted into `anyhow::Error` with `?`.
+
+<RsOnly title="Chaining errors with context">
+
+Both `thiserror` and `anyhow` support error chaining. With `anyhow`, you add context layers:
+
+```
+fn load_user(id: u32) -> anyhow::Result<User> {
+    let row = db_query(id).context("database query failed")?;
+    parse_user(row).with_context(|| format!("could not parse user {id}"))
+}
+```
+
+The resulting error message reads like a stack of causes: `could not parse user 42: invalid JSON: ...`. This is far more debuggable than a flat string.
+
+</RsOnly>
+
+## Try it
+
+export const errPlayground = `use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
+}
+
+fn parse_id(s: &str) -> Result<u32, AppError> {
+    let n: u32 = s.trim().parse()?;
+    if n == 0 {
+        return Err(AppError::NotFound(String::from("id zero not allowed")));
+    }
+    Ok(n)
+}
+
+fn main() {
+    match parse_id("42") {
+        Ok(id) => println!("Parsed: {id}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    match parse_id("abc") {
+        Ok(id) => println!("Parsed: {id}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    match parse_id("0") {
+        Ok(id) => println!("Parsed: {id}"),
+        Err(e) => println!("Error: {e}"),
+    }
+}`;
+
+<Playground client:visible code={errPlayground} />
+
+export const quizErrors = [
+  {
+    q: "What does the `?` operator do when applied to a `Result::Err(e)`?",
+    options: [
+      "It panics with the error message",
+      "It converts the error using `From` and returns early from the current function",
+      "It logs the error and continues",
+      "It unwraps the value, crashing if it is an error"
+    ],
+    answer: 1
+  },
+  {
+    q: "When should you use `thiserror` vs `anyhow`?",
+    options: [
+      "thiserror for applications, anyhow for libraries",
+      "thiserror for libraries (callers need to match on errors), anyhow for applications (just propagate)",
+      "They are interchangeable",
+      "anyhow for synchronous code, thiserror for async"
+    ],
+    answer: 1
+  },
+  {
+    q: "What must be true for `?` to convert error type `E1` into `E2` automatically?",
+    options: [
+      "E1 and E2 must be the same type",
+      "E2 must implement `From<E1>`",
+      "E1 must implement `Into<String>`",
+      "Both must implement `Display`"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is the key difference between Rust's `Result`-based error handling and TypeScript's try/catch?",
+    options: [
+      "Rust errors are slower at runtime",
+      "TypeScript catch blocks are type-safe",
+      "Rust encodes fallibility in the return type, forcing the compiler to ensure every error path is handled",
+      "try/catch can only catch synchronous errors"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="advanced/error-handling-deep" questions={quizErrors} />
+
+<ProgressTracker client:visible id="advanced/error-handling-deep" />

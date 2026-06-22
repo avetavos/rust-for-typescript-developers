@@ -1,0 +1,151 @@
+---
+title: 'Enums and Match'
+description: 'enum ที่มี data variant, exhaustive match และ if let ใน Rust เทียบกับ discriminated union ของ TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Enums ใน TypeScript เทียบกับ Rust
+
+TypeScript มี discriminated union: type union ที่สมาชิกแต่ละตัวมี field `kind` แบบ literal เพื่อ narrow type ส่วน enum ของ Rust เป็น first-class: แต่ละ variant เป็น type ที่มีชื่อซึ่งสามารถพก data ได้โดยตรง โดยไม่ต้องมี field `kind` ที่ทำเองด้วยมือ
+
+## Enum ที่มี data
+
+ใน TypeScript คุณเขียน union ของ object type ส่วนใน Rust แต่ละ enum variant สามารถเก็บข้อมูลแบบ tuple, field ที่มีชื่อ หรือไม่เก็บอะไรเลยก็ได้:
+
+```
+// TypeScript discriminated union
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number };
+
+// Rust enum with data variants
+enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+}
+```
+
+## Exhaustive match
+
+เมื่อคุณ `match` บน enum ของ Rust compiler จะบังคับให้คุณจัดการทุก variant หากลืมไปแม้แต่ตัวเดียว build จะล้มเหลว
+
+## if let
+
+`if let` เป็นรูปแบบย่อของ `match` ที่มี arm ที่คุณสนใจเพียง arm เดียวและ fallback ที่คุณไม่สน:
+
+```
+if let Shape::Circle(r) = shape {
+    println!("radius is {r}");
+}
+```
+
+export const enumsTs = `type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":    return Math.PI * shape.radius ** 2;
+    case "rectangle": return shape.width * shape.height;
+    // TypeScript does not enforce exhaustiveness by default
+  }
+}`;
+
+export const enumsRs = `enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+}
+
+fn area(shape: &Shape) -> f64 {
+    match shape {
+        Shape::Circle(r)       => std::f64::consts::PI * r * r,
+        Shape::Rectangle(w, h) => w * h,
+        // forgetting a variant is a compile error
+    }
+}`;
+
+<TsGo client:visible ts={enumsTs} go={enumsRs} />
+
+## ลองเล่นดู
+
+export const enumsCode = `enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+}
+
+fn area(shape: &Shape) -> f64 {
+    match shape {
+        Shape::Circle(r) => std::f64::consts::PI * r * r,
+        Shape::Rectangle(w, h) => w * h,
+    }
+}
+
+fn main() {
+    let c = Shape::Circle(5.0);
+    let r = Shape::Rectangle(4.0, 6.0);
+    println!("Circle area: {:.2}", area(&c));
+    println!("Rectangle area: {:.2}", area(&r));
+}`;
+
+<Playground client:visible code={enumsCode} />
+
+<RsOnly title="Algebraic Data Types และ exhaustive matching">
+
+discriminated union ของ TypeScript เป็นเพียงข้อตกลง (convention) — คุณเพิ่ม field `kind` แล้ว TypeScript ก็ narrow type ให้ ส่วน switch/if-else ก็ยังเป็นโครงสร้าง runtime ธรรมดา และการตรวจ exhaustiveness ต้องอาศัยทริก `never` หรือ lint rule อย่าง `switch-exhaustive-cases`
+
+enum ของ Rust เป็น **algebraic data types (ADTs)** — ฟีเจอร์ที่เป็นทางการของระบบ type แต่ละ variant เป็น type ที่แตกต่างกัน `match` เป็นส่วนหนึ่งของ semantics ของภาษา ไม่ใช่ library และ exhaustiveness ถูก **บังคับโดย compiler** โดยไม่ต้องตั้งค่าเพิ่ม คุณไม่สามารถลืมเคสแล้วส่งโค้ดขึ้นได้
+
+variant สามารถเก็บข้อมูลรูปทรงต่าง ๆ ได้โดยไม่มี boilerplate:
+
+```
+enum Message {
+    Quit,                        // unit variant
+    Move { x: i32, y: i32 },    // named fields
+    Write(String),               // tuple variant
+    ChangeColor(u8, u8, u8),     // multi-value tuple
+}
+```
+
+</RsOnly>
+
+export const quizEnums = [
+  {
+    q: "เกิดอะไรขึ้นถ้าคุณตกหล่น variant ใน `match` บน enum ของ Rust?",
+    options: [
+      "variant ที่ขาดไปจะถูกเพิกเฉยอย่างเงียบ ๆ",
+      "โปรแกรม panic ตอน runtime",
+      "compiler สร้าง error เรื่อง non-exhaustive match",
+      "arm default จัดการให้อัตโนมัติ"
+    ],
+    answer: 2
+  },
+  {
+    q: "`if let` ใน Rust คืออะไร?",
+    options: [
+      "วิธีประกาศตัวแปร mutable ตามเงื่อนไข",
+      "รูปแบบย่อของ match ที่มี arm ที่คุณสนใจเพียง arm เดียว",
+      "loop ที่รันไปเรื่อย ๆ ขณะที่ pattern ยังตรงกัน",
+      "ไวยากรณ์สำหรับ optional chaining"
+    ],
+    answer: 1
+  },
+  {
+    q: "ไวยากรณ์ enum variant แบบใดของ Rust ที่พก field ที่มีชื่อ?",
+    options: [
+      "Variant(T)",
+      "Variant { field: T }",
+      "Variant: T",
+      "Variant<T>"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rust-101/enums-match" questions={quizEnums} />
+
+<ProgressTracker client:visible id="rust-101/enums-match" />

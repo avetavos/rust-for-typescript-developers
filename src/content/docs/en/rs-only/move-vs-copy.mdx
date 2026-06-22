@@ -1,0 +1,164 @@
+---
+title: 'Move vs Copy'
+description: 'How Rust distinguishes Copy types (cheap stack values) from move types (heap values), and when to use Clone — for TypeScript developers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## JavaScript's blurry line between value and reference
+
+In JavaScript, primitives (`number`, `boolean`, `string`) are passed by value — copying them is cheap and automatic. Objects and arrays are passed by reference — both variables point to the same heap data.
+
+TypeScript exposes this through the type system but does not give you control over it. You cannot make your own type behave like a primitive.
+
+Rust is explicit: types either implement the `Copy` trait (and are automatically duplicated on assignment) or they follow **move semantics** (ownership transfers). You can also derive `Clone` for an explicit, deep copy.
+
+## Copy types — stack values that duplicate automatically
+
+`Copy` types are stack-allocated and cheap to duplicate. Assigning or passing them creates a full independent copy with no extra syntax needed.
+
+export const copyTs = `// TypeScript — primitives copy automatically (same as Rust Copy)
+let a = 42;
+let b = a;    // b is an independent copy
+b = 100;
+console.log(a); // 42 — a is unchanged
+
+// But TypeScript has no way to make a struct behave like this:
+const p1 = { x: 1, y: 2 };
+const p2 = p1;   // p2 is a reference — they share the same object
+p2.x = 99;
+console.log(p1.x); // 99 — p1 was mutated through p2`;
+
+export const copyRs = `fn main() {
+    // i32, f64, bool, char are all Copy
+    let a: i32 = 42;
+    let b = a;          // copied — a is still valid
+    println!("a={} b={}", a, b);
+
+    // Tuples of Copy types are also Copy
+    let t1 = (1, 2.0, true);
+    let t2 = t1;
+    println!("t1={:?} t2={:?}", t1, t2);
+}`;
+
+<TsGo client:visible ts={copyTs} go={copyRs} />
+
+<RsOnly title="Which types implement Copy?">
+
+Types that implement `Copy` are always stack-allocated and cheap to duplicate:
+
+- All integer types: `i8`, `i16`, `i32`, `i64`, `i128`, `u8`, `u16`, `u32`, `u64`, `u128`, `usize`, `isize`
+- Floating point: `f32`, `f64`
+- `bool`
+- `char`
+- References: `&T` (but NOT `&mut T`)
+- Arrays and tuples **if all their elements are Copy**: `[i32; 3]`, `(i32, bool)`
+
+Types that do NOT implement `Copy` include `String`, `Vec<T>`, `Box<T>`, and any type that owns heap data. Copying them could be expensive (a large `Vec` might have millions of elements), so Rust makes you explicit via `.clone()`.
+
+</RsOnly>
+
+## Move types — heap values that transfer ownership
+
+Types like `String` and `Vec<T>` own heap-allocated data. Assigning them moves ownership. If you need two independent copies, you call `.clone()` explicitly.
+
+export const moveTs = `// TypeScript — strings are primitives, always copied
+let s1 = "hello";
+let s2 = s1;
+console.log(s1, s2); // both valid — strings are primitives in JS
+
+// Objects require spread for a shallow copy
+const obj1 = { items: [1, 2, 3] };
+const obj2 = { ...obj1 };      // shallow clone
+const obj3 = structuredClone(obj1); // deep clone (ES2022)
+console.log(obj1.items, obj2.items);`;
+
+export const moveRs = `#[derive(Debug, Clone)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    // String — heap value, uses move semantics
+    let s1 = String::from("hello");
+    let s2 = s1.clone();          // explicit deep copy
+    println!("s1={} s2={}", s1, s2); // both valid
+
+    // Your own struct — derive Clone to get .clone()
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();
+    println!("p1={:?} p2={:?}", p1, p2);
+
+    // Without Clone, assignment moves ownership:
+    let p3 = Point { x: 3.0, y: 4.0 };
+    let p4 = p3;    // p3 is moved — p3 is no longer valid
+    println!("p4={:?}", p4);
+}`;
+
+<TsGo client:visible ts={moveTs} go={moveRs} />
+
+## Try it
+
+export const moveCopyCode = `#[derive(Debug, Clone)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn main() {
+    let a: i32 = 42;
+    let b = a;
+    println!("a={} b={} (both valid, i32 is Copy)", a, b);
+
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = p1.clone();
+    println!("p1={:?} p2={:?}", p1, p2);
+
+    let s1 = String::from("hello");
+    let s2 = s1.clone();
+    println!("s1={} s2={}", s1, s2);
+}`;
+
+<Playground client:visible code={moveCopyCode} />
+
+export const quizMoveCopy = [
+  {
+    q: "Which of the following types implements the `Copy` trait?",
+    options: [
+      "String",
+      "Vec<i32>",
+      "i32",
+      "Box<i32>"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is the idiomatic way to create an independent copy of a `String` in Rust?",
+    options: [
+      "let s2 = s1; — assignment copies automatically",
+      "let s2 = s1.clone();",
+      "let s2 = &s1;",
+      "let s2 = *s1;"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why doesn't `String` implement `Copy`?",
+    options: [
+      "Strings are immutable in Rust",
+      "Copying a String would require duplicating heap-allocated data, which could be expensive",
+      "Copy is only for types shorter than 8 bytes",
+      "String implements Display instead"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/move-vs-copy" questions={quizMoveCopy} />
+
+<ProgressTracker client:visible id="rs-only/move-vs-copy" />

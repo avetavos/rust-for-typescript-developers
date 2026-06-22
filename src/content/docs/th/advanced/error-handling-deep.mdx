@@ -1,0 +1,257 @@
+---
+title: 'Error Handling (เชิงลึก)'
+description: '`?` operator, custom error types, `thiserror` และ `anyhow` crates เทียบกับ TypeScript try/catch และ typed error classes'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript try/catch vs Rust `Result<T, E>`
+
+TypeScript errors ไม่ปรากฏที่ type level — ฟังก์ชันใดก็ได้สามารถ throw อะไรก็ได้ทุกเมื่อ และ compiler ไม่บังคับให้คุณจัดการ Rust เข้ารหัสความล้มเหลวโดยตรงใน return type: ฟังก์ชันที่อาจล้มเหลว return `Result<T, E>` โดยที่ `T` คือค่าสำเร็จและ `E` คือ error ถ้าคุณ ignore `Result` compiler จะเตือน
+
+export const errTs = `// TypeScript — errors are invisible in the signature
+function parseId(s: string): number {
+  const n = parseInt(s, 10);
+  if (isNaN(n)) throw new Error(\`Invalid id: \${s}\`);
+  if (n === 0) throw new Error("id zero not allowed");
+  return n;
+}
+
+try {
+  console.log(parseId("42"));  // 42
+  console.log(parseId("abc")); // throws
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+}`;
+
+export const errRs = `use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Parse(ParseIntError),
+    NotFound(String),
+}
+
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AppError::Parse(e)    => write!(f, "parse error: {e}"),
+            AppError::NotFound(s) => write!(f, "not found: {s}"),
+        }
+    }
+}
+
+impl From<ParseIntError> for AppError {
+    fn from(e: ParseIntError) -> Self { AppError::Parse(e) }
+}
+
+fn parse_id(s: &str) -> Result<u32, AppError> {
+    let n: u32 = s.trim().parse()?; // ? converts ParseIntError via From
+    if n == 0 {
+        return Err(AppError::NotFound(String::from("id zero not allowed")));
+    }
+    Ok(n)
+}
+
+fn main() {
+    println!("{:?}", parse_id("42"));
+    println!("{:?}", parse_id("abc"));
+    println!("{:?}", parse_id("0"));
+}`;
+
+<TsGo client:visible ts={errTs} go={errRs} />
+
+## `?` operator
+
+`?` ที่ท้าย expression ที่ return `Result` คือ syntactic sugar สำหรับ "ถ้านี่เป็น `Err` ให้แปลง error และ return ก่อนกำหนด; ไม่เช่นนั้นให้ unwrap ค่า `Ok`" มันแทนที่ `match` branches ที่ชัดเจนจำนวนมาก
+
+```
+// ไม่มี ?
+let n = match s.trim().parse::<u32>() {
+    Ok(val) => val,
+    Err(e)  => return Err(AppError::from(e)),
+};
+
+// มี ? — behaviour เหมือนกันทุกประการ ตัวอักษรเดียว
+let n: u32 = s.trim().parse()?;
+```
+
+สำหรับ `?` ทำงานข้าม error types ต่างกัน target error type ต้อง implement `From<SourceError>` standard library และ `thiserror` จัดการนี้อัตโนมัติ
+
+## `thiserror` — custom errors ที่ ergonomic
+
+crate `thiserror` กำจัด boilerplate ของการเขียน `Display` และ `From` ด้วยมือ annotation `#[derive(Error)]` และ attribute `#[error("...")]` บนแต่ละ variant ก็เพียงพอ
+
+export const thiserrorTs = `// TypeScript — custom error class hierarchy
+class AppError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AppError";
+  }
+}
+
+class ParseError extends AppError {
+  constructor(public input: string) {
+    super(\`Invalid input: \${input}\`);
+  }
+}
+
+class NotFoundError extends AppError {
+  constructor(public id: string) {
+    super(\`Not found: \${id}\`);
+  }
+}`;
+
+export const thiserrorRs = `use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
+}
+
+fn parse_id(s: &str) -> Result<u32, AppError> {
+    let n: u32 = s.trim().parse()?; // ParseIntError -> AppError::Parse via #[from]
+    if n == 0 {
+        return Err(AppError::NotFound(String::from("id zero not allowed")));
+    }
+    Ok(n)
+}
+
+fn main() {
+    match parse_id("42") {
+        Ok(id)  => println!("Parsed: {id}"),
+        Err(e)  => println!("Error: {e}"),
+    }
+    match parse_id("abc") {
+        Ok(id)  => println!("Parsed: {id}"),
+        Err(e)  => println!("Error: {e}"),
+    }
+    match parse_id("0") {
+        Ok(id)  => println!("Parsed: {id}"),
+        Err(e)  => println!("Error: {e}"),
+    }
+}`;
+
+<TsGo client:visible ts={thiserrorTs} go={thiserrorRs} />
+
+## `anyhow` — error handling ระดับ application
+
+`thiserror` ใช้สำหรับ **library** code ที่ผู้เรียกต้องตรวจสอบ error type `anyhow` ใช้สำหรับ **application/binary** code ที่คุณแค่ต้องการให้ errors propagate อย่างชัดเจนพร้อม context messages ดีๆ โดยไม่ต้องการ match บน specific variants
+
+```
+use anyhow::{Context, Result};
+
+fn read_config(path: &str) -> Result<String> {
+    std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read config at {path}"))
+}
+```
+
+`anyhow::Result<T>` เป็น alias ของ `Result<T, anyhow::Error>` error ใดก็ตามที่ implement `std::error::Error` สามารถแปลงเป็น `anyhow::Error` ได้ด้วย `?`
+
+<RsOnly title="Chaining errors กับ context">
+
+ทั้ง `thiserror` และ `anyhow` รองรับ error chaining ด้วย `anyhow` คุณเพิ่ม context layers:
+
+```
+fn load_user(id: u32) -> anyhow::Result<User> {
+    let row = db_query(id).context("database query failed")?;
+    parse_user(row).with_context(|| format!("could not parse user {id}"))
+}
+```
+
+ข้อความ error ที่ได้อ่านเหมือน stack ของสาเหตุ: `could not parse user 42: invalid JSON: ...` ซึ่ง debug ได้ง่ายกว่า string เดี่ยวมาก
+
+</RsOnly>
+
+## ลองเล่นดู
+
+export const errPlayground = `use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
+}
+
+fn parse_id(s: &str) -> Result<u32, AppError> {
+    let n: u32 = s.trim().parse()?;
+    if n == 0 {
+        return Err(AppError::NotFound(String::from("id zero not allowed")));
+    }
+    Ok(n)
+}
+
+fn main() {
+    match parse_id("42") {
+        Ok(id) => println!("Parsed: {id}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    match parse_id("abc") {
+        Ok(id) => println!("Parsed: {id}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    match parse_id("0") {
+        Ok(id) => println!("Parsed: {id}"),
+        Err(e) => println!("Error: {e}"),
+    }
+}`;
+
+<Playground client:visible code={errPlayground} />
+
+export const quizErrors = [
+  {
+    q: "`?` operator ทำอะไรเมื่อ apply กับ `Result::Err(e)`?",
+    options: [
+      "Panic พร้อม error message",
+      "แปลง error โดยใช้ `From` และ return ก่อนกำหนดจากฟังก์ชันปัจจุบัน",
+      "Log error แล้วทำงานต่อ",
+      "Unwrap ค่า crash ถ้าเป็น error"
+    ],
+    answer: 1
+  },
+  {
+    q: "ควรใช้ `thiserror` vs `anyhow` เมื่อใด?",
+    options: [
+      "thiserror สำหรับ applications, anyhow สำหรับ libraries",
+      "thiserror สำหรับ libraries (ผู้เรียกต้อง match บน errors), anyhow สำหรับ applications (แค่ propagate)",
+      "ใช้แทนกันได้",
+      "anyhow สำหรับ synchronous code, thiserror สำหรับ async"
+    ],
+    answer: 1
+  },
+  {
+    q: "อะไรต้องเป็นจริงเพื่อให้ `?` แปลง error type `E1` เป็น `E2` อัตโนมัติ?",
+    options: [
+      "E1 และ E2 ต้องเป็น type เดียวกัน",
+      "E2 ต้อง implement `From<E1>`",
+      "E1 ต้อง implement `Into<String>`",
+      "ทั้งคู่ต้อง implement `Display`"
+    ],
+    answer: 1
+  },
+  {
+    q: "ความแตกต่างหลักระหว่าง `Result`-based error handling ของ Rust กับ try/catch ของ TypeScript คืออะไร?",
+    options: [
+      "Rust errors ช้ากว่าขณะ runtime",
+      "TypeScript catch blocks type-safe",
+      "Rust เข้ารหัสความล้มเหลวใน return type บังคับให้ compiler ตรวจสอบทุก error path",
+      "try/catch จับได้เฉพาะ synchronous errors"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="advanced/error-handling-deep" questions={quizErrors} />
+
+<ProgressTracker client:visible id="advanced/error-handling-deep" />

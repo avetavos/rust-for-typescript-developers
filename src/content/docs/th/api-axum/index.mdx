@@ -1,0 +1,112 @@
+---
+title: 'การสร้าง API ด้วย Axum'
+description: 'ทำไมต้องใช้ Axum? เปรียบเทียบ Axum กับ Express/Nest และสิ่งที่จะสร้างในโมดูลนี้'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## ทำไมต้องใช้ Axum?
+
+ถ้าคุณมาจาก Node.js คุณคงรู้จัก Express หรือ NestJS แล้ว Axum คือคำตอบของ Rust สำหรับพื้นที่นั้น — เป็น web framework ระดับสูงที่ให้คุณเขียน `async fn` route handlers, วิเคราะห์ข้อมูล request ด้วย type-safe extractors และแชร์ state ข้ามหลาย routes
+
+แต่ต่างจาก Express ตรงที่ Axum ไม่ได้รวมทุกอย่างในตัวเอง มันออกแบบมาให้บางและมอบหน้าที่ middleware ให้กับ **Tower** ซึ่งเป็น middleware library ระดับ production ที่ composable ได้สูง ผลลัพธ์ที่ได้คือ:
+
+- Type safety ตั้งแต่ compile-time ตลอดทั้ง request/response cycle
+- Zero-cost abstractions — ไม่มี garbage collector ไม่มีการ allocation ที่ซ่อนอยู่
+- Async แบบ first-class สร้างบน **Tokio** ซึ่งเป็น async runtime มาตรฐานของ Rust
+
+## เปรียบเทียบ Axum กับ Express และ NestJS
+
+| ฟีเจอร์ | Express | NestJS | Axum |
+|---|---|---|---|
+| ภาษา | TypeScript / JS | TypeScript | Rust |
+| Routing | `app.get(...)` | `@Get(...)` decorator | `Router::new().route(...)` |
+| Middleware | `app.use(...)` | `@Middleware` / guards | Tower layers |
+| วิเคราะห์ Request | `req.body`, `req.params` | `@Body()`, `@Param()` | Extractors (`Json`, `Path`, `Query`) |
+| State | `app.locals` | Dependency injection | `State(...)` extractor |
+| จัดการ Error | `next(err)` middleware | Exception filters | `Result<T, E>` + `IntoResponse` |
+| Type safety | บางส่วน (runtime) | บางส่วน (runtime) | เต็มรูปแบบ (compile-time) |
+
+export const tsHello = `// Express
+import express from 'express';
+const app = express();
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello, World!' });
+});
+
+app.listen(3000, () => console.log('Listening on :3000'));`;
+
+export const rsHello = `use axum::{routing::get, Json, Router};
+use serde_json::{json, Value};
+
+async fn hello() -> Json<Value> {
+    Json(json!({ "message": "Hello, World!" }))
+}
+
+#[tokio::main]
+async fn main() {
+    let app = Router::new().route("/", get(hello));
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    println!("Listening on :3000");
+    axum::serve(listener, app).await.unwrap();
+}`;
+
+<TsGo client:visible ts={tsHello} go={rsHello} />
+
+> **รันบนเครื่องของคุณ** — Axum ผูก port และทำงานตลอดเวลา จึงไม่สามารถรันใน browser sandbox ได้ ใช้ `cargo run` หลังจากตั้งค่าโปรเจกต์ในบทถัดไป
+
+## สิ่งที่คุณจะสร้าง
+
+ตลอดโมดูลนี้คุณจะสร้าง **Users API** ขนาดเล็กที่ประกอบด้วย:
+
+- `GET /users` — ดึงรายการ users (pagination ด้วย `Query`)
+- `POST /users` — สร้าง user ใหม่ (`Json` body)
+- `GET /users/:id` — ดึง user เดียว (`Path`)
+- `DELETE /users/:id` — ลบ user
+- Shared in-memory state (`Arc<Mutex<Vec<User>>>`)
+- JSON errors แบบมีโครงสร้าง
+- Tower CORS layer
+- SQLx database integration (เชิงแนวคิด)
+- Handler tests ด้วย `tower::ServiceExt::oneshot`
+
+แต่ละแนวคิดเชื่อมโยงโดยตรงกับสิ่งที่คุณรู้จากอยู่แล้วจาก Express หรือ NestJS
+
+export const quizIndex = [
+  {
+    q: "Axum ใช้ async runtime ใด?",
+    options: [
+      "async-std",
+      "smol",
+      "Tokio",
+      "Rayon"
+    ],
+    answer: 2
+  },
+  {
+    q: "Axum จัดการ middleware อย่างไรเมื่อเทียบกับ Express?",
+    options: [
+      "Axum มี middleware registry ในตัวเหมือน NestJS",
+      "Axum มอบหน้าที่ middleware ให้กับ Tower layers",
+      "Axum ใช้ macro ในการประกาศ middleware",
+      "Axum ไม่รองรับ middleware"
+    ],
+    answer: 1
+  },
+  {
+    q: "อะไรคือสิ่งที่แทน `req.body` และ `req.params` ใน Axum?",
+    options: [
+      "Global request context",
+      "Macro annotations",
+      "Type-safe extractors เช่น `Json`, `Path`, และ `Query`",
+      "Middleware ที่ inject ค่าเข้ามา"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="api-axum/index" />

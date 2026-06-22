@@ -1,0 +1,133 @@
+---
+title: 'Functions'
+description: 'fn, พารามิเตอร์ที่มี type, return type และไวยากรณ์แบบ expression-oriented ใน Rust เทียบกับ TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Functions ใน TypeScript เทียบกับ Rust
+
+function ใน TypeScript นิยามด้วย `function` หรือ arrow syntax พร้อม type annotation ที่ใส่หรือไม่ใส่ก็ได้ ส่วนใน Rust ทุก function นิยามด้วย `fn` และ **type ของพารามิเตอร์และค่า return ทุกตัวจำเป็นต้องระบุ** — compiler จะไม่ infer ข้ามขอบเขตของ function เลย สิ่งนี้ทำให้ signature ของ function เป็นสัญญา (contract) ที่ชัดเจนและอ่านง่าย
+
+## เปรียบเทียบไวยากรณ์
+
+TypeScript ใช้ `: Type` สำหรับพารามิเตอร์ และ `: ReturnType` หลังวงเล็บปิด ส่วน Rust ใช้ไวยากรณ์ `: Type` แบบเดียวกันสำหรับพารามิเตอร์ และ `-> ReturnType` หลังรายการพารามิเตอร์
+
+```
+// TypeScript
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+// Rust
+fn add(a: i32, b: i32) -> i32 {
+    a + b   // no semicolon — this is the return value
+}
+```
+
+สังเกตว่าบรรทัดสุดท้ายไม่มี semicolon ใน Rust นั้น expression สุดท้ายของ block (ที่ไม่มี `;`) จะถูก return โดยปริยาย การเติม semicolon จะเปลี่ยนมันเป็น statement ที่ return `()` (unit) ซึ่งในกรณีนี้จะกลายเป็น type error
+
+export const functionsTs = `function add(a: number, b: number): number {
+  return a + b;
+}
+
+function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+console.log(add(3, 4));      // 7
+console.log(greet("Alice")); // Hello, Alice!`;
+
+export const functionsRs = `fn add(a: i32, b: i32) -> i32 {
+    a + b  // last expression, no semicolon = return value
+}
+
+fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+fn main() {
+    println!("{}", add(3, 4));      // 7
+    println!("{}", greet("Alice")); // Hello, Alice!
+}`;
+
+<TsGo client:visible ts={functionsTs} go={functionsRs} />
+
+## ลองเล่นดู
+
+export const functionsCode = `fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+fn main() {
+    let sum = add(3, 4);
+    println!("3 + 4 = {sum}");
+    let msg = greet("Rustacean");
+    println!("{msg}");
+}`;
+
+<Playground client:visible code={functionsCode} />
+
+<RsOnly title="ภาษาแบบ expression-oriented">
+
+ใน TypeScript นั้น `if` และ block เป็น statement — มันไม่ให้ค่ากลับมา คุณต้องใช้ ternary `? :` เพื่อให้ได้ค่าตามเงื่อนไข ส่วน Rust เป็นภาษาแบบ expression-oriented: `if`, `match` และ block expression ล้วนให้ค่ากลับมาทั้งสิ้น
+
+```
+// No ternary needed in Rust — if is an expression
+let label = if score >= 60 { "pass" } else { "fail" };
+```
+
+นี่ยังหมายความว่าตัว body ของ function ไม่จำเป็นต้องมี statement `return` ในกรณีทั่วไป expression สุดท้ายใน body ของ function จะถูก return ให้อัตโนมัติ คุณยังคงใช้ `return` ได้สำหรับการ return ก่อนกำหนด (early return)
+
+```
+fn absolute(n: i32) -> i32 {
+    if n < 0 { -n } else { n }  // the whole if is the return value
+}
+```
+
+</RsOnly>
+
+export const quizFunctions = [
+  {
+    q: "ใน Rust การไม่มี semicolon บนบรรทัดสุดท้ายของ body ของ function หมายความว่าอะไร?",
+    options: [
+      "syntax error",
+      "expression นั้นคือค่า return",
+      "function return unit ()",
+      "ค่านั้นถูกทิ้งไป"
+    ],
+    answer: 1
+  },
+  {
+    q: "การใส่ annotation ระบุ return type จำเป็นไหมสำหรับ function ใน Rust?",
+    options: [
+      "ไม่ Rust จะ infer ให้เสมอ",
+      "เฉพาะ function ที่เป็น public เท่านั้น",
+      "จำเป็น compiler บังคับให้ระบุ return type ชัดเจนในการนิยาม fn",
+      "เฉพาะเมื่อ function มีเส้นทาง return มากกว่าหนึ่งเส้นทางเท่านั้น"
+    ],
+    answer: 2
+  },
+  {
+    q: "type ใดของ Rust ที่แทน 'ไม่มีค่า return ที่มีความหมาย' (เทียบเท่า void)?",
+    options: [
+      "null",
+      "undefined",
+      "void",
+      "()"
+    ],
+    answer: 3
+  }
+];
+
+<Quiz client:visible id="rust-101/functions" questions={quizFunctions} />
+
+<ProgressTracker client:visible id="rust-101/functions" />

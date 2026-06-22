@@ -1,0 +1,122 @@
+---
+title: 'Concurrency Overview'
+description: 'Rust''s "fearless concurrency" model — real OS threads, async/await, and compile-time data-race prevention — compared to JavaScript''s single-threaded event loop and Web Workers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Concurrency in TypeScript vs Rust
+
+JavaScript runs on a **single thread**. The event loop processes one task at a time and delegates I/O to the operating system. Concurrency in JS is *cooperative*: your code yields control by hitting an `await`, and the event loop picks up the next queued callback. Nothing truly runs in parallel inside your JS process unless you spin up a Web Worker — a separate process that communicates only via `postMessage`.
+
+Rust takes a radically different approach. You get **real OS threads** out of the box, a first-class `async`/`await` system that works on top of a user-space runtime (Tokio is the standard choice), and a compiler that **statically prevents data races** at compile time. Rust calls this *fearless concurrency* — you can write concurrent code and the compiler will refuse to compile programs that have data-race bugs.
+
+## Two concurrency models in Rust
+
+| Model | Rust primitive | JS analogy |
+|---|---|---|
+| OS threads (parallel CPU work) | `std::thread::spawn` | Web Workers (limited) |
+| Async I/O (many concurrent tasks, one thread pool) | `async`/`await` + Tokio | `Promise` / `async`/`await` |
+| Shared mutable state (threads) | `Arc<Mutex<T>>` | `SharedArrayBuffer` + `Atomics` |
+| Message passing (threads) | `std::sync::mpsc` | `worker.postMessage` |
+
+## Why "fearless"?
+
+The Rust ownership and type system enforces two rules at compile time:
+
+- A value can have **many readers** *or* **one writer** — never both simultaneously.
+- Data shared across threads must implement the `Send` and `Sync` marker traits, which the compiler verifies automatically.
+
+If you try to share a raw `&mut T` across threads, the program **will not compile**. No runtime lock, no silent corruption — the bug is caught before your code runs.
+
+export const overviewTs = `// JavaScript: single-threaded, concurrency via event loop
+async function fetchAll(urls: string[]): Promise<string[]> {
+  // All fetches start "in parallel" (concurrent I/O)
+  // but JS code itself runs on one thread
+  return Promise.all(urls.map(url => fetch(url).then(r => r.text())));
+}
+
+// Web Worker for CPU-bound parallelism (separate process)
+const worker = new Worker('./worker.js');
+worker.postMessage({ data: [1, 2, 3] });
+worker.onmessage = (e) => console.log(e.data);`;
+
+export const overviewRs = `use std::thread;
+
+fn main() {
+    // Real OS thread — runs truly in parallel on another CPU core
+    let h1 = thread::spawn(|| "fearless");
+    let h2 = thread::spawn(|| "concurrency");
+
+    // join() waits for the thread and returns its result
+    let r1 = h1.join().unwrap();
+    let r2 = h2.join().unwrap();
+    println!("{r1} {r2}"); // fearless concurrency
+}`;
+
+<TsGo client:visible ts={overviewTs} go={overviewRs} />
+
+## Try it
+
+export const overviewCode = `use std::thread;
+
+fn main() {
+    let h1 = thread::spawn(|| "fearless");
+    let h2 = thread::spawn(|| "concurrency");
+    let r1 = h1.join().unwrap();
+    let r2 = h2.join().unwrap();
+    println!("{r1} {r2}");
+}`;
+
+<Playground client:visible code={overviewCode} />
+
+<RsOnly title="Fearless concurrency — compile-time safety">
+
+JavaScript's concurrency model protects you from data races by design: there is only one thread, so two pieces of code can never truly run at the same time and corrupt shared state.
+
+Rust goes further: it supports *real parallelism* (multiple CPU cores running simultaneously) while still preventing data races — not through a single-thread restriction, but through the **type system**. The `Send` and `Sync` marker traits are checked at compile time. If your type is not `Send`, the compiler rejects any attempt to move it to another thread. If it is not `Sync`, you cannot share a reference to it across threads.
+
+This means you get the performance of true parallelism with the safety guarantees usually only achievable in a single-threaded model.
+
+</RsOnly>
+
+export const quizConcurrencyIndex = [
+  {
+    q: "How does JavaScript achieve concurrency?",
+    options: [
+      "By running multiple OS threads in a thread pool",
+      "By using a single-threaded event loop with cooperative yielding via await",
+      "By using Arc<Mutex<T>> to share state",
+      "By compiling to WebAssembly"
+    ],
+    answer: 1
+  },
+  {
+    q: "What does Rust's 'fearless concurrency' mean?",
+    options: [
+      "Rust programs never deadlock",
+      "The Rust compiler prevents data races at compile time via the type system",
+      "Rust threads always run faster than JavaScript Promises",
+      "Rust disallows shared mutable state entirely"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which Rust primitive is most analogous to JS's async/await + Promise.all?",
+    options: [
+      "std::thread::spawn",
+      "std::sync::mpsc",
+      "async/await with tokio::join!",
+      "Arc<Mutex<T>>"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/index" questions={quizConcurrencyIndex} />
+
+<ProgressTracker client:visible id="concurrency/index" />

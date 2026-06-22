@@ -1,0 +1,163 @@
+---
+title: 'JSON และ Serde'
+description: 'serde Serialize/Deserialize, Json<T> request/response — เทียบกับ zod/TypeScript types'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## TypeScript types vs Rust structs
+
+ใน TypeScript คุณกำหนด type หรือ interface สำหรับ API payload และใช้ zod (หรือ library ที่คล้ายกัน) สำหรับ runtime validation ใน Rust **struct คือทั้ง type และ validator** — `serde` derives serialization และ deserialization ที่ compile time และ fields ที่หายไปหรือผิด type จะถูกปฏิเสธที่ขั้นตอน deserialization โดยอัตโนมัติ
+
+export const tsZod = `import { z } from 'zod';
+
+// Define schema + type together
+const UserSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string().email(),
+});
+
+type User = z.infer<typeof UserSchema>;
+
+// Validate at runtime
+const parsed = UserSchema.parse(rawJson); // throws ZodError if invalid`;
+
+export const rsSerde = `use serde::{Deserialize, Serialize};
+
+// Derive gives you compile-time serialization AND runtime validation
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+// Deserializing validates structure and types automatically
+let user: User = serde_json::from_str(raw_json)?; // returns Err if invalid`;
+
+<TsGo client:visible ts={tsZod} go={rsSerde} />
+
+## `Json<T>` ใน Axum — request และ response
+
+`Json<T>` extractor/responder ของ Axum คือสะพานเชื่อมระหว่าง HTTP bodies กับ Rust types เมื่อใช้เป็น **parameter** มัน deserialize request body เมื่อใช้เป็น **return value** มัน serialize response
+
+export const tsExpressJson = `// Express — parse body + respond with JSON
+app.post('/users', express.json(), async (req, res) => {
+  const user: CreateUser = CreateUserSchema.parse(req.body);
+  const saved = await db.save(user);
+  res.status(201).json(saved); // manual serialization call
+});`;
+
+export const rsAxumJson = `use axum::{http::StatusCode, Json};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+struct CreateUser { name: String, email: String }
+
+#[derive(Serialize)]
+struct User { id: u32, name: String, email: String }
+
+// Json<CreateUser> deserializes the body
+// (StatusCode, Json<User>) serializes the response
+async fn create_user(
+    Json(payload): Json<CreateUser>,
+) -> (StatusCode, Json<User>) {
+    let user = User { id: 1, name: payload.name, email: payload.email };
+    (StatusCode::CREATED, Json(user))
+}`;
+
+<TsGo client:visible ts={tsExpressJson} go={rsAxumJson} />
+
+## การเปลี่ยนชื่อและ skip fields ด้วย Serde
+
+Serde รองรับการแปลง field เหมือนกับ class-transformer ของ TypeScript หรือ zod `.transform()`:
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    id: u32,
+
+    #[serde(rename = "fullName")]
+    name: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    avatar_url: Option<String>,
+
+    #[serde(skip_deserializing)]
+    created_at: String,
+}
+```
+
+## ลองใช้งาน — serde serialize / deserialize
+
+Snippet ด้านล่างรันได้ทั้งหมดในเบราว์เซอร์ **ไม่ได้ใช้ Axum** (ไม่ต้องมี server) — แค่ `serde` และ `serde_json` ซึ่งมีอยู่บน Rust Playground
+
+export const serdeCode = `use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+fn main() {
+    // Serialize struct -> JSON string
+    let user = User {
+        id: 1,
+        name: String::from("Alice"),
+        email: String::from("alice@example.com"),
+    };
+    let json = serde_json::to_string_pretty(&user).unwrap();
+    println!("{}", json);
+
+    // Deserialize JSON string -> struct
+    let json_str = r#"{"id":2,"name":"Bob","email":"bob@example.com"}"#;
+    let parsed: User = serde_json::from_str(json_str).unwrap();
+    println!("{:?}", parsed);
+}`;
+
+<Playground client:visible code={serdeCode} />
+
+export const quizSerde = [
+  {
+    q: "derive macros สองตัวใดที่ serde ให้สำหรับ JSON serialization?",
+    options: [
+      "Clone และ Copy",
+      "Serialize และ Deserialize",
+      "Debug และ Display",
+      "ToJson และ FromJson"
+    ],
+    answer: 1
+  },
+  {
+    q: "เมื่อ `Json<T>` ใช้เป็น **parameter** ของ Axum handler มันทำอะไร?",
+    options: [
+      "Serialize response body ไปเป็น JSON",
+      "Deserialize request body ไปยัง type T คืน 422 ถ้าล้มเหลว",
+      "อ่าน query string parameters",
+      "ตรวจสอบ headers"
+    ],
+    answer: 1
+  },
+  {
+    q: "attribute ของ serde ใดซ่อน field จาก JSON output เมื่อมันเป็น `None`?",
+    options: [
+      "`#[serde(skip)]`",
+      "`#[serde(optional)]`",
+      "`#[serde(skip_serializing_if = \"Option::is_none\")]`",
+      "`#[serde(rename = \"null\")]`"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/json-serde" questions={quizSerde} />
+
+<ProgressTracker client:visible id="api-axum/json-serde" />

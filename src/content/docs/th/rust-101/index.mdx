@@ -1,5 +1,80 @@
 ---
-title: Rust 101
-description: Rust fundamentals for TypeScript developers.
+title: "Rust 101 — พื้นฐาน"
+description: 'ภาพรวมของโมดูลและการสัมผัส Rust ครั้งแรก โดยใช้ TypeScript เป็นจุดอ้างอิง'
 ---
-Coming soon.
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## ยินดีต้อนรับสู่ Rust 101
+
+คุณรู้จัก TypeScript อยู่แล้ว คุณเข้าใจเรื่อง type, function และวิธีสร้างซอฟต์แวร์จริง ๆ โมดูลนี้ใช้ความรู้เหล่านั้นเป็นสะพานเชื่อม — ทุกแนวคิดจะถูกแนะนำด้วยการเปรียบเทียบกับสิ่งที่คุณรู้อยู่แล้ว จากนั้นจึงแสดงวิธีแบบ Rust
+
+## สิ่งที่คุณจะได้เรียนรู้
+
+โมดูลนี้ครอบคลุมองค์ประกอบพื้นฐานของ Rust ที่แมปเข้ากับแพตเทิร์น TypeScript ที่ใช้ในชีวิตประจำวัน:
+
+- **Variables** — `let`, `let mut`, `const`, shadowing และ type inference
+- **Functions** — พารามิเตอร์ที่มี type, return type และไวยากรณ์แบบ expression-oriented
+- **Control flow** — `if` ในฐานะ expression, `match`, `loop`, `while`, `for`
+- **Structs** — ทางเลือกของ Rust แทน class และ interface
+- **Enums** — algebraic data types และ exhaustive pattern matching
+- **Collections** — `Vec`, `HashMap`, array, tuple, slice
+- **Option และ Result** — ตัวแทนของ `null`/`undefined` และ `try/catch`
+- **Modules และ crates** — สิ่งที่เทียบเท่ากับ ESM และ npm ในโลก Rust
+
+เมื่อจบโมดูล คุณจะมีคำศัพท์เพียงพอที่จะอ่านและเขียนโปรแกรม Rust จริง ๆ ได้
+
+## โค้ดเทียบกันชิ้นแรกของคุณ
+
+ทั้งสองโปรแกรมทักทายผู้ใช้ โครงสร้างคล้ายกัน แต่ Rust เป็นภาษาที่ compile, มี type แบบ static และไม่มี runtime — `println!` เป็น macro ที่จัดการ format string ตอน compile time
+
+export const indexTs = `const name = "TypeScript developer";
+console.log(\`Hello, \${name}! Welcome to Rust.\`);`;
+
+export const indexRs = `fn main() {
+    let name = "TypeScript developer";
+    println!("Hello, {}! Welcome to Rust.", name);
+}`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+## ลองเล่นดู
+
+รัน snippet ของ Rust ด้านบนได้โดยตรงในเบราว์เซอร์ของคุณ
+
+export const indexCode = `fn main() {
+    let name = "TypeScript developer";
+    println!("Hello, {}! Welcome to Rust.", name);
+}`;
+
+<Playground client:visible code={indexCode} />
+
+export const quizIndex = [
+  {
+    q: "ใน Rust นั้น println! คืออะไร ?",
+    options: [
+      "ฟังก์ชัน built-in จาก standard library",
+      "macro ที่จัดการ format string ตอน compile time",
+      "เมธอดบน type String",
+      "ตัวแปร global"
+    ],
+    answer: 1
+  },
+  {
+    q: "อะไรคือจุดเริ่มต้น (entry point) ของโปรแกรม binary ทุกตัวใน Rust?",
+    options: [
+      "start()",
+      "init()",
+      "main()",
+      "run()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="rust-101/index" />

@@ -1,0 +1,191 @@
+---
+title: 'Channels'
+description: 'การส่ง message ด้วย std::sync::mpsc channels ใน Rust — เทียบกับ JS Worker postMessage และ EventEmitter patterns'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Message passing ใน TypeScript vs Rust
+
+หนึ่งในวิธีที่ปลอดภัยที่สุดในการประสาน concurrency คือ **message passing**: แทนที่จะแชร์ memory threads จะสื่อสารโดยการส่งค่าผ่าน channel Go ทำให้ pattern นี้เป็นที่นิยมด้วย goroutines และ channels Rust มีแนวคิดเดียวกันใน standard library ผ่าน `std::sync::mpsc`
+
+ใน JavaScript message passing คือ *วิธีเดียว* ในการสื่อสารข้ามขอบเขต Worker — `postMessage` ส่งสำเนา serialized ของข้อมูล Rust channels แตกต่างออกไป: มันโอน **ownership** ของค่า thread ที่ส่งจะสละสิทธิ์ในค่านั้น และ thread ที่รับจะ own มันแต่เพียงผู้เดียว ไม่มีสำเนา ไม่มี lock
+
+## std::sync::mpsc
+
+`mpsc` ย่อมาจาก **m**ulti-**p**roducer, **s**ingle-**c**onsumer คุณสร้าง channel ด้วย `mpsc::channel()` ซึ่งคืนค่าคู่ `(Sender<T>, Receiver<T>)`
+
+- คุณสามารถ **clone** `Sender` เพื่อสร้าง producer หลายตัว (จึงเป็น "multi-producer")
+- มี **หนึ่ง** `Receiver` เท่านั้น
+- เมื่อ `Sender` ทั้งหมดถูก drop channel จะปิดและ `rx.recv()` จะคืนค่า `Err`
+
+export const channelsTs = `// TypeScript / Node.js: Worker message passing
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+
+if (isMainThread) {
+  const worker = new Worker(__filename, { workerData: 0 });
+
+  // Messages มาถึงแบบ async ผ่าน event
+  worker.on('message', (msg: string) => {
+    console.log('received:', msg);
+  });
+} else {
+  // Worker ส่ง message กลับไปยัง main thread
+  // ข้อมูลถูก COPY (structured clone) ไม่ใช่ transfer
+  parentPort?.postMessage('hello from worker');
+  parentPort?.postMessage('second message');
+}`;
+
+export const channelsRs = `use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    // mpsc::channel() คืนค่า (Sender<T>, Receiver<T>)
+    let (tx, rx) = mpsc::channel::<String>();
+
+    // Spawn thread ที่ส่งสอง message แล้วออก
+    thread::spawn(move || {
+        // tx ถูก move เข้าไปใน thread — มัน own sender
+        tx.send(String::from("hello from thread")).unwrap();
+        tx.send(String::from("second message")).unwrap();
+        // tx ถูก drop ที่นี่ ปิด channel
+    });
+
+    // recv() block จนกว่าจะมี message มาถึง หรือคืน Err เมื่อปิด
+    for msg in rx {           // rx.into_iter() drain จนกว่า channel จะปิด
+        println!("received: {msg}");
+    }
+    // Loop ออกอัตโนมัติเมื่อ sender ทั้งหมดถูก drop
+}`;
+
+<TsGo client:visible ts={channelsTs} go={channelsRs} />
+
+## Multiple producers (fan-in pattern)
+
+ส่วน "multi-producer" ของ `mpsc` ให้คุณ clone `Sender` และกระจายไปยังหลาย thread threads ทั้งหมดเขียนเข้า receiver เดียวกัน นี่คือ pattern **fan-in** แบบคลาสสิก
+
+export const channelsFanInTs = `// TypeScript: fan-in กับ Promise.all
+async function fanIn(workers: number): Promise<string[]> {
+  const results = await Promise.all(
+    Array.from({ length: workers }, (_, i) =>
+      Promise.resolve(\`message from worker \${i}\`)
+    )
+  );
+  return results;
+}`;
+
+export const channelsFanInRs = `use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel::<String>();
+    let workers = 3;
+    let mut handles = vec![];
+
+    for i in 0..workers {
+        let tx2 = tx.clone(); // แต่ละ thread ได้รับ Sender clone ของตัวเอง
+        let h = thread::spawn(move || {
+            tx2.send(format!("message from worker {i}")).unwrap();
+        });
+        handles.push(h);
+    }
+
+    // Drop sender ต้นฉบับ — เมื่อ clone ทั้งหมดถูก drop ด้วย
+    // channel จะปิดและ for-loop ด้านล่างจะจบ
+    drop(tx);
+
+    for h in handles { h.join().unwrap(); }
+
+    let mut msgs: Vec<String> = rx.iter().collect();
+    msgs.sort(); // sort เพื่อ output ที่แน่นอน
+    for m in &msgs { println!("{m}"); }
+}`;
+
+<TsGo client:visible ts={channelsFanInTs} go={channelsFanInRs} />
+
+## ลองรันเลย
+
+export const channelsCode = `use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel::<String>();
+    let workers = 3;
+    let mut handles = vec![];
+
+    for i in 0..workers {
+        let tx2 = tx.clone();
+        let h = thread::spawn(move || {
+            tx2.send(format!("message from worker {i}")).unwrap();
+        });
+        handles.push(h);
+    }
+
+    drop(tx);
+
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    let mut msgs: Vec<String> = rx.iter().collect();
+    msgs.sort();
+    for m in &msgs {
+        println!("{m}");
+    }
+}`;
+
+<Playground client:visible code={channelsCode} />
+
+<RsOnly title="การโอน ownership ผ่าน channels">
+
+เมื่อคุณเรียก `tx.send(value)` `value` จะถูก **move** เข้าไปใน channel thread ที่ส่งไม่สามารถใช้มันได้อีก thread ที่รับจะได้ ownership แต่เพียงผู้เดียวเมื่อเรียก `rx.recv()`
+
+การโอน ownership นี้คือสิ่งที่ทำให้ Rust channels ปราศจาก race โดยไม่ต้องสำเนา:
+
+- ไม่มีสอง thread ที่สามารถถือ mutable reference ไปยังค่าเดียวกันพร้อมกันได้
+- การส่งคือการโอน ownership — ไม่ใช่ copy ไม่ใช่ lock ไม่ใช่ reference
+
+สิ่งนี้แตกต่างอย่างมากจาก `postMessage` ของ JavaScript ซึ่ง *ต้อง* serialize (copy) หรือ transfer แบบ `Transferable` เพราะไม่มีแนวคิด ownership ระดับ type ใน Rust type system บังคับ handoff
+
+</RsOnly>
+
+export const quizChannels = [
+  {
+    q: "'mpsc' ใน std::sync::mpsc ย่อมาจากอะไร?",
+    options: [
+      "Multi-process, single-channel",
+      "Multi-producer, single-consumer",
+      "Multi-producer, shared-consumer",
+      "Message-passing synchronization channel"
+    ],
+    answer: 1
+  },
+  {
+    q: "เกิดอะไรขึ้นเมื่อ Sender clone ทั้งหมดถูก drop?",
+    options: [
+      "Receiver panic ด้วย error",
+      "Channel ปิดและ rx.recv() คืนค่า Err",
+      "Message สุดท้ายถูก duplicate",
+      "โปรแกรมหยุดทันที"
+    ],
+    answer: 1
+  },
+  {
+    q: "Rust channels แตกต่างจาก JS postMessage อย่างไร?",
+    options: [
+      "Rust channels serialize ข้อมูล; JS postMessage โอน ownership",
+      "Rust channels โอน ownership ของค่า; JS postMessage copy หรือ transfer ข้อมูล",
+      "Rust channels เป็น async; JS postMessage เป็น synchronous",
+      "ไม่มีความแตกต่าง — ทั้งคู่ copy ข้อมูล"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="concurrency/channels" questions={quizChannels} />
+
+<ProgressTracker client:visible id="concurrency/channels" />

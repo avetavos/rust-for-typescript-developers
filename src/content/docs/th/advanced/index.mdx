@@ -1,0 +1,74 @@
+---
+title: 'Rust ขั้นสูง'
+description: 'ภาพรวมของเครื่องมือ Rust ขั้นสูง — generics, traits, closures, error handling, macros, และ smart pointers'
+---
+
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## ยินดีต้อนรับสู่ Rust ขั้นสูง
+
+คุณได้เรียนรู้ระบบ ownership, borrowing, และ type พื้นฐานของ Rust แล้ว ถึงเวลาปลดล็อกเครื่องมือที่ทำให้ Rust ทั้งมีพลังในการแสดงออกและมีต้นทุนเป็นศูนย์: ระบบ type ที่มีประสิทธิภาพพอที่จะแทนที่ framework ทั้งหมดในขณะ runtime ด้วยการรับประกันในขณะ compile time
+
+บทเรียนนี้นำแต่ละแนวคิดไปเชื่อมกับสิ่งที่คุณรู้อยู่แล้วจาก TypeScript เพื่อให้คุณสร้าง mental model ได้อย่างรวดเร็ว
+
+## สิ่งที่คุณจะได้เรียน
+
+| บทเรียน | แนวคิด Rust | คู่เทียบใน TypeScript |
+|---|---|---|
+| Generics & Trait Bounds | `fn foo<T: Display>()`, `where` clauses | Generic functions พร้อม constraints `<T extends ...>` |
+| Trait Objects | `dyn Trait`, `Box<dyn Trait>` | Interfaces, polymorphism, runtime dispatch |
+| Closures & Iterators | `Fn`/`FnMut`/`FnOnce`, `.map()/.filter()/.collect()` | Arrow functions, `Array.prototype.map/filter/reduce` |
+| Error Handling (ลึก) | `?` operator, `thiserror`, `anyhow` | `try/catch`, typed error classes |
+| Macros | `macro_rules!`, derive macros | ไม่มีคู่เทียบตรงๆ — แต่ใกล้เคียง TypeScript decorators |
+| Smart Pointers | `Box<T>`, `Rc<T>`, `RefCell<T>` | JavaScript references ที่ถูกจัดการโดย GC |
+
+## ทำไมถึงสำคัญสำหรับนักพัฒนา TypeScript
+
+TypeScript มี generics, interfaces, และ union error types Rust นำแนวคิดทั้งสามไปอีกขั้น:
+
+- **Generics** ถูก monomorphise — compiler สร้างสำเนาเฉพาะสำหรับแต่ละ concrete type ไม่มี overhead จาก virtual dispatch
+- **Trait objects** (`dyn Trait`) ให้ runtime polymorphism ที่คุณคุ้นเคยจาก TypeScript interfaces แต่คุณต้องเลือกใช้อย่างชัดเจน
+- **Closures** จับค่าโดย reference หรือโดย move และ `Fn*` trait hierarchy บอก compiler ว่า closure ทำอะไรได้บ้าง
+- **Error handling** ด้วย `?` และ `thiserror` ใช้งานง่ายพอๆ กับ `async/await` — และ type บังคับให้คุณจัดการทุก failure case
+- **Macros** มีความ hygienic และทำงานบน AST — มีพลังมากกว่าและปลอดภัยกว่า TypeScript string-template code generation
+- **Smart pointers** ให้การควบคุม heap allocation และ shared ownership อย่างละเอียดโดยไม่ต้องมี GC
+
+เรียนบทเรียนตามลำดับ แต่ละบทสร้างต่อจากบทก่อนหน้า
+
+export const quizIndex = [
+  {
+    q: "Rust generics ถูก monomorphise หมายความว่าอะไร?",
+    options: [
+      "Compiler สร้างฟังก์ชัน virtual-dispatch เดียวสำหรับทุก type",
+      "Compiler สร้างฟังก์ชัน concrete เฉพาะแยกต่างหากต่อแต่ละ type ที่ใช้",
+      "Generics ถูก erase ตอน compile time เหมือน Java",
+      "Generic functions ทำงานช้ากว่า non-generic"
+    ],
+    answer: 1
+  },
+  {
+    q: "ฟีเจอร์ใดของ Rust ที่ใกล้เคียงกับ TypeScript interface-based polymorphism ขณะ runtime มากที่สุด?",
+    options: [
+      "Generics พร้อม trait bounds",
+      "macro_rules!",
+      "dyn Trait (trait objects)",
+      "RefCell<T>"
+    ],
+    answer: 2
+  },
+  {
+    q: "ข้อได้เปรียบหลักของ `?` operator ของ Rust เมื่อเทียบกับ TypeScript's try/catch คืออะไร?",
+    options: [
+      "ทำงานเร็วกว่าขณะ runtime",
+      "บังคับให้ผู้เรียกรับรู้ทุก error path ตอน compile time",
+      "Log errors อัตโนมัติ",
+      "Retry operations ที่ล้มเหลว"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="advanced/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="advanced/index" />

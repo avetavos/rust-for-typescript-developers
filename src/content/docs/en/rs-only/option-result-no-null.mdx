@@ -1,0 +1,173 @@
+---
+title: 'Option, Result, and No Null'
+description: 'How Rust eliminates null/undefined and unchecked exceptions using Option<T> and Result<T,E> — and the ? operator that makes it ergonomic.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript has null, undefined, and exceptions — Rust has none of them
+
+TypeScript (and JavaScript) have three ways to represent "something went wrong":
+
+1. `null` — deliberate absence of a value
+2. `undefined` — an uninitialized or missing value
+3. Thrown exceptions — errors that escape the call stack invisibly
+
+All three are invisible in function signatures. A function that returns `string` might silently return `null`, throw an error, or work fine — you cannot tell from the type.
+
+Rust has no `null`, no `undefined`, and no exceptions. Absent values are `Option<T>`. Fallible operations return `Result<T, E>`. Both are just enum variants, visible in every function signature.
+
+## Option — the no-null type
+
+`Option<T>` is an enum with two variants: `Some(T)` (there is a value) and `None` (there is no value). The compiler forces you to handle both.
+
+export const optionTs = `// TypeScript — null can appear silently
+function findUser(id: number): string | null {
+  if (id === 1) return "Alice";
+  return null; // easy to forget to check
+}
+
+const user = findUser(2);
+console.log(user?.toUpperCase() ?? "not found");
+// Without optional chaining: user.toUpperCase() would throw TypeError`;
+
+export const optionRs = `fn find_user(id: u32) -> Option<String> {
+    if id == 1 { Some("Alice".to_string()) } else { None }
+}
+
+fn main() {
+    // Pattern match — must handle both cases
+    match find_user(2) {
+        Some(name) => println!("found: {}", name),
+        None       => println!("not found"),
+    }
+
+    // Ergonomic helpers
+    let upper = find_user(1)
+        .map(|s| s.to_uppercase())
+        .unwrap_or_else(|| "NOT FOUND".to_string());
+    println!("{}", upper);
+}`;
+
+<TsGo client:visible ts={optionTs} go={optionRs} />
+
+## Result — the no-exceptions type
+
+`Result<T, E>` is an enum with two variants: `Ok(T)` (success) and `Err(E)` (failure). Fallible functions return `Result`, making errors visible in the type signature.
+
+export const resultTs = `// TypeScript — exceptions are invisible in signatures
+function parseNumber(s: string): number {
+  const n = parseInt(s);
+  if (isNaN(n)) throw new Error(\`not a number: \${s}\`);
+  return n;
+}
+
+try {
+  const n = parseNumber("abc");
+  console.log(n * 2);
+} catch (e) {
+  // Easy to forget try/catch — and the signature gave no hint
+  console.error(e);
+}`;
+
+export const resultRs = `fn parse_and_double(s: &str) -> Result<i32, String> {
+    let n: i32 = s.parse().map_err(|_| format!("not a number: {}", s))?;
+    Ok(n * 2)
+}
+
+fn main() {
+    match parse_and_double("21") {
+        Ok(v)  => println!("doubled: {}", v),
+        Err(e) => println!("error: {}", e),
+    }
+
+    match parse_and_double("abc") {
+        Ok(v)  => println!("doubled: {}", v),
+        Err(e) => println!("error: {}", e),
+    }
+}`;
+
+<TsGo client:visible ts={resultTs} go={resultRs} />
+
+<RsOnly title="The ? operator — ergonomic error propagation">
+
+Writing `match` for every `Result` gets verbose. The `?` operator is shorthand: if the value is `Ok(v)`, unwrap it to `v`; if it is `Err(e)`, return the error from the current function immediately.
+
+```rust
+fn parse_and_double(s: &str) -> Result<i32, String> {
+    // ? unwraps Ok, or returns Err early — like throw, but in the type
+    let n: i32 = s.parse().map_err(|_| format!("not a number: {}", s))?;
+    Ok(n * 2)
+}
+```
+
+The key difference from `throw`: the error is **visible in the return type**. The caller sees `Result<i32, String>` and knows the function can fail. There is no unchecked propagation through the call stack.
+
+`?` also works for `Option<T>`: it returns `None` early if the value is `None`. It can only be used in functions that return `Result` or `Option`.
+
+</RsOnly>
+
+## Try it
+
+export const optionResultCode = `fn parse_and_double(s: &str) -> Result<i32, String> {
+    let n: i32 = s.parse().map_err(|_| format!("not a number: {}", s))?;
+    Ok(n * 2)
+}
+
+fn main() {
+    match parse_and_double("21") {
+        Ok(v) => println!("doubled: {}", v),
+        Err(e) => println!("error: {}", e),
+    }
+
+    let maybe: Option<i32> = Some(42);
+    if let Some(v) = maybe {
+        println!("got: {}", v);
+    }
+
+    let none: Option<i32> = None;
+    println!("unwrap_or: {}", none.unwrap_or(0));
+}`;
+
+<Playground client:visible code={optionResultCode} />
+
+export const quizOptionResult = [
+  {
+    q: "What does `Option<T>` represent in Rust?",
+    options: [
+      "A nullable pointer",
+      "An async value that resolves later",
+      "A value that may be present (`Some(T)`) or absent (`None`)",
+      "An error type"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does the `?` operator do when applied to a `Result<T, E>`?",
+    options: [
+      "It panics if the value is Err",
+      "It unwraps Ok(v) to v, or returns Err early from the current function",
+      "It converts the Result to an Option",
+      "It retries the operation"
+    ],
+    answer: 1
+  },
+  {
+    q: "How is Rust's error model different from TypeScript's `throw`?",
+    options: [
+      "Rust errors are only for panics, not recoverable errors",
+      "Rust errors use Result<T,E> — visible in the function signature — so callers are forced to handle or propagate them",
+      "Rust errors propagate automatically through the call stack without any syntax",
+      "There is no difference — ? is just like throw"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/option-result-no-null" questions={quizOptionResult} />
+
+<ProgressTracker client:visible id="rs-only/option-result-no-null" />

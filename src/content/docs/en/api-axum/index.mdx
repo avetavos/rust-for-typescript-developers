@@ -1,0 +1,112 @@
+---
+title: 'Building an API with Axum'
+description: 'Why Axum? Axum vs Express/Nest. What you will build in this module.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Why Axum?
+
+If you come from Node.js, you probably know Express or NestJS. Axum is Rust's answer to that space — a high-level web framework that lets you write `async fn` route handlers, parse request data with type-safe extractors, and share state across routes.
+
+But unlike Express, Axum is not batteries-included in the monolith sense. It is deliberately thin and delegates middleware to **Tower**, an industrial-strength, composable middleware library. The result is:
+
+- Compile-time type safety across the entire request/response cycle.
+- Zero-cost abstractions — no garbage collector, no hidden allocations.
+- First-class async built on **Tokio**, the de facto Rust async runtime.
+
+## Axum vs Express vs NestJS
+
+| Feature | Express | NestJS | Axum |
+|---|---|---|---|
+| Language | TypeScript / JS | TypeScript | Rust |
+| Routing | `app.get(...)` | `@Get(...)` decorator | `Router::new().route(...)` |
+| Middleware | `app.use(...)` | `@Middleware` / guards | Tower layers |
+| Request parsing | `req.body`, `req.params` | `@Body()`, `@Param()` | Extractors (`Json`, `Path`, `Query`) |
+| State | `app.locals` | Dependency injection | `State(...)` extractor |
+| Error handling | `next(err)` middleware | Exception filters | `Result<T, E>` + `IntoResponse` |
+| Type safety | Partial (runtime) | Partial (runtime) | Full (compile-time) |
+
+export const tsHello = `// Express
+import express from 'express';
+const app = express();
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello, World!' });
+});
+
+app.listen(3000, () => console.log('Listening on :3000'));`;
+
+export const rsHello = `use axum::{routing::get, Json, Router};
+use serde_json::{json, Value};
+
+async fn hello() -> Json<Value> {
+    Json(json!({ "message": "Hello, World!" }))
+}
+
+#[tokio::main]
+async fn main() {
+    let app = Router::new().route("/", get(hello));
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    println!("Listening on :3000");
+    axum::serve(listener, app).await.unwrap();
+}`;
+
+<TsGo client:visible ts={tsHello} go={rsHello} />
+
+> **Run locally** — Axum binds a port and runs forever, so these server snippets cannot run in the browser sandbox. Use `cargo run` after following the project setup in the next lesson.
+
+## What you will build
+
+Throughout this module you will build a small **Users API** with:
+
+- `GET /users` — list users (pagination with `Query`)
+- `POST /users` — create a user (`Json` body)
+- `GET /users/:id` — get a single user (`Path`)
+- `DELETE /users/:id` — delete a user
+- Shared in-memory state (`Arc<Mutex<Vec<User>>>`)
+- Structured JSON errors
+- A Tower CORS layer
+- SQLx database integration (conceptual)
+- Handler tests with `tower::ServiceExt::oneshot`
+
+Each concept maps directly to something you already know from Express or NestJS.
+
+export const quizIndex = [
+  {
+    q: "Which async runtime does Axum use?",
+    options: [
+      "async-std",
+      "smol",
+      "Tokio",
+      "Rayon"
+    ],
+    answer: 2
+  },
+  {
+    q: "How does Axum handle middleware compared to Express?",
+    options: [
+      "Axum has a built-in middleware registry like NestJS",
+      "Axum delegates middleware to Tower layers",
+      "Axum uses macros to declare middleware",
+      "Axum does not support middleware"
+    ],
+    answer: 1
+  },
+  {
+    q: "What replaces `req.body` and `req.params` in Axum?",
+    options: [
+      "Global request context",
+      "Macro annotations",
+      "Type-safe extractors like `Json`, `Path`, and `Query`",
+      "A middleware that injects values"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="api-axum/index" />

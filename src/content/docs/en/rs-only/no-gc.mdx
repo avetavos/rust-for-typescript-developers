@@ -1,0 +1,179 @@
+---
+title: 'No Garbage Collector'
+description: 'How Rust achieves memory safety without a GC — deterministic drop, RAII, and why ownership is memory management — for TypeScript developers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Every language you know has a garbage collector. Rust does not.
+
+Node.js, Python, Go, Java, C# — every mainstream language you have likely written runs on a GC. The GC periodically scans memory, finds unreachable objects, and frees them. This is safe and convenient, but it has costs:
+
+- **Pause latency:** GC stop-the-world pauses can spike latency unpredictably.
+- **Throughput overhead:** GC work competes with your program for CPU time.
+- **Memory overhead:** GC runtimes keep extra data structures to track live objects.
+- **Non-determinism:** You cannot predict when an object will be freed.
+
+Rust has **none** of this. It achieves memory safety through the ownership model alone. The compiler proves — statically — that memory is managed correctly, and generates code to free each allocation at exactly the right place.
+
+<RsOnly title="RAII — Resource Acquisition Is Initialization">
+
+**RAII** is the pattern Rust uses to replace the GC. When you create a value that owns a resource (memory, a file handle, a mutex lock), that resource is acquired on creation and released when the value's owner goes out of scope — automatically, deterministically, without a runtime.
+
+This is not unique to memory. Any resource can be managed this way:
+
+- `String` / `Vec<T>` — heap memory freed when dropped
+- `std::fs::File` — file descriptor closed when dropped
+- `MutexGuard<T>` — mutex unlocked when dropped
+- Database connection pooled back when dropped
+
+In TypeScript, you use `try/finally` or recent proposals (`using`) to achieve similar cleanup. In Rust, it is the default for every value.
+
+</RsOnly>
+
+## What "drop" looks like
+
+You can implement the `Drop` trait to run custom cleanup logic when a value goes out of scope — the Rust equivalent of a destructor:
+
+export const noGcTs = `// TypeScript — no deterministic cleanup by default
+class Resource {
+  constructor(private name: string) {
+    console.log(\`acquiring: \${name}\`);
+  }
+  // No guaranteed destructor. You need try/finally or 'using' (ES2023)
+  release() {
+    console.log(\`releasing: \${this.name}\`);
+  }
+}
+
+function useResource() {
+  const r = new Resource("file handle");
+  console.log("using resource");
+  r.release(); // easy to forget; not called on exception
+}
+useResource();`;
+
+export const noGcRs = `struct Resource {
+    name: String,
+}
+
+impl Resource {
+    fn new(name: &str) -> Self {
+        println!("acquiring: {}", name);
+        Resource { name: name.to_string() }
+    }
+}
+
+impl Drop for Resource {
+    fn drop(&mut self) {
+        println!("releasing: {}", self.name);
+    }
+}
+
+fn main() {
+    println!("start");
+    {
+        let _r = Resource::new("file handle");
+        println!("using resource");
+    } // _r dropped HERE — drop() called automatically
+    println!("end — resource already released");
+}`;
+
+<TsGo client:visible ts={noGcTs} go={noGcRs} />
+
+<RsOnly title="Ownership IS memory management">
+
+In Rust, the ownership model is the memory management model. There is no separation between "how ownership works" and "how memory is freed." They are the same thing:
+
+1. Every heap allocation is owned by exactly one variable.
+2. When that variable goes out of scope, the allocation is freed.
+3. The compiler enforces rules 1 and 2 statically — no runtime needed.
+
+This is why Rust can guarantee memory safety (no use-after-free, no double-free, no dangling pointers) with **zero runtime overhead**. The entire system is a compile-time proof.
+
+GC languages trade runtime overhead for programmer convenience. Rust trades explicit ownership rules for zero runtime overhead. For systems software, embedded code, game engines, or any latency-sensitive service, Rust's model wins.
+
+</RsOnly>
+
+## Deterministic vs non-deterministic cleanup
+
+```
+TypeScript / Node.js:
+  Object created → ... → GC runs at some unknown time → memory freed
+
+Rust:
+  Value created → owner goes out of scope → memory freed IMMEDIATELY
+```
+
+This determinism is why Rust is used for OS kernels, game engines, WebAssembly runtimes, and databases. When a file handle or network socket needs to be closed at a precise moment, "the GC will handle it eventually" is not acceptable.
+
+## Try it
+
+export const noGcCode = `struct Resource {
+    name: String,
+}
+
+impl Resource {
+    fn new(name: &str) -> Self {
+        println!("acquiring: {}", name);
+        Resource { name: name.to_string() }
+    }
+}
+
+impl Drop for Resource {
+    fn drop(&mut self) {
+        println!("releasing: {}", self.name);
+    }
+}
+
+fn main() {
+    println!("start");
+    {
+        let _r = Resource::new("file handle");
+        println!("using resource");
+    }
+    println!("end — resource already released");
+}`;
+
+<Playground client:visible code={noGcCode} />
+
+export const quizNoGc = [
+  {
+    q: "What does RAII stand for and what does it mean in Rust?",
+    options: [
+      "Runtime Automatic Instruction Injection — a JIT compilation technique",
+      "Resource Acquisition Is Initialization — resources are acquired on creation and released deterministically when the owner is dropped",
+      "Reference-Allocated Immutable Items — all Rust values are immutable",
+      "Recursive Allocation and Immediate Inspection — a GC algorithm"
+    ],
+    answer: 1
+  },
+  {
+    q: "When is the `drop` function called for a value in Rust?",
+    options: [
+      "When the garbage collector decides to collect it",
+      "When you explicitly call `drop(value)`",
+      "When the value's owner goes out of scope — deterministically",
+      "At the end of the program"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is the main advantage of Rust's ownership-based memory model over a garbage collector?",
+    options: [
+      "Garbage collectors are unsafe — Rust's model is the only way to prevent memory errors",
+      "Rust programs use less source code",
+      "Deterministic cleanup with zero runtime overhead — no GC pauses, no memory overhead, predictable latency",
+      "Rust can only run on bare-metal hardware"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rs-only/no-gc" questions={quizNoGc} />
+
+<ProgressTracker client:visible id="rs-only/no-gc" />

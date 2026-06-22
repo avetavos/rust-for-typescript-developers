@@ -1,0 +1,163 @@
+---
+title: "Hello, World — Your First Rust Program"
+description: 'fn main, println!, cargo run, and what makes Rust hello-world different from TypeScript.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## The program every language starts with
+
+Writing "Hello, world!" is the first ritual in any new language. In TypeScript you reach for `console.log`. In Rust you reach for `println!`. They look similar but work very differently under the hood.
+
+## Side by side
+
+export const helloTs = `// TypeScript hello world
+const greeting: string = "Hello, world!";
+console.log(greeting);
+
+// Template literals
+const name = "TypeScript developer";
+console.log(\`Welcome, \${name}!\`);`;
+
+export const helloRs = `fn main() {
+    let greeting: &str = "Hello, world!";
+    println!("{greeting}");
+
+    // Named argument in format string
+    let name = "TypeScript developer";
+    println!("Welcome, {name}!");
+}`;
+
+<TsGo client:visible ts={helloTs} go={helloRs} />
+
+There are several things to notice immediately:
+
+- **`fn main()`** — every Rust binary starts here. There is no module system or top-level execution like Node.js; `main` is the required entry point.
+- **`println!`** — the exclamation mark means this is a **macro**, not a function. The format string is checked at compile time: `{greeting}` is replaced with the value of the variable `greeting`. This is similar to a template literal, but the checking happens at compile time, not runtime.
+- **`let greeting: &str`** — `&str` is a string slice, a reference to a sequence of UTF-8 bytes. Think of it as an immutable view into a string. The owned, heap-allocated string type is `String`.
+- **Semicolons** — Rust uses semicolons to end statements, just like TypeScript.
+
+## Formatting with println!
+
+`println!` is more powerful than `console.log`. The format string uses `{}` as the placeholder, and you can reference variables by name (`{name}`) or use positional placeholders:
+
+```
+println!("{}", value);           // positional
+println!("{value}");             // named (Rust 1.58+)
+println!("{:?}", value);         // debug format — works on most types
+println!("{:#?}", value);        // pretty debug format
+println!("{:.2}", 3.14159);      // 3.14 — two decimal places
+```
+
+## Running the program
+
+After scaffolding with `cargo new hello-world`, the `src/main.rs` file contains:
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+Run it:
+
+```bash
+cargo run
+```
+
+You will see:
+
+```
+   Compiling hello-world v0.1.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.42s
+     Running `target/debug/hello-world`
+Hello, world!
+```
+
+The first run compiles, subsequent runs recompile only changed files — similar to incremental TypeScript compilation.
+
+## Try it
+
+Run a Rust program in your browser right now. No installation needed.
+
+export const helloCode = `fn main() {
+    println!("Hello, world!");
+
+    let name = "TypeScript developer";
+    println!("Welcome, {name}!");
+
+    // Debug formatting with {:?}
+    let numbers = [1, 2, 3, 4, 5];
+    println!("numbers = {numbers:?}");
+
+    // Formatted floats
+    let pi = 3.14159;
+    println!("pi = {pi:.2}");
+}`;
+
+<Playground client:visible code={helloCode} />
+
+<RsOnly title="println! is a macro, not a function">
+
+`println!` is a **macro** — the `!` is the tell. In Rust, macros are a form of metaprogramming: they are expanded by the compiler before code generation. `println!` analyses the format string at compile time and verifies that the argument types match the placeholders. If you write `println!("{}", name)` but `name` is not printable, the compiler tells you at compile time.
+
+This is fundamentally different from `console.log` in JavaScript, which accepts any value and calls `.toString()` at runtime. With `println!`, format errors are compile errors.
+
+The other standard macros you will use often:
+- `print!` — same as `println!` but without a trailing newline
+- `format!` — returns a `String` instead of printing
+- `eprintln!` — prints to `stderr`
+- `dbg!` — prints the value with its expression, useful for debugging
+
+</RsOnly>
+
+export const quizHello = [
+  {
+    q: "What does the `!` after `println` indicate?",
+    options: [
+      "It is a logical NOT operator applied to the result",
+      "It marks println as an unsafe operation",
+      "It indicates that println is a macro, not a function",
+      "It is required syntax for all print statements in Rust"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is the entry point function in a Rust binary program?",
+    options: [
+      "start()",
+      "run()",
+      "init()",
+      "main()"
+    ],
+    answer: 3
+  },
+  {
+    q: "Which format specifier prints a value using debug formatting in println!?",
+    options: [
+      "{}",
+      "{:?}",
+      "{:debug}",
+      "{!}"
+    ],
+    answer: 1
+  },
+  {
+    q: "What command compiles and immediately runs a Rust project?",
+    options: [
+      "rustc main.rs && ./main",
+      "cargo run",
+      "cargo exec",
+      "rust run src/main.rs"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="intro/hello-world" questions={quizHello} />
+
+<ProgressTracker client:visible id="intro/hello-world" />

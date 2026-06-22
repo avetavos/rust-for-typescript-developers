@@ -1,0 +1,167 @@
+---
+title: 'Workspace & Feature Flag'
+description: 'Cargo workspace (monorepo หลาย crate) และ feature flag เทียบกับ npm workspaces และ optional dependencies'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## npm workspaces → cargo workspaces
+
+เมื่อ TypeScript monorepo เติบโตเกิน package เดียว คุณจะใช้ npm (หรือ pnpm/yarn) workspaces Cargo มีเทียบเท่าแบบ first-class: **workspace** คือ `Cargo.toml` เดียวที่ root ซึ่งระบุ member crate ทั้งหมด member ทั้งหมดใช้ `Cargo.lock` เดียวและ `target/` build directory เดียวร่วมกัน
+
+export const workspacesTs = `# package.json (root)
+{
+  "name": "my-monorepo",
+  "workspaces": [
+    "packages/api",
+    "packages/core",
+    "packages/cli"
+  ]
+}
+
+# packages/core/package.json
+{
+  "name": "@my/core",
+  "version": "1.0.0"
+}`;
+
+export const workspacesRs = `# Cargo.toml (root — workspace manifest)
+[workspace]
+members = [
+    "crates/api",
+    "crates/core",
+    "crates/cli",
+]
+resolver = "2"   # ใช้ resolver version 2 เสมอ
+
+# crates/core/Cargo.toml
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"`;
+
+<TsGo client:visible ts={workspacesTs} go={workspacesRs} />
+
+## รัน command ทั้ง workspace
+
+```bash
+# TypeScript (npm workspaces)
+npm run test --workspaces
+npm run build --workspace packages/api
+
+# Cargo
+cargo build --workspace         # build ทุก member
+cargo test --workspace          # test ทุก member
+cargo build -p api              # build เฉพาะ crate "api"
+cargo test -p core              # test เฉพาะ crate "core"
+```
+
+## Share dependency version ข้าม crate
+
+```toml
+# Cargo.toml (root workspace manifest)
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+
+# crates/api/Cargo.toml  — inherit โดยไม่ต้องระบุ version ซ้ำ
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+```
+
+สิ่งนี้ป้องกัน version drift ข้าม workspace member ซึ่งเป็นปัญหาที่พบบ่อยใน Node monorepo ที่ package ต่างกันดึง patch version ที่ต่างกันโดยไม่รู้ตัว
+
+## Feature flag — conditional compilation
+
+Feature flag คือคำตอบของ Rust สำหรับ optional peer dependency และการเรียก `require()` แบบมีเงื่อนไข ช่วยให้ผู้ใช้เลือกใช้ฟังก์ชันเพิ่มเติมโดยไม่ต้องจ่าย compile cost เมื่อไม่ต้องการ
+
+```toml
+# Cargo.toml
+[features]
+default = ["json"]          # feature ที่เปิดโดย default
+json = ["dep:serde_json"]   # feature "json" ดึง serde_json เข้ามา
+async = ["dep:tokio"]       # feature "async" ดึง tokio เข้ามา
+full = ["json", "async"]    # ความสะดวก: เปิดทุกอย่าง
+
+[dependencies]
+serde_json = { version = "1", optional = true }
+tokio = { version = "1", optional = true }
+```
+
+```rust
+// src/lib.rs
+#[cfg(feature = "json")]
+pub mod json_support {
+    pub fn parse(s: &str) -> serde_json::Value {
+        serde_json::from_str(s).unwrap()
+    }
+}
+```
+
+```bash
+# Build โดยไม่มี default feature
+cargo build --no-default-features
+
+# เปิด feature เฉพาะ
+cargo build --features "async,json"
+
+# เปิดทุก feature
+cargo build --all-features
+```
+
+> Workspace และ feature flag ต้องการ project layout หลาย file จึงไม่มี browser Playground สำหรับบทนี้ สร้าง workspace ใน local ด้วย `cargo new --lib` และทดลองกับตัวอย่างข้างต้น
+
+<RsOnly title="Path dependency — local crate">
+
+ภายใน workspace crate อ้างอิงกันโดยใช้ `path` dependency แทน version number นี่เทียบเท่ากับ `"@my/core": "*"` กับ `npm link`
+
+```toml
+# crates/api/Cargo.toml
+[dependencies]
+core = { path = "../core" }
+```
+
+Cargo resolve path ตอน build time และ recompile `core` อัตโนมัติเมื่อมีการเปลี่ยนแปลง — ไม่ต้องทำ `npm link` dance
+
+</RsOnly>
+
+export const quizWorkspaces = [
+  {
+    q: "ใน Cargo workspace ไฟล์ Cargo.lock ที่ share เดียวอยู่ที่ไหน?",
+    options: [
+      "ใน directory ของ member crate แต่ละตัว",
+      "ที่ workspace root ข้าง root Cargo.toml",
+      "ใน directory target/",
+      "ไม่มี Cargo.lock ใน workspace"
+    ],
+    answer: 1
+  },
+  {
+    q: "จะ build เฉพาะ crate หนึ่งใน workspace ได้อย่างไร?",
+    options: [
+      "cargo build --only api",
+      "cargo build -p api",
+      "cargo build --crate api",
+      "cargo build --member api"
+    ],
+    answer: 1
+  },
+  {
+    q: "Cargo feature flag มีจุดประสงค์อะไร?",
+    options: [
+      "เป็น compile-time flag ที่เปิดใช้ฟังก์ชันและ dependency แบบ optional",
+      "เป็น environment variable ที่ใช้ runtime",
+      "ควบคุมว่า crate ใช้ Rust edition ใด",
+      "ใช้สำหรับ testing เท่านั้น"
+    ],
+    answer: 0
+  }
+];
+
+<Quiz client:visible id="tooling/workspaces-features" questions={quizWorkspaces} />
+
+<ProgressTracker client:visible id="tooling/workspaces-features" />

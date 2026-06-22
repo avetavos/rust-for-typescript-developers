@@ -1,0 +1,182 @@
+---
+title: 'Ownership'
+description: 'Ownership model ของ Rust ทดแทน garbage collection ได้อย่างไร — owner คนเดียว, drop ตาม scope, และ move semantics อธิบายสำหรับ TypeScript developers'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## JavaScript จัดการ memory ให้คุณ — Rust ไม่ทำแบบนั้น
+
+ใน JavaScript และ TypeScript ทุก heap value (string, array, object) จะถูก track โดย garbage collector คุณสร้าง value อย่างอิสระ แล้ว GC จะหาว่าเมื่อไหร่ไม่มีใครใช้แล้วและคืน memory คุณไม่เคยต้องเรียก `free()` ไม่เคยต้องกังวลเรื่อง use-after-free
+
+Rust ไม่มี garbage collector แต่มี **ownership**: ระบบกฎ compile-time ที่ให้ทุก value มี owner แค่คนเดียว เมื่อ owner หลุด scope value จะถูกคืน memory อัตโนมัติ — ไม่ต้องการ GC
+
+<RsOnly title="กฎสามข้อของ ownership">
+
+กฎสามข้อนี้คือรากฐานของทุกอย่างใน Rust compiler บังคับใช้ทั้งหมด:
+
+1. **ทุก value มี owner แค่คนเดียว**
+2. **มี owner ได้แค่คนเดียวในเวลาเดียวกัน**
+3. **เมื่อ owner หลุด scope value จะถูก drop (คืน memory)**
+
+ไม่มีสิ่งเทียบเท่าใน TypeScript JS object สามารถไม่มี owner (รอ GC) หรือมี reference หลายตัวชี้ไปที่ heap data เดียวกัน Rust ไม่อนุญาตทั้งสองกรณีนั้นตั้งแต่ compile time
+
+</RsOnly>
+
+## การโอน ownership (Move)
+
+ใน TypeScript การ assign object ไปให้ตัวแปรใหม่สร้าง reference ที่สอง ตัวแปรทั้งสองชี้ไปที่ data เดียวกัน ใน Rust การ assign heap value **move** ownership: ตัวแปรเดิมจะใช้ไม่ได้แล้ว
+
+export const ownershipTs = `// TypeScript — สอง reference, object เดียวกัน
+const a = { name: "Alice" };
+const b = a;          // b ชี้ไปที่ object เดียวกัน
+console.log(a.name);  // "Alice" — a ยังใช้ได้
+console.log(b.name);  // "Alice" — ทั้งคู่ทำงาน
+
+// GC จะคืน object เมื่อ a และ b ทั้งคู่หลุด scope
+// คุณควบคุมเวลาไม่ได้`;
+
+export const ownershipRs = `fn main() {
+    // Rust — String เป็น heap value
+    let a = String::from("Alice");
+    let b = a;          // ownership MOVES จาก a ไป b
+    // println!("{}", a); // error[E0382]: use of moved value: \`a\`
+    println!("{}", b);  // ใช้ได้แค่ b
+
+    // เมื่อ b หลุด scope ปลาย main()
+    // Rust คืน String data อัตโนมัติ ไม่ต้องการ GC
+}`;
+
+<TsGo client:visible ts={ownershipTs} go={ownershipRs} />
+
+<RsOnly title="Scope-based drop — การ cleanup แบบแน่นอน">
+
+เมื่อ value ของ owner หลุด scope Rust เรียก `drop` function ของ value นั้นทันทีและแน่นอน ใน TypeScript คุณไม่มีทางรู้ว่า GC จะ collect object เมื่อไหร่ ใน Rust คุณรู้แน่ๆ ว่าเมื่อไหร่
+
+```rust
+fn main() {
+    println!("before block");
+    {
+        let s = String::from("hello");
+        println!("inside block: {}", s);
+    } // <-- s ถูก drop ที่นี่ Memory ถูกคืนที่บรรทัดนี้พอดี
+    println!("after block — s หายไปแล้ว");
+}
+```
+
+ความแน่นอนนี้คือเหตุผลที่ Rust สามารถจัดการ file handle, network socket, mutex lock, และ database connection โดยไม่ต้องการ GC — resource จะถูกปล่อยเสมอเมื่อสิ้นสุด owning scope
+
+</RsOnly>
+
+## Ownership ผ่าน function
+
+การส่ง heap value ไปยัง function จะ **move** มันเข้าไปใน function นั้น caller ไม่สามารถใช้มันอีกได้ เว้นแต่ function จะ return มันกลับมา
+
+export const ownerFnTs = `// TypeScript — ส่ง object ไม่ได้ move ownership
+function greet(name: string) {
+  console.log(\`Hello, \${name}\`);
+}
+
+const s = "world";
+greet(s);
+console.log(s); // ยังใช้ได้ — JS ส่ง reference สำหรับ object`;
+
+export const ownerFnRs = `fn greet(name: String) {
+    // name เป็น owner ที่นี่
+    println!("Hello, {}", name);
+} // name ถูก drop ที่นี่
+
+fn main() {
+    let s = String::from("world");
+    greet(s);           // ownership move เข้าไปใน greet()
+    // println!("{}", s); // error[E0382]: use of moved value: \`s\`
+}`;
+
+<TsGo client:visible ts={ownerFnTs} go={ownerFnRs} />
+
+<RsOnly title="ทำไม move-by-default ถึงเป็น feature ไม่ใช่ปัญหา">
+
+Move-by-default ดูเหมือนจำกัดในตอนแรก ทำไมถึงใช้ value ไม่ได้หลังส่งให้ function?
+
+ผลตอบแทนคือ **memory safety โดยไม่มี GC**:
+
+- Compiler พิสูจน์แบบ static ว่าไม่มีสองส่วนของโค้ดที่ hold heap allocation เดียวกัน
+- ไม่มี dangling pointer ไม่มี use-after-free ไม่มี double-free
+- ทั้งหมดนี้ตรวจสอบตั้งแต่ compile time — ไม่มีต้นทุน runtime
+
+ทางออกคือ **borrowing** (ยืมโดยไม่ move, บทถัดไป) และ **cloning** (deep copy แบบ explicit) คุณใช้ borrowing เป็นส่วนใหญ่; ใช้ clone เมื่อต้องการสอง copy อิสระจริงๆ
+
+</RsOnly>
+
+## ลองเขียนเอง
+
+export const ownershipCode = `fn takes_ownership(s: String) {
+    println!("got: {}", s);
+} // s dropped here
+
+fn makes_copy(n: i32) {
+    println!("copy: {}", n);
+} // n dropped here, but i32 is Copy so the caller's copy is unaffected
+
+fn main() {
+    let s = String::from("hello");
+    takes_ownership(s);
+    // println!("{}", s); // would be a compile error — s was moved
+
+    let x = 5;
+    makes_copy(x);
+    println!("x is still valid: {}", x); // fine — i32 is Copy
+}`;
+
+<Playground client:visible code={ownershipCode} />
+
+export const quizOwnership = [
+  {
+    q: "เกิดอะไรขึ้นเมื่อคุณ assign `String` ให้กับตัวแปรใหม่ใน Rust?",
+    options: [
+      "ทั้งสองตัวแปร share reference ไปที่ data เดียวกัน",
+      "String ถูก clone อัตโนมัติ",
+      "Ownership move ไปยังตัวแปรใหม่; ตัวแปรเดิมไม่สามารถใช้งานได้",
+      "Compiler สร้าง garbage-collected reference"
+    ],
+    answer: 2
+  },
+  {
+    q: "Heap value ถูกคืน memory เมื่อไหร่ใน Rust?",
+    options: [
+      "เมื่อ garbage collector ตัดสินใจจะทำงาน",
+      "เมื่อ reference สุดท้ายหลุด scope",
+      "เมื่อ owner หลุด scope — แบบ deterministic",
+      "เมื่อคุณเรียก free() ชัดๆ"
+    ],
+    answer: 2
+  },
+  {
+    q: "คุณต้องทำอะไรเพื่อใช้ `String` ใน function แล้วยังใช้มันต่อใน caller ได้?",
+    options: [
+      "ส่งแบบ by value — Rust จะ clone อัตโนมัติ",
+      "ใช้ borrowing (&String) เพื่อให้ function ยืมโดยไม่รับ ownership",
+      "Mark function ว่า unsafe",
+      "Wrap value ใน Box<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "ข้อใดไม่ใช่กฎสามข้อของ ownership ใน Rust?",
+    options: [
+      "ทุก value มี owner แค่คนเดียว",
+      "มี owner หลายคนได้ผ่าน reference counting โดยปริยาย",
+      "มี owner ได้แค่คนเดียวในเวลาเดียวกัน",
+      "เมื่อ owner หลุด scope value จะถูก drop"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/ownership" questions={quizOwnership} />
+
+<ProgressTracker client:visible id="rs-only/ownership" />

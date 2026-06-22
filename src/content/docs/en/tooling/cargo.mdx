@@ -1,0 +1,157 @@
+---
+title: 'Cargo — Rust''s Package Manager & Build Tool'
+description: 'cargo new, build, run, add, test, doc, Cargo.toml, and Cargo.lock compared to npm and package.json.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Cargo is npm + tsc + jest in one
+
+If you have used `npm` (or `yarn`/`pnpm`), Cargo will feel immediately familiar. It manages dependencies, builds your project, runs your code, and runs your tests — all under one roof.
+
+## Creating a new project
+
+```bash
+# Node / TypeScript
+mkdir my-app && cd my-app
+npm init -y
+npm install typescript --save-dev
+
+# Rust
+cargo new my-app   # creates a binary (has fn main)
+cargo new my-lib --lib   # creates a library (no fn main)
+cd my-app
+```
+
+`cargo new` creates:
+```
+my-app/
+├── Cargo.toml      # ← like package.json
+├── Cargo.lock      # ← like package-lock.json
+└── src/
+    └── main.rs     # ← entry point
+```
+
+## Cargo.toml vs package.json
+
+export const cargoTs = `// package.json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/express": "^4.17.0"
+  }
+}`;
+
+export const cargoRs = `# Cargo.toml
+[package]
+name = "my-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# test-only crates go here`;
+
+<TsGo client:visible ts={cargoTs} go={cargoRs} />
+
+## Adding dependencies
+
+```bash
+# npm
+npm install serde_json        # runtime dep
+npm install --save-dev vitest # dev dep
+
+# Cargo
+cargo add serde_json          # runtime dep
+cargo add --dev pretty_assertions  # dev dep
+```
+
+`cargo add` updates `Cargo.toml` automatically, exactly like `npm install`.
+
+## Core subcommands
+
+```bash
+cargo build          # compile (debug, fast, unoptimized)
+cargo build --release  # compile (optimized, slower build)
+cargo run            # compile + execute
+cargo run -- --port 8080  # pass args to your binary
+cargo check          # type-check only, no binary (very fast)
+cargo test           # run all tests
+cargo test my_fn     # run tests whose name contains "my_fn"
+cargo doc --open     # generate + open HTML docs
+cargo clean          # delete target/ directory
+```
+
+## Cargo.lock — commit it or not?
+
+```
+# Binary / application  →  COMMIT Cargo.lock (reproducible builds)
+# Library crate         →  DO NOT commit Cargo.lock (let consumers pick versions)
+```
+
+This mirrors npm's convention: applications commit `package-lock.json`; published libraries typically do not.
+
+<RsOnly title="edition = 2021">
+
+Rust releases a new **edition** every three years (2015, 2018, 2021). An edition may introduce breaking syntax changes, but the compiler can migrate your code automatically with `cargo fix --edition`. Always use `edition = "2021"` for new projects — it enables let-else, the prelude improvements, and better closure captures.
+
+</RsOnly>
+
+export const quizCargo = [
+  {
+    q: "Which command adds a crate to your project (equivalent to `npm install <pkg>`)?",
+    options: [
+      "cargo install",
+      "cargo fetch",
+      "cargo add",
+      "cargo get"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `cargo check` do differently from `cargo build`?",
+    options: [
+      "It only runs tests",
+      "It type-checks and reports errors without producing a binary",
+      "It checks for outdated dependencies",
+      "It validates Cargo.toml syntax only"
+    ],
+    answer: 1
+  },
+  {
+    q: "Should you commit Cargo.lock for a binary application?",
+    options: [
+      "No — it is auto-generated and should be ignored",
+      "Yes — it ensures reproducible builds across machines",
+      "Only on CI, never locally",
+      "Only when using workspaces"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which file in Cargo is most similar to package.json?",
+    options: [
+      "Cargo.lock",
+      "src/main.rs",
+      "Cargo.toml",
+      ".cargo/config.toml"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="tooling/cargo" questions={quizCargo} />
+
+<ProgressTracker client:visible id="tooling/cargo" />

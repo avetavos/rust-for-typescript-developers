@@ -1,0 +1,149 @@
+---
+title: 'Clippy & rustfmt — Linting and Formatting'
+description: 'cargo clippy (lint) and cargo fmt (format) compared to eslint and prettier. One canonical style for all Rust code.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## eslint + prettier → clippy + rustfmt
+
+In TypeScript projects you typically wire up two separate tools: `eslint` for catching logical mistakes and enforcing code patterns, and `prettier` for opinionated formatting. Each needs its own config, its own plugins, and sometimes they conflict.
+
+Rust ships two first-party tools that are always present:
+
+| TypeScript | Rust | Purpose |
+|---|---|---|
+| `eslint` | `cargo clippy` | Catches bugs, anti-patterns, and non-idiomatic code |
+| `prettier` | `cargo fmt` | Enforces a single canonical style |
+| `.eslintrc` | `clippy.toml` or `#[allow(...)]` | Configuration |
+| `.prettierrc` | `rustfmt.toml` | Formatting overrides |
+
+## cargo fmt — formatting
+
+```bash
+# TypeScript
+npx prettier --write "src/**/*.ts"
+
+# Rust
+cargo fmt              # format all files in the workspace
+cargo fmt --check      # CI mode: exit 1 if any file would change
+```
+
+`cargo fmt` wraps **rustfmt**. The defaults are the official style and almost no one overrides them. A minimal `rustfmt.toml` at the project root can adjust a few options:
+
+```toml
+# rustfmt.toml (optional — most projects have none)
+max_width = 100
+edition = "2021"
+```
+
+## cargo clippy — linting
+
+```bash
+# TypeScript
+npx eslint src/
+
+# Rust
+cargo clippy                  # warn on lint violations
+cargo clippy -- -D warnings   # treat every warning as a compile error (use on CI)
+```
+
+export const clippyTs = `// eslint might warn: prefer const
+let items = getItems();
+
+// eslint might warn: no-unused-vars
+function helper(x: number, _y: number) {
+  return x * 2;
+}`;
+
+export const clippyRs = `// Clippy warns: this could be written more idiomatically
+let v: Vec<i32> = vec![1, 2, 3];
+let doubled: Vec<i32> = v.iter().map(|x| x * 2).collect();
+
+// Clippy warns: use .is_empty() instead of .len() == 0
+if doubled.len() == 0 {
+    println!("empty");
+}
+// Idiomatic version:
+if doubled.is_empty() {
+    println!("empty");
+}`;
+
+<TsGo client:visible ts={clippyTs} go={clippyRs} />
+
+## Suppressing a lint
+
+```rust
+// Suppress one lint on the next item
+#[allow(clippy::needless_pass_by_value)]
+fn process(data: Vec<u8>) { /* ... */ }
+
+// Suppress across the whole file (put at crate root)
+#![allow(dead_code)]
+```
+
+## Recommended CI configuration
+
+Run both tools on CI so formatting and lint errors are caught before merge:
+
+```bash
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo test
+```
+
+> These are `bash` commands to run in your terminal or CI pipeline — there is no runnable browser snippet for linter invocations.
+
+<RsOnly title="Clippy lint categories">
+
+Clippy organises its ~700 lints into categories:
+
+- `clippy::correctness` — almost certainly a bug (enabled by default, denies)
+- `clippy::suspicious` — code that is probably wrong
+- `clippy::style` — non-idiomatic but not wrong
+- `clippy::perf` — missed optimisation opportunities
+- `clippy::pedantic` — stricter, opt-in
+
+Enable pedantic lints in library code with `#![warn(clippy::pedantic)]` at the crate root.
+
+</RsOnly>
+
+export const quizClippy = [
+  {
+    q: "Which Cargo subcommand formats your Rust source files (equivalent to Prettier)?",
+    options: [
+      "cargo lint",
+      "cargo fmt",
+      "cargo fix",
+      "cargo style"
+    ],
+    answer: 1
+  },
+  {
+    q: "What flag do you pass to `cargo clippy` to make every warning a hard error (useful on CI)?",
+    options: [
+      "-- --deny all",
+      "-- -D warnings",
+      "--strict",
+      "--fail-on-warn"
+    ],
+    answer: 1
+  },
+  {
+    q: "How do you suppress a single Clippy lint on one function without disabling it globally?",
+    options: [
+      "// eslint-disable-next-line",
+      "#[deny(clippy::...)]",
+      "#[allow(clippy::...)]",
+      "/* clippy: ignore */"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="tooling/clippy-rustfmt" questions={quizClippy} />
+
+<ProgressTracker client:visible id="tooling/clippy-rustfmt" />

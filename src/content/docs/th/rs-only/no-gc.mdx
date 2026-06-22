@@ -1,0 +1,179 @@
+---
+title: 'ไม่มี Garbage Collector'
+description: 'Rust บรรลุ memory safety โดยไม่มี GC ได้อย่างไร — deterministic drop, RAII และทำไม ownership จึงเป็น memory management — สำหรับ TypeScript developers'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## ทุกภาษาที่คุณรู้จักมี garbage collector — Rust ไม่มี
+
+Node.js, Python, Go, Java, C# — ทุกภาษา mainstream ที่คุณน่าจะเคยเขียนทำงานบน GC GC สแกน memory เป็นระยะ หา object ที่ไม่ถูกใช้แล้ว และคืน memory แบบนี้ปลอดภัยและสะดวก แต่มีต้นทุน:
+
+- **Pause latency:** GC stop-the-world pause สามารถ spike latency ได้อย่างคาดเดาไม่ได้
+- **Throughput overhead:** งาน GC แข่งกับโปรแกรมของคุณสำหรับ CPU time
+- **Memory overhead:** GC runtime เก็บ data structure พิเศษเพื่อ track live object
+- **Non-determinism:** คุณไม่สามารถทำนายได้ว่า object จะถูกคืนเมื่อไหร่
+
+Rust **ไม่มีสิ่งใดเหล่านี้เลย** มันบรรลุ memory safety ผ่าน ownership model เพียงอย่างเดียว Compiler พิสูจน์ — แบบ static — ว่า memory ถูกจัดการถูกต้อง และ generate โค้ดเพื่อคืน allocation แต่ละอันในจุดที่ถูกต้องพอดี
+
+<RsOnly title="RAII — Resource Acquisition Is Initialization">
+
+**RAII** คือ pattern ที่ Rust ใช้แทน GC เมื่อคุณสร้าง value ที่เป็น owner ของ resource (memory, file handle, mutex lock) resource นั้นจะถูก acquire เมื่อสร้าง และ release เมื่อ owner หลุด scope — อัตโนมัติ, แน่นอน, ไม่ต้องการ runtime
+
+ไม่ใช่แค่ memory อะไรก็ตามเป็น resource ที่จัดการแบบนี้ได้:
+
+- `String` / `Vec<T>` — heap memory คืนเมื่อ drop
+- `std::fs::File` — file descriptor ปิดเมื่อ drop
+- `MutexGuard<T>` — mutex unlock เมื่อ drop
+- Database connection คืนสู่ pool เมื่อ drop
+
+ใน TypeScript คุณใช้ `try/finally` หรือ proposal ล่าสุด (`using`) เพื่อให้ได้ cleanup ที่คล้ายกัน ใน Rust นี่คือ default สำหรับทุก value
+
+</RsOnly>
+
+## "Drop" หน้าตาเป็นอย่างไร
+
+คุณ implement `Drop` trait เพื่อ run cleanup logic แบบ custom เมื่อ value หลุด scope — เทียบเท่า destructor ของ Rust:
+
+export const noGcTs = `// TypeScript — ไม่มี deterministic cleanup โดย default
+class Resource {
+  constructor(private name: string) {
+    console.log(\`acquiring: \${name}\`);
+  }
+  // ไม่มี guaranteed destructor ต้องใช้ try/finally หรือ 'using' (ES2023)
+  release() {
+    console.log(\`releasing: \${this.name}\`);
+  }
+}
+
+function useResource() {
+  const r = new Resource("file handle");
+  console.log("using resource");
+  r.release(); // ลืมเรียกได้ง่าย; ไม่ถูกเรียกถ้า exception
+}
+useResource();`;
+
+export const noGcRs = `struct Resource {
+    name: String,
+}
+
+impl Resource {
+    fn new(name: &str) -> Self {
+        println!("acquiring: {}", name);
+        Resource { name: name.to_string() }
+    }
+}
+
+impl Drop for Resource {
+    fn drop(&mut self) {
+        println!("releasing: {}", self.name);
+    }
+}
+
+fn main() {
+    println!("start");
+    {
+        let _r = Resource::new("file handle");
+        println!("using resource");
+    } // _r ถูก drop ที่นี่ — drop() ถูกเรียกอัตโนมัติ
+    println!("end — resource already released");
+}`;
+
+<TsGo client:visible ts={noGcTs} go={noGcRs} />
+
+<RsOnly title="Ownership คือ memory management">
+
+ใน Rust, ownership model คือ memory management model ไม่มีการแยกระหว่าง "ownership ทำงานอย่างไร" กับ "memory ถูกคืนอย่างไร" มันเป็นสิ่งเดียวกัน:
+
+1. ทุก heap allocation เป็น owner โดยตัวแปรแค่ตัวเดียว
+2. เมื่อตัวแปรนั้นหลุด scope allocation ก็ถูกคืน
+3. Compiler บังคับกฎข้อ 1 และ 2 แบบ static — ไม่ต้องการ runtime
+
+นี่คือเหตุผลที่ Rust รับประกัน memory safety (ไม่มี use-after-free, ไม่มี double-free, ไม่มี dangling pointer) ด้วย **zero runtime overhead** ทั้งระบบเป็นการพิสูจน์ตั้งแต่ compile time
+
+GC language แลก runtime overhead กับความสะดวกของโปรแกรมเมอร์ Rust แลกกฎ ownership ที่ explicit กับ zero runtime overhead สำหรับ system software, embedded code, game engine, หรือ service ที่ sensitive เรื่อง latency model ของ Rust ชนะ
+
+</RsOnly>
+
+## Deterministic vs non-deterministic cleanup
+
+```
+TypeScript / Node.js:
+  Object สร้าง → ... → GC run ที่เวลาไม่รู้จัก → memory คืน
+
+Rust:
+  Value สร้าง → owner หลุด scope → memory คืนทันที
+```
+
+ความแน่นอนนี้คือเหตุผลที่ Rust ถูกใช้สำหรับ OS kernel, game engine, WebAssembly runtime, และ database เมื่อ file handle หรือ network socket ต้องถูกปิดในจุดที่แน่นอน "GC จะจัดการในที่สุด" ไม่ใช่คำตอบที่ยอมรับได้
+
+## ลองเขียนเอง
+
+export const noGcCode = `struct Resource {
+    name: String,
+}
+
+impl Resource {
+    fn new(name: &str) -> Self {
+        println!("acquiring: {}", name);
+        Resource { name: name.to_string() }
+    }
+}
+
+impl Drop for Resource {
+    fn drop(&mut self) {
+        println!("releasing: {}", self.name);
+    }
+}
+
+fn main() {
+    println!("start");
+    {
+        let _r = Resource::new("file handle");
+        println!("using resource");
+    }
+    println!("end — resource already released");
+}`;
+
+<Playground client:visible code={noGcCode} />
+
+export const quizNoGc = [
+  {
+    q: "RAII ย่อมาจากอะไร และหมายความว่าอะไรใน Rust?",
+    options: [
+      "Runtime Automatic Instruction Injection — เทคนิค JIT compilation",
+      "Resource Acquisition Is Initialization — resource ถูก acquire เมื่อสร้างและ release แบบ deterministic เมื่อ owner ถูก drop",
+      "Reference-Allocated Immutable Items — Rust value ทั้งหมด immutable",
+      "Recursive Allocation and Immediate Inspection — GC algorithm"
+    ],
+    answer: 1
+  },
+  {
+    q: "ฟังก์ชัน `drop` ของ value ถูกเรียกเมื่อไหร่ใน Rust?",
+    options: [
+      "เมื่อ garbage collector ตัดสินใจ collect",
+      "เมื่อคุณเรียก `drop(value)` ชัดๆ",
+      "เมื่อ owner ของ value หลุด scope — แบบ deterministic",
+      "เมื่อจบโปรแกรม"
+    ],
+    answer: 2
+  },
+  {
+    q: "ข้อดีหลักของ ownership-based memory model ของ Rust เมื่อเทียบกับ garbage collector คืออะไร?",
+    options: [
+      "GC ไม่ปลอดภัย — model ของ Rust เป็นวิธีเดียวที่ป้องกัน memory error",
+      "โปรแกรม Rust ใช้ source code น้อยกว่า",
+      "Deterministic cleanup ที่ไม่มี runtime overhead — ไม่มี GC pause, ไม่มี memory overhead, latency คาดเดาได้",
+      "Rust ทำงานได้แค่บน bare-metal hardware"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rs-only/no-gc" questions={quizNoGc} />
+
+<ProgressTracker client:visible id="rs-only/no-gc" />

@@ -1,0 +1,172 @@
+---
+title: 'Borrowing & References'
+description: 'Shared และ exclusive reference ใน Rust — กฎของ borrow checker อธิบายสำหรับ TypeScript developers พร้อม error case แบบ classic'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript ส่ง reference อย่างอิสระ — Rust track ทุก reference
+
+ใน TypeScript การส่ง object ไปให้ function ส่ง reference ให้ ทั้ง caller และ callee สามารถอ่านและเขียน object พร้อมกันได้ ภาษาไม่มีข้อจำกัดว่ามี reference กี่ตัวหรือทำอะไรได้บ้าง
+
+**Borrow checker** ของ Rust บังคับใช้กฎเข้มงวดเกี่ยวกับ reference ตั้งแต่ compile time กฎเหล่านี้ป้องกัน data race, dangling pointer, และ use-after-free — ทั้งหมดโดยไม่มีต้นทุน runtime
+
+## Shared reference — `&T`
+
+Shared reference (`&T`) ให้คุณอ่าน value โดยไม่รับ ownership สามารถมี shared reference ได้หลายตัวพร้อมกัน
+
+export const borrowSharedTs = `// TypeScript — ส่ง reference แค่นั้น (ไม่มีกฎ)
+function getLength(s: string): number {
+  return s.length;
+}
+
+const greeting = "hello";
+const len = getLength(greeting);
+console.log(greeting, len); // ทั้งคู่ยังใช้ได้`;
+
+export const borrowSharedRs = `fn get_length(s: &String) -> usize {
+    s.len()  // เรา borrow s — ไม่สามารถ move ออกจากมัน
+}
+
+fn main() {
+    let greeting = String::from("hello");
+    let len = get_length(&greeting); // ยืม greeting ให้ function
+    println!("{} has {} chars", greeting, len);
+    // greeting ยังใช้ได้ — เราแค่ยืมมัน
+}`;
+
+<TsGo client:visible ts={borrowSharedTs} go={borrowSharedRs} />
+
+## Mutable reference — `&mut T`
+
+Mutable reference (`&mut T`) ให้คุณทั้งอ่านและแก้ไข value แต่ Rust มีกฎ exclusive: **ในขณะที่มี `&mut` reference อยู่ ห้ามมี reference อื่นใด — ไม่ว่า shared หรือ mutable — พร้อมกัน**
+
+export const borrowMutTs = `// TypeScript — ไม่มีข้อจำกัดสำหรับ read + write พร้อมกัน
+function appendWorld(s: { value: string }): void {
+  s.value += ", world";
+}
+
+const msg = { value: "hello" };
+appendWorld(msg);
+console.log(msg.value); // "hello, world"`;
+
+export const borrowMutRs = `fn append_world(s: &mut String) {
+    s.push_str(", world");
+}
+
+fn main() {
+    let mut s = String::from("hello");
+    append_world(&mut s);
+    println!("{}", s); // "hello, world"
+
+    // หลาย shared ref ใช้ได้ — ไม่มีการ mutate
+    let r1 = &s;
+    let r2 = &s;
+    println!("{} and {}", r1, r2);
+}`;
+
+<TsGo client:visible ts={borrowMutTs} go={borrowMutRs} />
+
+<RsOnly title="กฎ borrow สองข้อ — ทำไมถึงมี">
+
+Rust บังคับใช้กฎสองข้อนี้เกี่ยวกับ reference:
+
+1. **คุณมี shared (`&T`) reference ได้กี่ตัวก็ได้ หรือ mutable (`&mut T`) ได้แค่ตัวเดียว — ห้ามมีทั้งสองพร้อมกัน**
+2. **Reference ต้องถูกต้องเสมอ (ห้ามมี dangling reference)**
+
+กฎเหล่านี้กำจัด bug class ทั้งหมดที่พบใน C, C++, และแม้แต่ Go:
+
+- **Data race:** สอง thread mutate data เดียวกันพร้อมกัน → กฎข้อ 1 ป้องกัน compile time
+- **Iterator invalidation:** Mutate `Vec` ในขณะที่ iterate → กฎข้อ 1 จับได้
+- **Use-after-free:** ใช้ reference หลัง owner ถูก drop → กฎข้อ 2 จับได้
+
+TypeScript ไม่มีการป้องกันเหล่านี้เลย JS array สามารถถูก mutate จากโค้ดใดก็ได้ที่ถือ reference ได้ตลอดเวลา
+
+</RsOnly>
+
+## Error ของ borrow checker แบบ classic
+
+นี่คือ error ที่พบบ่อยที่สุดสำหรับ Rust developer มือใหม่ โค้ดด้านล่างพยายาม hold shared reference และ mutable reference พร้อมกัน:
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &s;      // shared borrow เริ่ม
+    let r2 = &s;      // shared borrow อีกตัว — ยังโอเค
+    let r3 = &mut s;  // ERROR: cannot borrow `s` as mutable because it is also borrowed as immutable
+
+    println!("{}, {}, {}", r1, r2, r3);
+}
+// error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable
+//  --> src/main.rs:6:14
+//   |
+// 4 |     let r1 = &s;
+//   |              -- immutable borrow occurs here
+// 6 |     let r3 = &mut s;
+//   |              ^^^^^^ mutable borrow occurs here
+// 7 |     println!("{}, {}, {}", r1, r2, r3);
+//   |                            -- immutable borrow later used here
+```
+
+การแก้ไขง่าย: ทำให้แน่ใจว่า shared และ mutable borrow ไม่ overlap กัน ให้ shared borrow จบก่อน (จบเมื่อถูกใช้ครั้งสุดท้าย) แล้วค่อย take mutable borrow:
+
+## ลองเขียนเอง
+
+export const borrowCode = `fn append_world(s: &mut String) {
+    s.push_str(", world");
+}
+
+fn main() {
+    let mut s = String::from("hello");
+    append_world(&mut s);
+    println!("{}", s);
+
+    // multiple shared refs are fine
+    let r1 = &s;
+    let r2 = &s;
+    println!("{} and {}", r1, r2);
+}`;
+
+<Playground client:visible code={borrowCode} />
+
+export const quizBorrowing = [
+  {
+    q: "Mutable reference (`&mut T`) ไปยัง value เดียวกันมีได้กี่ตัวพร้อมกันใน Rust?",
+    options: [
+      "ไม่จำกัด",
+      "สอง ถ้าอยู่ใน thread ต่างกัน",
+      "แค่หนึ่งตัว",
+      "ไม่มีเลย — ต้อง clone เสมอ"
+    ],
+    answer: 2
+  },
+  {
+    q: "`&T` ใน function signature หมายความว่าอะไร?",
+    options: [
+      "Function รับ ownership ของ T",
+      "Function รับ shared (read-only) reference ของ T",
+      "Function รับ exclusive mutable reference ของ T",
+      "T เป็น raw pointer"
+    ],
+    answer: 1
+  },
+  {
+    q: "กฎ borrow checker ข้อใดป้องกัน data race ตั้งแต่ compile time?",
+    options: [
+      "ห้ามมี shared reference เกินสองตัว",
+      "มี shared ref ได้หลายตัว หรือ mutable ref ได้หนึ่งตัว — ห้ามมีทั้งสองพร้อมกัน",
+      "Mutable reference ต้องประกาศที่บนสุดของ function",
+      "Reference ต้องมีชีวิตยาวกว่า function ที่สร้างมัน"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/borrowing-references" questions={quizBorrowing} />
+
+<ProgressTracker client:visible id="rs-only/borrowing-references" />

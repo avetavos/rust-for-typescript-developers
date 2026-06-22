@@ -1,0 +1,156 @@
+---
+title: 'Routing และ Handlers'
+description: 'Router, routes, async fn handlers, impl IntoResponse — เทียบกับ Express routes'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Express routes vs Axum routes
+
+ใน Express คุณแนบ handlers เข้ากับ `app` หรือ `Router` โดยตรง ใน Axum คุณสร้าง struct `Router` โดยการเชื่อม `.route()` ต่อกัน ไม่มี magic strings สำหรับ HTTP verbs แต่คุณ import functions เช่น `get`, `post`, `put`, `delete` จาก `axum::routing` แทน
+
+export const tsRoutes = `import express from 'express';
+const router = express.Router();
+
+router.get('/users', listUsers);
+router.post('/users', createUser);
+router.get('/users/:id', getUser);
+router.delete('/users/:id', deleteUser);
+
+export default router;`;
+
+export const rsRoutes = `use axum::{
+    routing::{delete, get, post},
+    Router,
+};
+
+use crate::handlers::users::{
+    create_user, delete_user, get_user, list_users,
+};
+
+pub fn users_router() -> Router {
+    Router::new()
+        .route("/users", get(list_users).post(create_user))
+        .route("/users/:id", get(get_user).delete(delete_user))
+}`;
+
+<TsGo client:visible ts={tsRoutes} go={rsRoutes} />
+
+## การเขียน `async fn` handler
+
+Axum handler คือ `async fn` ใด ๆ ที่ arguments เป็น extractors และ return type implement `IntoResponse` handler ที่ง่ายที่สุดคือการ return string:
+
+export const tsSimple = `// Express
+async function hello(req, res) {
+  res.send('Hello, World!');
+}`;
+
+export const rsSimple = `// Axum — returning a plain string
+async fn hello() -> &'static str {
+    "Hello, World!"
+}`;
+
+<TsGo client:visible ts={tsSimple} go={rsSimple} />
+
+## `impl IntoResponse` — return อะไรก็ได้
+
+Axum handlers สามารถ return ได้หลายประเภท: `&str`, `String`, `Json<T>`, `(StatusCode, Json<T>)` หรือประเภทที่กำหนดเองตราบใดที่ implement `IntoResponse`
+
+export const tsJson = `// Express — manual JSON response
+async function listUsers(req, res) {
+  const users = [{ id: 1, name: 'Alice' }];
+  res.status(200).json(users);
+}`;
+
+export const rsJson = `use axum::{http::StatusCode, Json};
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct User {
+    id: u32,
+    name: String,
+}
+
+async fn list_users() -> (StatusCode, Json<Vec<User>>) {
+    let users = vec![User { id: 1, name: "Alice".to_string() }];
+    (StatusCode::OK, Json(users))
+}`;
+
+<TsGo client:visible ts={tsJson} go={rsJson} />
+
+## Nested routers และการ mount
+
+เช่นเดียวกับที่ Express ให้คุณ mount sub-routers ที่ prefix ได้ Axum รองรับ `Router::nest`:
+
+export const tsNest = `// Express
+import userRouter from './users.router';
+app.use('/api/v1', userRouter);`;
+
+export const rsNest = `use axum::Router;
+
+pub fn create_router() -> Router {
+    Router::new()
+        .nest("/api/v1", users_router())
+        .nest("/api/v1", health_router())
+}`;
+
+<TsGo client:visible ts={tsNest} go={rsNest} />
+
+<RsOnly title="IntoResponse — สัญญาของ return type">
+
+ใน Express `res.json(...)` และ `res.status(404).send(...)` เป็น imperative calls บน response object ใน Axum ไม่มี response object — handler **return** response แทน
+
+Return type ต้องการเพียงแค่ implement `IntoResponse` เท่านั้น Axum มี implementations ให้สำหรับ:
+
+- `&str`, `String` → 200 text/plain
+- `Json<T>` → 200 application/json
+- `(StatusCode, Json<T>)` → custom status + JSON
+- `Result<T, E>` ที่ทั้ง `T` และ `E` implement `IntoResponse`
+- `StatusCode` เดี่ยว → empty body พร้อม status นั้น
+- `Response` → กำหนดเองได้เต็มรูปแบบ
+
+นั่นหมายความว่าการจัดการ error ไม่ใช่กรณีพิเศษ — คุณ return `Err(MyError)` และ Axum เรียก `.into_response()` บนมัน เหมือนกับ happy path
+
+</RsOnly>
+
+> **รันบนเครื่องของคุณ** — handlers ต้องการ Axum server ที่กำลังทำงาน ใช้ `cargo run` เพื่อเริ่ม server จากนั้น `curl http://localhost:3000/users` เพื่อทดสอบ
+
+export const quizRouting = [
+  {
+    q: "คุณแนบ GET handler กับ `/users` ใน Axum อย่างไร?",
+    options: [
+      "`.get('/users', handler)`",
+      "`.route(\"/users\", get(handler))`",
+      "`Router::get(\"/users\").handler(handler)`",
+      "`#[get(\"/users\")] fn handler()`"
+    ],
+    answer: 1
+  },
+  {
+    q: "trait ใดที่ return type ของ Axum handler ต้องการ implement?",
+    options: [
+      "Serialize",
+      "Respond",
+      "IntoResponse",
+      "HttpResponse"
+    ],
+    answer: 2
+  },
+  {
+    q: "function ใดของ Axum เทียบเท่ากับ `app.use('/api/v1', subRouter)` ของ Express?",
+    options: [
+      "`Router::mount`",
+      "`Router::use_router`",
+      "`Router::nest`",
+      "`Router::prefix`"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/routing-handlers" questions={quizRouting} />
+
+<ProgressTracker client:visible id="api-axum/routing-handlers" />

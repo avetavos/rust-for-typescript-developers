@@ -1,0 +1,208 @@
+---
+title: "Project Anatomy — Cargo.toml, src/, and the Module System"
+description: 'Cargo.toml vs package.json, src/main.rs and src/lib.rs, the target/ directory, crates vs node_modules, and a first look at Rust modules.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+> Playground note: Project anatomy inherently involves multiple files and directory structure — it cannot be demonstrated in a single-file browser playground. Run the examples locally with `cargo new` and `cargo run`.
+
+## What cargo new gives you
+
+When you run `cargo new my-app`, Cargo creates a minimal but complete project:
+
+```
+my-app/
+├── Cargo.toml      ← project manifest (= package.json)
+├── Cargo.lock      ← pinned dependency versions (= package-lock.json)
+└── src/
+    └── main.rs     ← entry point (= src/index.ts)
+```
+
+For a library (no `main`, just an API for other crates to use):
+
+```bash
+cargo new --lib my-lib
+```
+
+```
+my-lib/
+├── Cargo.toml
+└── src/
+    └── lib.rs      ← library entry point (= index.ts that only exports)
+```
+
+## Cargo.toml vs package.json
+
+export const cargoTomlTs = `// package.json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "description": "A Node.js app",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/express": "^4.17.0"
+  }
+}`;
+
+export const cargoTomlRs = `# Cargo.toml
+[package]
+name = "my-app"
+version = "0.1.0"
+edition = "2021"     # Rust edition (like target in tsconfig)
+
+# No separate devDependencies:
+# [dependencies] = runtime deps
+# [dev-dependencies] = test-only deps
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+pretty_assertions = "1"`;
+
+<TsGo client:visible ts={cargoTomlTs} go={cargoTomlRs} />
+
+Key differences:
+- There is no `scripts` section. You run `cargo run`, `cargo test`, etc. directly.
+- `edition` corresponds to the Rust language edition (2015, 2018, 2021). Always use `2021` for new projects.
+- Dependencies do not need `@types/` packages. Rust types are always part of the crate.
+- **Feature flags** (`features = ["derive"]`) are Rust's equivalent of optional peer dependencies or configuration flags. They let crates expose additional APIs that are compiled in only when requested.
+
+## src/main.rs and src/lib.rs
+
+A binary crate has `src/main.rs`. A library crate has `src/lib.rs`. You can have both in the same project — `src/lib.rs` contains the shared logic, `src/main.rs` calls into it.
+
+```
+my-app/
+└── src/
+    ├── main.rs         ← fn main() { ... }
+    ├── lib.rs          ← pub fn library_code() { ... }
+    ├── utils.rs        ← a module (pub mod utils;)
+    └── models/
+        ├── mod.rs      ← module root (or models.rs in Rust 2018+)
+        └── user.rs     ← pub struct User { ... }
+```
+
+In TypeScript you use `import/export`. In Rust you use `mod` to declare a module and `use` to bring items into scope:
+
+export const modulesTs = `// TypeScript ESM
+// src/utils.ts
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+// src/main.ts
+import { add } from './utils';
+console.log(add(1, 2));`;
+
+export const modulesRs = `// src/utils.rs
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// src/main.rs
+mod utils;  // declares the module (looks for src/utils.rs)
+use utils::add;
+
+fn main() {
+    println!("{}", add(1, 2));
+}`;
+
+<TsGo client:visible ts={modulesTs} go={modulesRs} />
+
+## The target/ directory
+
+When you run `cargo build`, Rust compiles everything into `target/`. This is the equivalent of `dist/` plus `node_modules/.cache/`. You never commit it to version control.
+
+```
+target/
+├── debug/           ← cargo build (fast compile, no optimisation)
+│   └── my-app       ← the executable
+└── release/         ← cargo build --release (slower compile, fast binary)
+    └── my-app
+```
+
+Add `target/` to your `.gitignore`. Cargo does this automatically when you run `cargo new`.
+
+## Crates vs node_modules
+
+In JavaScript, `npm install` downloads packages into `node_modules/` inside your project. In Rust, `cargo add <crate>` downloads packages (called **crates**) into a global registry cache at `~/.cargo/registry/`. Your project's `target/` directory contains compiled artifacts, but the source is shared across all projects on your machine.
+
+The global cache means:
+- No per-project duplication of the same crate
+- `cargo clean` removes `target/` but keeps the download cache
+- Building the same version of a crate twice is nearly instant (already compiled)
+
+## Cargo.lock
+
+Like `package-lock.json`, `Cargo.lock` pins the exact versions of every transitive dependency. For binary projects, commit `Cargo.lock`. For libraries published to crates.io, add it to `.gitignore` — just like you would not commit `package-lock.json` in a published npm package.
+
+<RsOnly title="Editions — the Rust compatibility story">
+
+Rust uses **editions** to introduce breaking changes to the language while maintaining backward compatibility. The edition is set per-project in `Cargo.toml` and does not affect the ABI — crates on different editions interoperate freely.
+
+Current editions: 2015, 2018, 2021. Always start new projects with `edition = "2021"`.
+
+This is analogous to TypeScript's `target` and `lib` settings in `tsconfig.json`, but simpler: you set it once and the compiler handles everything.
+
+</RsOnly>
+
+export const quizAnatomy = [
+  {
+    q: "What is the Rust equivalent of package.json?",
+    options: [
+      "Cargo.lock",
+      "Cargo.toml",
+      "src/main.rs",
+      "rustfmt.toml"
+    ],
+    answer: 1
+  },
+  {
+    q: "Where does Rust store compiled build artifacts?",
+    options: [
+      "dist/",
+      "build/",
+      "target/",
+      "~/.cargo/"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `mod utils;` do in Rust?",
+    options: [
+      "Installs the utils crate from crates.io",
+      "Declares and loads the utils module from src/utils.rs",
+      "Imports all public symbols from utils into scope",
+      "Creates a new file called utils.rs"
+    ],
+    answer: 1
+  },
+  {
+    q: "For a published Rust library crate, should Cargo.lock be committed?",
+    options: [
+      "Yes, always commit Cargo.lock",
+      "No, add it to .gitignore like package-lock.json in a published npm package",
+      "Only commit it when using nightly Rust",
+      "Cargo.lock is not generated for library crates"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="intro/project-anatomy" questions={quizAnatomy} />
+
+<ProgressTracker client:visible id="intro/project-anatomy" />

@@ -1,0 +1,221 @@
+---
+title: 'Async/Await และ Tokio'
+description: 'syntax async/await และ Tokio runtime ของ Rust — เทียบกับ async/await, Promise.all, และ event loop ของ JavaScript ความเหมือนที่สำคัญและความแตกต่างหลักที่ Rust async ต้องการ runtime อย่างชัดเจน'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Async/await: โมเดล concurrency ของ Rust ที่คุ้นเคยที่สุดสำหรับนักพัฒนา TS
+
+ถ้าคุณเคยเขียน TypeScript คุณก็รู้จักโมเดลทางความคิดเบื้องหลัง Rust async/await แล้ว ทั้งสองภาษาใช้ syntax เดียวกัน (`async fn`, `.await`) เพื่อเขียนโค้ดที่ non-blocking แต่อ่านเหมือน sequential logic แนวคิดหลักแมปกันได้เกือบ 1:1:
+
+| JavaScript | Rust |
+|---|---|
+| `async function` | `async fn` |
+| `await somePromise` | `someValue.await` |
+| `Promise<T>` | `impl Future<Output = T>` |
+| `Promise.all(...)` | `tokio::join!(...)` หรือ `futures::join_all(...)` |
+| Node.js event loop (built-in) | Tokio runtime (dependency อย่างชัดเจน) |
+| `Promise.allSettled` | `tokio::join!` (ทั้งหมดทำงานจนเสร็จเสมอ) |
+
+ความแตกต่างที่สำคัญที่สุด: runtime ของ JavaScript (V8, Node.js) ทำงานอยู่เสมอ ใน Rust **ไม่มี async runtime แบบ built-in** — คุณต้องนำมาเองอย่างชัดเจน [Tokio](https://tokio.rs) คือมาตรฐานโดยพฤตินัยสำหรับ async Rust ฝั่ง server (web servers, databases, network services)
+
+## async fn และ .await
+
+`async fn` คืน `Future` — การคำนวณแบบ lazy ที่ไม่ทำอะไรจนกว่าจะถูก poll โดย runtime คุณ `.await` Future เพื่อรันมันและรับผลลัพธ์ นี่มี syntax เหมือนกันกับ `await` ของ JavaScript ทุกประการ
+
+export const asyncTs = `// TypeScript async/await
+async function fetchUser(id: number): Promise<string> {
+  const resp = await fetch(\`/users/\${id}\`);
+  const data = await resp.json();
+  return data.name;
+}
+
+// รันแบบ concurrent ด้วย Promise.all
+async function main() {
+  const [user1, user2] = await Promise.all([
+    fetchUser(1),
+    fetchUser(2),
+  ]);
+  console.log(user1, user2);
+}`;
+
+export const asyncRs = `use tokio::time::{sleep, Duration};
+
+// async fn คืน Future<Output = String>
+async fn fetch_user(id: u32) -> String {
+    // .await คืน control ให้ runtime ขณะ "รอ"
+    sleep(Duration::from_millis(10)).await;
+    format!("user_{id}")
+}
+
+#[tokio::main]  // ตั้งค่า Tokio runtime สำหรับ main()
+async fn main() {
+    // tokio::join! รัน futures สอง future แบบ concurrent บน thread pool เดียวกัน
+    // — เทียบเท่ากับ Promise.all
+    let (user1, user2) = tokio::join!(
+        fetch_user(1),
+        fetch_user(2),
+    );
+    println!("{user1} {user2}"); // user_1 user_2
+}`;
+
+<TsGo client:visible ts={asyncTs} go={asyncRs} />
+
+## Spawn async tasks (tokio::spawn)
+
+`tokio::spawn` คือ async เทียบเท่าของ `thread::spawn` มัน schedule future บน Tokio thread pool และคืน `JoinHandle<T>` ต่างจาก `thread::spawn` task รันบน thread pool ที่จัดการโดย Tokio — โดยทั่วไปหนึ่ง thread ต่อ CPU core
+
+export const asyncSpawnTs = `// TypeScript: fire-and-forget ด้วย Promise (หรือ await เพื่อรวบรวมผล)
+async function work(id: number): Promise<number> {
+  await new Promise(resolve => setTimeout(resolve, 10));
+  return id * 2;
+}
+
+async function main() {
+  // Spawn ทั้งหมด แล้ว await ทั้งหมด — เทียบเท่ากับ tokio::spawn + join
+  const handles = [1, 2, 3].map(id => work(id));
+  const results = await Promise.all(handles);
+  const total = results.reduce((a, b) => a + b, 0);
+  console.log('total:', total); // total: 12
+}`;
+
+export const asyncSpawnRs = `use tokio::time::{sleep, Duration};
+
+async fn work(id: u32) -> u32 {
+    sleep(Duration::from_millis(10)).await;
+    id * 2
+}
+
+#[tokio::main]
+async fn main() {
+    let handles: Vec<_> = (1u32..=3)
+        .map(|id| tokio::spawn(work(id)))
+        .collect();
+
+    let mut total = 0u32;
+    for h in handles {
+        total += h.await.unwrap();
+    }
+    println!("total: {total}"); // total: 12
+}`;
+
+<TsGo client:visible ts={asyncSpawnTs} go={asyncSpawnRs} />
+
+## ลองรันเลย
+
+export const asyncCode = `use tokio::time::{sleep, Duration};
+
+async fn fetch_user(id: u32) -> String {
+    sleep(Duration::from_millis(10)).await;
+    format!("user_{id}")
+}
+
+#[tokio::main]
+async fn main() {
+    let (user1, user2) = tokio::join!(
+        fetch_user(1),
+        fetch_user(2),
+    );
+    println!("{user1} {user2}");
+}`;
+
+<Playground client:visible code={asyncCode} />
+
+<RsOnly title="Rust async ต้องการ runtime อย่างชัดเจน — และ Futures เป็น lazy">
+
+### Futures เป็น lazy
+
+ใน JavaScript การสร้าง Promise จะเริ่มทำงานทันที — executor function รันทันที ใน Rust `async fn` คืน `Future` ที่ **ไม่ทำอะไร** จนกว่าใครบางคนจะ drive มัน (poll มัน) การเขียน:
+
+```rust
+let f = fetch_user(1); // ไม่เริ่มการคำนวณ
+```
+
+...ไม่ทำอะไรเลย คุณต้อง `.await` มัน หรือส่งให้ `tokio::spawn` (หรือ executor อื่น) เพื่อให้มันรัน ถ้าคุณสร้าง Future แล้วไม่เคย await มัน body ของ async function จะไม่ถูกรันเลย
+
+### คุณต้องเลือก runtime
+
+JavaScript มี runtime built-in ตัวเดียว Rust มี async runtime หลายตัว (`tokio`, `async-std`, `smol`) Tokio คือตัวเลือกที่โดดเด่นสำหรับ backend services คุณ opt in โดยเพิ่มใน `Cargo.toml`:
+
+```toml
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+```
+
+attribute macro `#[tokio::main]` เขียนใหม่ `async fn main()` ของคุณเป็น sync `fn main()` ที่เริ่ม Tokio runtime และ block บน async body:
+
+```rust
+// สิ่งที่คุณเขียน:
+#[tokio::main]
+async fn main() { ... }
+
+// สิ่งที่ macro ขยายออกมา (โดยคร่าวๆ):
+fn main() {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async { ... })
+}
+```
+
+### tokio::join! vs Promise.all
+
+`tokio::join!(a, b, c)` drive ทั้งสาม future แบบ concurrent บน **task เดียวกัน** (cooperative scheduling — เหมือน JS) ถ้าต้องการ parallelism จริงข้าม thread-pool threads ให้ใช้ `tokio::spawn` สำหรับแต่ละ future แล้ว `.await` `JoinHandle`
+
+| Pattern | Concurrent? | Parallel? |
+|---|---|---|
+| `tokio::join!(a, b)` | ใช่ (สลับกันบน task เดียว) | ไม่ |
+| `tokio::spawn(a); tokio::spawn(b)` | ใช่ | ใช่ (อาจรันบน thread ต่างกัน) |
+
+</RsOnly>
+
+export const quizAsyncTokio = [
+  {
+    q: "ความแตกต่างที่สำคัญที่สุดระหว่าง Rust async และ JavaScript async คืออะไร?",
+    options: [
+      "Rust async ใช้ threads; JavaScript ไม่ใช้",
+      "Rust Futures เป็น lazy และต้องการ runtime อย่างชัดเจน; JavaScript Promises เริ่มทันทีใน runtime built-in",
+      "Rust async เร็วกว่า JavaScript async ในทุกกรณี",
+      "JavaScript async ต้องการ runtime อย่างชัดเจน; Rust มี built-in"
+    ],
+    answer: 1
+  },
+  {
+    q: "#[tokio::main] ทำอะไร?",
+    options: [
+      "เพิ่ม Tokio เป็น dependency ใน Cargo.toml",
+      "ทำเครื่องหมาย function ว่าเป็น Send + Sync",
+      "เขียนใหม่ async fn main() เป็น entry point แบบ sync ที่เริ่ม Tokio runtime",
+      "Compile async function เป็น WASM"
+    ],
+    answer: 2
+  },
+  {
+    q: "คู่เทียบของ tokio::join!(a, b) ใน JavaScript คืออะไร?",
+    options: [
+      "await a; await b;",
+      "Promise.all([a, b])",
+      "Promise.race([a, b])",
+      "setTimeout(a, 0); setTimeout(b, 0);"
+    ],
+    answer: 1
+  },
+  {
+    q: "เกิดอะไรขึ้นถ้าคุณสร้าง Rust Future แต่ไม่เคย .await มัน?",
+    options: [
+      "มันรันใน background อัตโนมัติ",
+      "Compiler ออก warning แต่รันมันอยู่ดี",
+      "Body ของ Future จะไม่ถูกรันเลย",
+      "มัน panic ณ runtime"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="concurrency/async-await-tokio" questions={quizAsyncTokio} />
+
+<ProgressTracker client:visible id="concurrency/async-await-tokio" />

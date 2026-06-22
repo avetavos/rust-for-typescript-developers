@@ -1,0 +1,136 @@
+---
+title: "Rust ที่ไม่มีใน TypeScript"
+description: 'ภาพรวมของ concept เฉพาะ Rust — ownership, borrowing, lifetimes และอื่น ๆ ที่ไม่มีใน TypeScript หรือ JavaScript เลย'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## สิ่งที่ TypeScript ไม่มีสอน
+
+TypeScript เป็นภาษาที่ดีมาก แต่มันทำงานบน JavaScript runtime ที่มี garbage collector (GC) ซึ่ง runtime นั้นทำการตัดสินใจหลายอย่างแทนเรา: memory จะถูกคืนเมื่อไหร่? ใครเป็นเจ้าของ value นั้น? thread สองตัวอ่าน object เดียวกันพร้อมกันได้ไหม?
+
+Rust ทำให้การตัดสินใจเหล่านี้ explicit — ณ **compile time** โดยไม่มีต้นทุน runtime เลย นั่นหมายความว่า Rust มี concept บางอย่างที่ **ไม่มีใน TypeScript** เลย module นี้จะพาไปดูทั้งหมด
+
+<RsOnly title="Concept ของ Rust ที่ไม่มีใน TS">
+
+นี่คือรายการทั้งหมดที่ module นี้จะสอน แต่ละ concept แก้ปัญหาที่ TypeScript มอบให้ runtime จัดการหรือมองข้ามไป:
+
+| Concept | แก้ปัญหาอะไร |
+|---|---|
+| **Ownership** | มี owner ได้แค่คนเดียว; compiler คืน memory เมื่อ owner หลุด scope |
+| **Borrowing & references** | การเข้าถึง value ชั่วคราวโดยไม่โอน ownership |
+| **Lifetimes** | การรับประกันว่า reference จะไม่มีชีวิตยาวกว่าข้อมูลที่ชี้ถึง |
+| **Move vs Copy** | ควบคุมว่า value จะถูก duplicate หรือ transfer |
+| **Traits** | interface แบบ nominal ที่มี coherence — ต่างจาก structural typing ของ TS |
+| **Enums as ADTs** | Sum type ที่พกข้อมูลได้; `match` แบบ exhaustive |
+| **Option / Result** | ไม่มี `null`, ไม่มี `undefined`, ไม่มี exception ที่ตรวจไม่พบ |
+| **No GC / RAII** | การคืน resource ตาม scope อย่างแน่นอน โดยไม่มีต้นทุน runtime |
+
+ไม่มีอะไรเหล่านี้ต้องการ runtime ทั้งหมดถูกตรวจสอบโดย Rust compiler (rustc) ก่อนที่โปรแกรมจะทำงาน
+
+</RsOnly>
+
+## TypeScript ส่ง memory ให้ runtime จัดการ
+
+ใน TypeScript (และ JavaScript) คุณไม่เคยต้องคิดเรื่อง memory เลย:
+
+export const indexTs = `// TypeScript — memory มองไม่เห็น
+const greeting = "hello";       // allocated บน heap ที่ไหนสักที่
+const copy = greeting;           // ทั้งคู่ชี้ไปที่ string object เดียวกัน
+// "hello" จะถูกคืนเมื่อไหร่? GC ตัดสินใจ คุณไม่มีทางรู้
+// ไม่มี ownership ไม่มีกฎ มีแค่ references
+function process(s: string) {
+  console.log(s);
+}
+process(greeting);
+console.log(greeting); // ยังใช้ได้ — GC ยังคงมันไว้`;
+
+export const indexRs = `fn main() {
+    // Rust — ownership ชัดเจน
+    let s = String::from("hello");  // s เป็น owner ของ string data
+    let t = s;                       // ownership MOVES ไปที่ t; s หมดแล้ว
+    // println!("{}", s);            // compile error: s ถูก move แล้ว
+    println!("{}", t);               // ใช้ได้แค่ t
+
+    // borrowing — เข้าถึงชั่วคราวโดยไม่ move
+    let greeting = String::from("world");
+    let len = calc_len(&greeting);   // ยืม greeting; เราเก็บ ownership ไว้
+    println!("{} has {} chars", greeting, len);
+
+    // Copy type — i32 copy ถูกมากจึง copy อัตโนมัติ
+    let x: i32 = 42;
+    let y = x;                       // x ไม่ถูก moved — มันถูก copied
+    println!("x={} y={}", x, y);    // ทั้งคู่ใช้ได้
+}
+
+fn calc_len(s: &String) -> usize {
+    s.len()
+}`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+## ลองเขียนเอง
+
+export const indexCode = `fn main() {
+    // move semantics
+    let s = String::from("hello");
+    let t = s;          // s is moved into t
+    println!("{}", t); // only t is valid
+
+    // borrowing
+    let greeting = String::from("world");
+    let len = calc_len(&greeting);
+    println!("{} has {} chars", greeting, len);
+
+    // Copy type
+    let x: i32 = 42;
+    let y = x;          // i32 is Copy — both x and y are valid
+    println!("x={} y={}", x, y);
+}
+
+fn calc_len(s: &String) -> usize {
+    s.len()
+}`;
+
+<Playground client:visible code={indexCode} />
+
+export const quizIndex = [
+  {
+    q: "อะไรที่ถูกจัดการโดย Rust compiler — ไม่ใช่ runtime?",
+    options: [
+      "Garbage collection",
+      "Ownership และ memory safety",
+      "Dynamic dispatch ผ่าน vtable เท่านั้น",
+      "Thread scheduling"
+    ],
+    answer: 1
+  },
+  {
+    q: "เกิดอะไรขึ้นกับ `s` หลังจาก `let t = s;` เมื่อ `s` เป็น `String`?",
+    options: [
+      "s ถูก clone อัตโนมัติ",
+      "ทั้ง s และ t ใช้ได้",
+      "s ถูก move — ไม่สามารถใช้งานต่อได้",
+      "s ถูก borrow โดย t"
+    ],
+    answer: 2
+  },
+  {
+    q: "ทำไม TypeScript ถึงไม่ต้องการกฎ ownership?",
+    options: [
+      "TypeScript ใช้ reference counting",
+      "TypeScript value ไม่สามารถเปลี่ยนแปลงได้",
+      "TypeScript ทำงานบน GC runtime ที่ track lifetime อัตโนมัติ",
+      "TypeScript รองรับแค่ primitive type"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rs-only/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="rs-only/index" />

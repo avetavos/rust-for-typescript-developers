@@ -1,0 +1,206 @@
+---
+title: 'Generics & Trait Bounds'
+description: 'Generic functions และ structs พร้อม trait bounds (`<T: Display>`, `where`) เทียบกับ TypeScript generics และ constraints'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript generics vs Rust generics
+
+ใน TypeScript คุณเขียน `function identity<T>(x: T): T` เพื่อทำให้ฟังก์ชันทำงานกับทุก type Rust ใช้ syntax วงเล็บมุมเหมือนกัน: `fn identity<T>(x: T) -> T` ความแตกต่างหลักคือ TypeScript generics ถูก erase บางส่วนตอน compile time และพึ่งพา structural typing ในขณะที่ Rust ทำ **monomorphisation** — compiler สร้างฟังก์ชัน concrete แยกต่างหากสำหรับทุก type ที่ใช้ ไม่มี overhead ขณะ runtime
+
+## Trait bounds: การจำกัด `T`
+
+TypeScript จำกัด generics ด้วย `extends`: `<T extends Printable>` Rust จำกัดด้วย **trait bounds**: `<T: Display>` (inline syntax) หรือ `where` clause (แยกบรรทัด ใช้เมื่อ bounds ยาว)
+
+export const genericTs = `// TypeScript — constraint with extends
+interface Printable {
+  toString(): string;
+}
+
+function printTwice<T extends Printable>(value: T): void {
+  console.log(value.toString());
+  console.log(value.toString());
+}
+
+printTwice(42);
+printTwice("hello");`;
+
+export const genericRs = `use std::fmt::Display;
+
+// Inline bound syntax
+fn print_twice<T: Display>(value: T) {
+    println!("{value}");
+    println!("{value}");
+}
+
+// where clause — cleaner for multiple bounds
+fn print_and_debug<T>(value: T)
+where
+    T: Display + std::fmt::Debug,
+{
+    println!("display: {value}");
+    println!("debug:   {value:?}");
+}
+
+fn main() {
+    print_twice(42);
+    print_twice("hello");
+    print_and_debug(3.14_f64);
+}`;
+
+<TsGo client:visible ts={genericTs} go={genericRs} />
+
+## Generic structs
+
+เหมือนกับที่ TypeScript classes เป็น generic ได้ (`class Stack<T>`), Rust structs ก็เป็น generic ได้เช่นกัน คุณเพิ่ม type parameter หลังชื่อ struct และทำซ้ำใน `impl` block
+
+export const structTs = `// TypeScript generic class
+class Stack<T> {
+  private items: T[] = [];
+  push(item: T): void { this.items.push(item); }
+  pop(): T | undefined { return this.items.pop(); }
+  peek(): T | undefined { return this.items[this.items.length - 1]; }
+}
+
+const s = new Stack<number>();
+s.push(1);
+s.push(2);
+console.log(s.pop()); // 2`;
+
+export const structRs = `struct Stack<T> {
+    items: Vec<T>,
+}
+
+impl<T> Stack<T> {
+    fn new() -> Self {
+        Stack { items: Vec::new() }
+    }
+    fn push(&mut self, item: T) {
+        self.items.push(item);
+    }
+    fn pop(&mut self) -> Option<T> {
+        self.items.pop()
+    }
+    fn peek(&self) -> Option<&T> {
+        self.items.last()
+    }
+}
+
+fn main() {
+    let mut s: Stack<i32> = Stack::new();
+    s.push(1);
+    s.push(2);
+    println!("{:?}", s.pop()); // Some(2)
+}`;
+
+<TsGo client:visible ts={structTs} go={structRs} />
+
+## Multiple trait bounds และ syntax `+`
+
+คุณสามารถกำหนดให้ type ต้อง implement หลาย trait พร้อมกันโดยเชื่อมด้วย `+` เหมือนกับ `T extends A & B` ของ TypeScript
+
+```
+// TypeScript
+function foo<T extends Serializable & Loggable>(x: T) { ... }
+
+// Rust — inline
+fn foo<T: Serialize + Debug>(x: T) { ... }
+
+// Rust — where clause (แนะนำเมื่อ bounds ยาว)
+fn foo<T>(x: T)
+where
+    T: Serialize + Debug + Clone,
+{ ... }
+```
+
+<RsOnly title="Monomorphisation: zero-cost generics">
+
+เมื่อคุณเขียน `print_twice::<i32>(42)` และ `print_twice::<&str>("hi")` compiler สร้างฟังก์ชัน machine-code แยกสองฟังก์ชัน — หนึ่งสำหรับ `i32`, หนึ่งสำหรับ `&str` ไม่มี dynamic dispatch ไม่มี vtable lookup ไม่มี boxing นี่คือเหตุผลที่ Rust generics ถูกเรียกว่า "zero-cost abstractions"
+
+Trade-off: compile time ยาวนานกว่าสำหรับ codebase ที่มี generic instantiation หลายประเภท และขนาด binary เพิ่มตามจำนวน type combinations ที่ไม่ซ้ำกัน
+
+</RsOnly>
+
+## ลองเล่นดู
+
+export const genericPlayground = `use std::fmt::Display;
+
+fn largest<T: PartialOrd>(list: &[T]) -> &T {
+    let mut largest = &list[0];
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}
+
+fn describe<T: Display + std::fmt::Debug>(value: T) {
+    println!("Display: {value}");
+    println!("Debug:   {value:?}");
+}
+
+fn main() {
+    let numbers = vec![34, 50, 25, 100, 65];
+    println!("largest number: {}", largest(&numbers));
+
+    let chars = vec!['y', 'm', 'a', 'q'];
+    println!("largest char: {}", largest(&chars));
+
+    describe(42_i32);
+    describe("hello");
+}`;
+
+<Playground client:visible code={genericPlayground} />
+
+export const quizGenerics = [
+  {
+    q: "Monomorphisation ของ Rust สำหรับ generic functions หมายความว่าอะไร?",
+    options: [
+      "ฟังก์ชันเดียวจัดการทุก type ผ่าน dynamic dispatch ขณะ runtime",
+      "Compiler สร้างฟังก์ชัน concrete แยกต่างหากต่อแต่ละ type ที่ใช้",
+      "Generic code ช้ากว่า non-generic code",
+      "Type parameters ถูก erase เหมือน Java"
+    ],
+    answer: 1
+  },
+  {
+    q: "ข้อใดเพิ่ม trait bounds สองอย่างให้กับ generic parameter ได้ถูกต้อง?",
+    options: [
+      "`<T: Display, Debug>`",
+      "`<T extends Display + Debug>`",
+      "`<T: Display + Debug>`",
+      "`<T implements Display & Debug>`"
+    ],
+    answer: 2
+  },
+  {
+    q: "ควรใช้ `where` clause แทน inline bounds เมื่อใด?",
+    options: [
+      "เสมอ — inline bounds ถูก deprecate แล้ว",
+      "เมื่อฟังก์ชันมี type parameters หลายตัวหรือ bounds ยาว เพื่อความอ่านง่าย",
+      "เฉพาะสำหรับ structs ไม่ใช่ functions",
+      "เมื่อมี bound เพียงตัวเดียว"
+    ],
+    answer: 1
+  },
+  {
+    q: "คู่เทียบใน TypeScript ของ `<T: Serialize + Debug>` ของ Rust คืออะไร?",
+    options: [
+      "`<T extends Serialize | Debug>`",
+      "`<T extends Serialize & Debug>`",
+      "`<T implements Serialize, Debug>`",
+      "`<T: Serialize, T: Debug>`"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="advanced/generics-trait-bounds" questions={quizGenerics} />
+
+<ProgressTracker client:visible id="advanced/generics-trait-bounds" />

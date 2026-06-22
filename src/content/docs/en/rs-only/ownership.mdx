@@ -1,0 +1,182 @@
+---
+title: 'Ownership'
+description: 'How Rust''s ownership model replaces garbage collection — one owner, scope-based drop, and move semantics explained for TypeScript developers.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## JavaScript manages memory for you — Rust does not
+
+In JavaScript and TypeScript, every heap value (strings, arrays, objects) is tracked by a garbage collector. You create values freely; the GC figures out when nobody is using them and frees the memory. You never call `free()`. You never worry about use-after-free.
+
+Rust has no garbage collector. Instead it has **ownership**: a compile-time system of rules that gives every value exactly one owner. When the owner goes out of scope, the value is automatically freed — no GC needed.
+
+<RsOnly title="The three rules of ownership">
+
+These three rules are the foundation of everything in Rust. The compiler enforces all of them:
+
+1. **Every value has exactly one owner.**
+2. **There can only be one owner at a time.**
+3. **When the owner goes out of scope, the value is dropped (freed).**
+
+There is no equivalent in TypeScript. JS objects can have zero owners (waiting for GC) or many references all pointing to the same heap data simultaneously. Rust disallows both scenarios at compile time.
+
+</RsOnly>
+
+## Moving ownership
+
+In TypeScript, assigning an object to a new variable creates a second reference. Both variables point to the same data. In Rust, assigning a heap value **moves** ownership: the original variable is invalidated.
+
+export const ownershipTs = `// TypeScript — two references, same object
+const a = { name: "Alice" };
+const b = a;          // b points to the same object
+console.log(a.name);  // "Alice" — a is still valid
+console.log(b.name);  // "Alice" — both work
+
+// The GC will free the object when BOTH a and b go out of scope.
+// You cannot control when.`;
+
+export const ownershipRs = `fn main() {
+    // Rust — String is a heap value
+    let a = String::from("Alice");
+    let b = a;          // ownership MOVES from a to b
+    // println!("{}", a); // error[E0382]: use of moved value: \`a\`
+    println!("{}", b);  // only b is valid now
+
+    // When b goes out of scope at the end of main(),
+    // Rust automatically frees the String data. No GC needed.
+}`;
+
+<TsGo client:visible ts={ownershipTs} go={ownershipRs} />
+
+<RsOnly title="Scope-based drop — deterministic cleanup">
+
+When a value's owner goes out of scope, Rust calls the value's `drop` function immediately and deterministically. In TypeScript, you never know when the GC will collect an object. In Rust, you know exactly when.
+
+```rust
+fn main() {
+    println!("before block");
+    {
+        let s = String::from("hello");
+        println!("inside block: {}", s);
+    } // <-- s is dropped HERE. Memory is freed at this exact line.
+    println!("after block — s is gone");
+}
+```
+
+This determinism is why Rust can manage file handles, network sockets, mutex locks, and database connections without a GC — the resource is always released at the end of the owning scope.
+
+</RsOnly>
+
+## Ownership through functions
+
+Passing a heap value to a function **moves** it into that function. The caller can no longer use it unless the function returns it back.
+
+export const ownerFnTs = `// TypeScript — passing an object does not move ownership
+function greet(name: string) {
+  console.log(\`Hello, \${name}\`);
+}
+
+const s = "world";
+greet(s);
+console.log(s); // still valid — JS passes by reference for objects`;
+
+export const ownerFnRs = `fn greet(name: String) {
+    // name is owned here
+    println!("Hello, {}", name);
+} // name is dropped here
+
+fn main() {
+    let s = String::from("world");
+    greet(s);           // ownership moves into greet()
+    // println!("{}", s); // error[E0382]: use of moved value: \`s\`
+}`;
+
+<TsGo client:visible ts={ownerFnTs} go={ownerFnRs} />
+
+<RsOnly title="Why move-by-default is a feature, not a footgun">
+
+Move-by-default looks restrictive at first. Why can't you use a value after passing it to a function?
+
+The payoff is **memory safety without a GC**:
+
+- The compiler statically proves no two pieces of code hold the same heap allocation simultaneously.
+- No dangling pointers. No use-after-free. No double-free.
+- All of this is checked at compile time — zero cost at runtime.
+
+The escape hatches are **borrowing** (lending without moving, covered in the next lesson) and **cloning** (explicit deep copy). You reach for borrowing most of the time; you reach for clone when you genuinely need two independent copies.
+
+</RsOnly>
+
+## Try it
+
+export const ownershipCode = `fn takes_ownership(s: String) {
+    println!("got: {}", s);
+} // s dropped here
+
+fn makes_copy(n: i32) {
+    println!("copy: {}", n);
+} // n dropped here, but i32 is Copy so the caller's copy is unaffected
+
+fn main() {
+    let s = String::from("hello");
+    takes_ownership(s);
+    // println!("{}", s); // would be a compile error — s was moved
+
+    let x = 5;
+    makes_copy(x);
+    println!("x is still valid: {}", x); // fine — i32 is Copy
+}`;
+
+<Playground client:visible code={ownershipCode} />
+
+export const quizOwnership = [
+  {
+    q: "What happens when you assign a `String` to a new variable in Rust?",
+    options: [
+      "Both variables share a reference to the same data",
+      "The string is cloned automatically",
+      "Ownership moves to the new variable; the original is invalidated",
+      "The compiler creates a garbage-collected reference"
+    ],
+    answer: 2
+  },
+  {
+    q: "When is a heap-allocated value freed in Rust?",
+    options: [
+      "When the garbage collector decides to run",
+      "When the last reference goes out of scope",
+      "When the owner goes out of scope — deterministically",
+      "When you explicitly call free()"
+    ],
+    answer: 2
+  },
+  {
+    q: "What must you do to use a `String` in a function AND still use it afterwards in the caller?",
+    options: [
+      "Pass it by value — Rust will clone it automatically",
+      "Use borrowing (&String) so the function borrows without taking ownership",
+      "Mark the function as unsafe",
+      "Wrap the value in a Box<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which rule is NOT one of Rust's three ownership rules?",
+    options: [
+      "Every value has exactly one owner",
+      "There can be multiple owners via reference counting by default",
+      "There can only be one owner at a time",
+      "When the owner goes out of scope, the value is dropped"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/ownership" questions={quizOwnership} />
+
+<ProgressTracker client:visible id="rs-only/ownership" />

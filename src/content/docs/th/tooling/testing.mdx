@@ -1,0 +1,193 @@
+---
+title: 'Testing — #[test], cargo test และ Doctest'
+description: 'Unit test ด้วย #[test], assert_eq!, cargo test และ doctest ใน Rust เทียบกับ Jest'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Jest → cargo test
+
+ใน TypeScript คุณใช้ Jest (หรือ Vitest) และเขียน `describe`/`it`/`expect` block ใน `.test.ts` file แยกต่างหาก test runner ของ Rust ถูกสร้างไว้ใน compiler แล้ว: ใส่ `#[test]` บน function ใดก็ได้ แล้ว `cargo test` จะค้นหาและรันมันอัตโนมัติ — ไม่ต้องใช้ crate บุคคลที่สาม
+
+## Unit test อยู่ใกล้ code
+
+export const testingTs = `// math.ts
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+// math.test.ts
+import { add } from './math';
+test('adds two numbers', () => {
+  expect(add(3, 4)).toBe(7);
+});`;
+
+export const testingRs = `// src/lib.rs  (test อยู่ใน file เดียวกัน)
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;  // import ทุกอย่างจาก parent module
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(3, 4), 7);
+    }
+
+    #[test]
+    fn test_add_negative() {
+        assert_eq!(add(-1, 1), 0);
+    }
+}`;
+
+<TsGo client:visible ts={testingTs} go={testingRs} />
+
+attribute `#[cfg(test)]` หมายความว่า test module จะถูก compile เฉพาะเมื่อรัน `cargo test` เท่านั้น — มันจะถูกตัดออกจาก release build อัตโนมัติ
+
+## การรัน test
+
+```bash
+cargo test                    # รัน test ทั้งหมดใน project
+cargo test test_add           # รัน test ที่ชื่อมี "test_add"
+cargo test -- --nocapture     # แสดง println! output ระหว่าง test
+cargo test -- --test-threads=1  # รัน test ตามลำดับ (ไม่ parallel)
+```
+
+## Assertion macro ที่ใช้บ่อย
+
+```rust
+assert_eq!(left, right);         // expect(a).toBe(b)
+assert_ne!(left, right);         // expect(a).not.toBe(b)
+assert!(condition);              // expect(condition).toBeTruthy()
+assert!(condition, "message {}", 42);  // พร้อม failure message กำหนดเอง
+```
+
+## การคาดหวัง panic (เหมือน Jest's toThrow)
+
+```rust
+#[test]
+#[should_panic(expected = "divide by zero")]
+fn test_divide_by_zero() {
+    divide(10, 0);  // function นี้ควร panic
+}
+```
+
+## Doctest — test ใน doc comment
+
+Rust สามารถรัน code example ที่เขียนใน `///` doc comment ได้ มันทำหน้าที่เป็นทั้ง documentation และ test
+
+```rust
+/// บวกเลขจำนวนเต็มสองตัวเข้าด้วยกัน
+///
+/// # Examples
+///
+/// ```
+/// let result = my_crate::add(2, 3);
+/// assert_eq!(result, 5);
+/// ```
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+```
+
+รันด้วย command เดิม: `cargo test`
+
+> Playground note: function `#[test]` ต้องการ context ของ `cargo test` binary และไม่สามารถรันใน browser playground ได้ snippet ด้านล่างใช้ `fn main` กับ `assert_eq!` เพื่อสาธิต logic เดียวกัน — รัน `cargo test` ใน local สำหรับประสบการณ์ test suite เต็มรูปแบบ
+
+## ลองเลย — logic ที่จะ test
+
+export const testingCode = `fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn is_even(n: i32) -> bool {
+    n % 2 == 0
+}
+
+fn main() {
+    // ทดสอบ logic ด้วยตนเอง (ใน project จริงใช้ #[test])
+    assert_eq!(add(3, 4), 7);
+    assert_eq!(add(-1, 1), 0);
+    assert!(is_even(4));
+    assert!(!is_even(7));
+    println!("All assertions passed!");
+}`;
+
+<Playground client:visible code={testingCode} />
+
+<RsOnly title="Integration test">
+
+Integration test อยู่ใน directory `tests/` ระดับบนสุด (ไม่ใช่ใน `src/`) แต่ละ `.rs` file ใน `tests/` จะถูก compile เป็น crate แยกที่ import library ของคุณ — สามารถ access เฉพาะ public API เท่านั้น เหมือนกับ consumer ภายนอก
+
+```
+my-lib/
+├── src/
+│   └── lib.rs
+└── tests/
+    └── integration_test.rs   ← cargo test ค้นหาอัตโนมัติ
+```
+
+```rust
+// tests/integration_test.rs
+use my_lib::add;
+
+#[test]
+fn test_add_from_outside() {
+    assert_eq!(add(10, 20), 30);
+}
+```
+
+</RsOnly>
+
+export const quizTesting = [
+  {
+    q: "Attribute ใดทำเครื่องหมาย Rust function ว่าเป็น test?",
+    options: [
+      "#[it]",
+      "#[test]",
+      "#[spec]",
+      "#[should_run]"
+    ],
+    answer: 1
+  },
+  {
+    q: "`#[cfg(test)]` ทำอะไร?",
+    options: [
+      "กำหนด setting ของ test runner",
+      "ให้แน่ใจว่า module ถูก compile เฉพาะเมื่อรัน cargo test",
+      "ทำเครื่องหมาย module ว่ามี integration test",
+      "ปิด optimisation ระหว่าง testing"
+    ],
+    answer: 1
+  },
+  {
+    q: "Macro ใดเทียบเท่ากับ `expect(a).toBe(b)` ของ Jest?",
+    options: [
+      "assert!(a == b)",
+      "check_eq!(a, b)",
+      "assert_eq!(a, b)",
+      "expect_eq!(a, b)"
+    ],
+    answer: 2
+  },
+  {
+    q: "Rust integration test อยู่ที่ไหน?",
+    options: [
+      "ใน src/ ข้างๆ source file",
+      "ใน directory tests/ ที่ project root",
+      "ใน __tests__/ ภายใน src/",
+      "ใน Cargo.toml ภายใต้ [test]"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="tooling/testing" questions={quizTesting} />
+
+<ProgressTracker client:visible id="tooling/testing" />

@@ -1,0 +1,191 @@
+---
+title: 'Extractors'
+description: 'Path, Query และ Json extractors สำหรับการวิเคราะห์ request แบบ type-safe — เทียบกับ Express req.params / req.body'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## จาก `req.params` ถึง `Path<T>`
+
+ใน Express คุณเข้าถึง route parameters ผ่าน object `req.params` ที่ไม่มี type Axum แทนที่ด้วย `Path<T>` extractor — มัน deserialize URL segment โดยตรงไปยัง Rust type และจะล้มเหลวที่ type level หากค่าไม่ตรงกัน
+
+export const tsPath = `// Express
+app.get('/users/:id', async (req, res) => {
+  const id = req.params.id; // string, always
+  const numId = parseInt(id, 10); // manual parse, can fail at runtime
+  const user = await db.findUser(numId);
+  res.json(user);
+});`;
+
+export const rsPath = `use axum::{extract::Path, Json};
+use uuid::Uuid;
+
+async fn get_user(Path(id): Path<Uuid>) -> Json<User> {
+    // id is already a Uuid — Axum returns 400 automatically
+    // if the path segment is not a valid UUID
+    let user = db_find_user(id).await;
+    Json(user)
+}`;
+
+<TsGo client:visible ts={tsPath} go={rsPath} />
+
+## จาก `req.query` ถึง `Query<T>`
+
+Express เปิดเผย query string parameters ผ่าน `req.query` — ซึ่งก็ไม่มี type เช่นกัน `Query<T>` ของ Axum deserialize query string ไปยัง struct โดยใช้ `serde`
+
+export const tsQuery = `// Express
+app.get('/users', async (req, res) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 30;
+  const users = await db.listUsers({ page, limit });
+  res.json(users);
+});`;
+
+export const rsQuery = `use axum::extract::Query;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Pagination {
+    #[serde(default = "default_page")]
+    page: u32,
+    #[serde(default = "default_limit")]
+    limit: u32,
+}
+
+fn default_page() -> u32 { 1 }
+fn default_limit() -> u32 { 30 }
+
+async fn list_users(Query(pagination): Query<Pagination>) -> Json<Vec<User>> {
+    let users = db_list_users(pagination.page, pagination.limit).await;
+    Json(users)
+}`;
+
+<TsGo client:visible ts={tsQuery} go={rsQuery} />
+
+## จาก `req.body` ถึง `Json<T>`
+
+Express วิเคราะห์ JSON bodies ด้วย `express.json()` middleware และแนบผลลัพธ์กับ `req.body` — ซึ่งยังคงไม่มี type จนกว่าคุณจะ cast ด้วยตนเอง `Json<T>` extractor ของ Axum deserialize body โดยตรงไปยัง struct ของคุณ ถ้าขาด required field จะได้รับ `422 Unprocessable Entity` โดยอัตโนมัติ
+
+export const tsBody = `// Express + zod for validation
+import { z } from 'zod';
+const CreateUserSchema = z.object({
+  name: z.string(),
+  email: z.string().email(),
+});
+
+app.post('/users', async (req, res) => {
+  const body = CreateUserSchema.parse(req.body); // throws if invalid
+  const user = await db.createUser(body);
+  res.status(201).json(user);
+});`;
+
+export const rsBody = `use axum::{http::StatusCode, Json};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+struct CreateUser {
+    name: String,
+    email: String,
+}
+
+#[derive(Serialize)]
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+async fn create_user(
+    Json(payload): Json<CreateUser>,
+) -> (StatusCode, Json<User>) {
+    // payload is guaranteed to have name and email
+    let user = User { id: 42, name: payload.name, email: payload.email };
+    (StatusCode::CREATED, Json(user))
+}`;
+
+<TsGo client:visible ts={tsBody} go={rsBody} />
+
+## การรวม extractors หลายตัว
+
+handler เดียวสามารถรับ extractors หลายตัวเป็น parameters แยกกัน Axum จะเรียกทั้งหมดก่อนที่ handler body จะทำงาน
+
+```rust
+use axum::{
+    extract::{Path, Query, State},
+    Json,
+};
+use uuid::Uuid;
+
+async fn get_user_posts(
+    State(db): State<DbPool>,
+    Path(user_id): Path<Uuid>,
+    Query(pagination): Query<Pagination>,
+) -> Json<Vec<Post>> {
+    let posts = db.user_posts(user_id, pagination.page, pagination.limit).await.unwrap();
+    Json(posts)
+}
+```
+
+> **รันบนเครื่องของคุณ** — extractors ทำงานได้เฉพาะในบริบทของ Axum router ที่กำลังทำงาน ใช้ `cargo run` และทดสอบด้วย `curl`
+
+<RsOnly title="Type safety ที่ boundary">
+
+TypeScript กับ zod ให้ runtime validation แก่คุณ Extractors ของ Axum ให้ **การรับประกัน compile-time** เกี่ยวกับ handler shapes บวกกับ **automatic runtime deserialization** ถ้า `Path<Uuid>` ไม่สามารถ parse URL segment ได้ Axum จะ return `400 Bad Request` ก่อนที่ handler function ของคุณจะถูกเรียกด้วยซ้ำ คุณไม่เคยเห็นค่าที่ไม่ถูกต้อง — มันไม่เคยถึง code ของคุณ
+
+นี่คือการรวมกันของ:
+1. **serde** — deserialization แบบ derived ที่ compile-time
+2. **Axum's rejection types** — แต่ละ extractor กำหนด `Rejection` (error response) ที่ return โดยอัตโนมัติเมื่อล้มเหลว
+
+คุณได้รับความปลอดภัย runtime ระดับ zod โดยไม่ต้องเขียน validation code เลย
+
+</RsOnly>
+
+export const quizExtractors = [
+  {
+    q: "`Path(id): Path<Uuid>` ใน Axum handler ทำอะไร?",
+    options: [
+      "อ่าน query string parameter ชื่อ `id`",
+      "Extract และ deserialize `:id` URL segment เป็น `Uuid` คืน 400 ถ้าไม่ถูกต้อง",
+      "อ่าน request body เป็น UUID",
+      "สร้าง Uuid ใหม่สำหรับ request"
+    ],
+    answer: 1
+  },
+  {
+    q: "ควรใช้ extractor ใดสำหรับ JSON request bodies?",
+    options: [
+      "Path<T>",
+      "Query<T>",
+      "Json<T>",
+      "Body<T>"
+    ],
+    answer: 2
+  },
+  {
+    q: "Axum คืน HTTP status อะไรเมื่อ `Json<T>` body ไม่สามารถ deserialize ได้?",
+    options: [
+      "400 Bad Request",
+      "404 Not Found",
+      "422 Unprocessable Entity",
+      "500 Internal Server Error"
+    ],
+    answer: 2
+  },
+  {
+    q: "ใน Axum คุณอ่าน query string parameters พร้อม default values อย่างไร?",
+    options: [
+      "อ่านจาก `req.query` และเรียก `.unwrap_or`",
+      "ใช้ `Query<T>` ที่ `T` เป็น struct มี fields `#[serde(default)]`",
+      "เพิ่ม Tower middleware ที่ inject defaults",
+      "ใช้ `Path<HashMap<String, String>>`"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="api-axum/extractors" questions={quizExtractors} />
+
+<ProgressTracker client:visible id="api-axum/extractors" />

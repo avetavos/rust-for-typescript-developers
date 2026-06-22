@@ -1,0 +1,143 @@
+---
+title: 'Release Build & Cross-Compilation'
+description: 'cargo build --release, cross-compilation ด้วย --target และการสร้าง static binary เดียวด้วย musl เทียบกับการส่ง Node.js runtime'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## ปัญหา deployment ของ Node.js
+
+เมื่อ deploy Node.js application คุณต้องส่ง Node เองไปด้วย — runtime, `node_modules` และ dependency ทั้งหมด ผลที่ได้มักมีขนาดหลายร้อย MB การ deploy มักหมายความว่าต้อง bundle ด้วย `esbuild`/`webpack`, เขียน Dockerfile ที่ติดตั้ง Node หรือใช้ PaaS ที่รู้จักการรัน Node
+
+Rust compile เป็น **binary ที่ self-contained** เดียว ไม่มี runtime ที่ต้องส่ง, ไม่มี `node_modules` และไม่มี interpreter binary รันบน OS โดยตรง
+
+export const releaseTs = `# TypeScript / Node.js deployment
+# ต้องส่ง runtime + packages ทั้งหมด
+dist/
+  index.js         # app ที่ bundle แล้ว
+node_modules/      # 300+ MB of dependencies
+# ... plus ต้องติดตั้ง Node บน server
+
+# หรือใช้ Docker:
+FROM node:20-alpine
+COPY package*.json ./
+RUN npm ci --only=production
+COPY dist/ ./dist/
+CMD ["node", "dist/index.js"]`;
+
+export const releaseRs = `# Rust deployment
+# Build ครั้งเดียว ส่ง binary
+cargo build --release
+# → target/release/my-app   (single static binary, ~5 MB)
+
+# Copy binary ไปที่ server — แค่นั้น
+# ไม่มี runtime, ไม่มี package manager, ไม่มี node_modules
+scp target/release/my-app user@server:/usr/local/bin/`;
+
+<TsGo client:visible ts={releaseTs} go={releaseRs} />
+
+## Debug vs release build
+
+```bash
+cargo build          # debug build: compile เร็ว, ไม่ optimise, มี debug info
+cargo build --release  # release build: compile ช้า, optimise เต็มที่ (LLVM -O3)
+cargo run --release    # compile ใน release mode และรัน
+```
+
+Debug build ใช้ระหว่าง development — compile ใน second Release build อาจใช้เวลาหลายนาทีสำหรับ project ใหญ่แต่สร้าง binary ที่เร็วกว่าที่ runtime บ่อยถึง 10–100 เท่า
+
+## Cross-compilation
+
+Rust รองรับ cross-compilation โดยตรง **target triple** ระบุ OS + architecture + ABI combination
+
+```bash
+# เพิ่ม cross-compilation target
+rustup target add x86_64-unknown-linux-musl   # Linux, static link (musl libc)
+rustup target add aarch64-unknown-linux-gnu    # Linux, ARM64 (Raspberry Pi, AWS Graviton)
+rustup target add x86_64-pc-windows-gnu       # Windows จาก macOS/Linux
+
+# Compile สำหรับ target อื่น
+cargo build --release --target x86_64-unknown-linux-musl
+# → target/x86_64-unknown-linux-musl/release/my-app
+```
+
+## Static binary ด้วย musl
+
+target `x86_64-unknown-linux-musl` link กับ **musl libc** แทน glibc สร้าง static binary เต็มรูปแบบที่รันบน Linux distribution ใดก็ได้ — รวมถึง Alpine Linux container — โดยไม่มี shared library dependency
+
+```bash
+# Setup ครั้งเดียว
+rustup target add x86_64-unknown-linux-musl
+
+# บน macOS ต้องมี cross-linker; ง่ายสุดผ่าน cargo-zigbuild:
+cargo install cargo-zigbuild
+cargo zigbuild --release --target x86_64-unknown-linux-musl
+
+# ตรวจสอบ: binary ไม่มี dynamic dependency
+ldd target/x86_64-unknown-linux-musl/release/my-app
+# → not a dynamic executable
+```
+
+## Optimisation profile ใน Cargo.toml
+
+```toml
+[profile.release]
+opt-level = 3        # LLVM optimisation สูงสุด (default)
+lto = true           # link-time optimisation: binary เล็กและเร็วกว่า
+codegen-units = 1    # codegen unit เดียว: compile ช้ากว่า แต่ optimise ดีกว่า
+strip = true         # ตัด debug symbol ออกจาก binary
+panic = "abort"      # abort เมื่อ panic แทน unwind (binary เล็กกว่า)
+```
+
+> เหล่านี้คือ `bash`/`toml` configuration ไม่มี browser Playground สำหรับ cross-compilation — รัน command เหล่านี้ใน terminal หลังติดตั้ง Rust ผ่าน [rustup.rs](https://rustup.rs)
+
+<RsOnly title="cargo-zigbuild และ cross">
+
+สองเครื่องมือยอดนิยมที่ช่วยง่าย cross-compilation จาก macOS หรือ CI:
+
+- **`cargo-zigbuild`** (`cargo install cargo-zigbuild`) ใช้ [Zig](https://ziglang.org) C compiler เป็น cross-linker แบบ drop-in ใช้ได้กับ target ส่วนใหญ่โดยไม่ต้อง setup เพิ่ม
+- **`cross`** (`cargo install cross`) รัน Rust cross-compilation toolchain ภายใน Docker container เหมาะสำหรับ target ที่ต้อง glibc version เฉพาะ
+
+สำหรับ GitHub Actions [`cross-platform-actions/action`](https://github.com/cross-platform-actions/action) และ action ทางการ [`dtolnay/rust-toolchain`](https://github.com/dtolnay/rust-toolchain) จัดการ target installation อัตโนมัติ
+
+</RsOnly>
+
+export const quizRelease = [
+  {
+    q: "Command ใดสร้าง Rust binary ที่ optimise สำหรับ production?",
+    options: [
+      "cargo build",
+      "cargo build --optimise",
+      "cargo build --release",
+      "cargo compile --prod"
+    ],
+    answer: 2
+  },
+  {
+    q: "ข้อได้เปรียบหลักของ target `x86_64-unknown-linux-musl` คืออะไร?",
+    options: [
+      "สร้าง binary ที่ compatible กับ Windows",
+      "เปิดใช้ GPU acceleration",
+      "สร้าง static binary เต็มรูปแบบโดยไม่มี shared library dependency",
+      "Target processor ARM"
+    ],
+    answer: 2
+  },
+  {
+    q: "Setting `[profile.release]` ใดตัด debug symbol ออกจาก binary?",
+    options: [
+      "lto = true",
+      "strip = true",
+      "opt-level = 3",
+      "codegen-units = 1"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="tooling/release-cross-compile" questions={quizRelease} />
+
+<ProgressTracker client:visible id="tooling/release-cross-compile" />

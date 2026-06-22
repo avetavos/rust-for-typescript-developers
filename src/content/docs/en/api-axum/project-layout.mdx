@@ -1,0 +1,148 @@
+---
+title: 'Project Layout'
+description: 'Cargo project structure for an Axum service, main.rs, and dependencies vs an Express/Nest project.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## From `package.json` to `Cargo.toml`
+
+Every Node.js project starts with `package.json`. In Rust the equivalent is `Cargo.toml`. It declares your crate name, version, and dependencies. Cargo is both the package manager and the build tool — no separate `npm` vs `tsc` vs `ts-node`.
+
+export const tsLayout = `# Express/NestJS project
+my-api/
+├── package.json        # dependencies + scripts
+├── tsconfig.json       # TypeScript compiler config
+├── src/
+│   ├── main.ts         # entry point
+│   ├── app.module.ts   # (NestJS) root module
+│   └── users/
+│       ├── users.controller.ts
+│       ├── users.service.ts
+│       └── users.module.ts
+└── dist/               # compiled output`;
+
+export const rsLayout = `# Axum project
+my-api/
+├── Cargo.toml          # dependencies + metadata (= package.json)
+├── Cargo.lock          # lockfile (= package-lock.json)
+└── src/
+    ├── main.rs         # entry point
+    ├── routes/
+    │   └── mod.rs      # route definitions
+    ├── handlers/
+    │   └── users.rs    # handler functions
+    ├── models.rs       # serde structs (request/response types)
+    ├── state.rs        # shared AppState
+    └── errors.rs       # custom error types`;
+
+<TsGo client:visible ts={tsLayout} go={rsLayout} />
+
+## `Cargo.toml` for an Axum service
+
+```toml
+[package]
+name = "my-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum        = "0.7"
+tokio       = { version = "1", features = ["full"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+tower       = "0.4"
+tower-http  = { version = "0.5", features = ["cors", "trace"] }
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+sqlx        = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "uuid"] }
+uuid        = { version = "1", features = ["v4", "serde"] }
+thiserror   = "1"
+```
+
+Compared to `npm install express`, you declare everything in one file and Cargo resolves the dependency graph, compiles everything, and links it — no separate build step.
+
+## `main.rs` — the entry point
+
+```rust
+use axum::Router;
+use std::net::SocketAddr;
+
+mod errors;
+mod handlers;
+mod models;
+mod routes;
+mod state;
+
+#[tokio::main]
+async fn main() {
+    // initialise structured logging
+    tracing_subscriber::fmt()
+        .with_env_filter("my_api=debug,tower_http=debug")
+        .init();
+
+    let state = state::AppState::new().await;
+    let app = routes::create_router(state);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    tracing::info!("Listening on {addr}");
+
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+```
+
+`#[tokio::main]` is a macro that wraps `main` in a Tokio async runtime — equivalent to Node's built-in event loop starting automatically.
+
+## Key concepts
+
+| Node/TS | Rust/Axum |
+|---|---|
+| `package.json` | `Cargo.toml` |
+| `npm install` | `cargo add` / `cargo build` |
+| `ts-node src/main.ts` | `cargo run` |
+| `tsc --build` | `cargo build --release` |
+| `nodemon` | `cargo-watch -x run` |
+| `src/app.ts` | `src/main.rs` |
+| `process.env.PORT` | `std::env::var("PORT")` |
+
+> **Run locally** — this is a project layout lesson. No runnable browser snippet applies here. Create the project with `cargo new my-api` and add dependencies with `cargo add axum tokio serde serde_json`.
+
+export const quizLayout = [
+  {
+    q: "What is the Rust equivalent of `package.json`?",
+    options: [
+      "Cargo.lock",
+      "build.rs",
+      "Cargo.toml",
+      "rustfmt.toml"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `#[tokio::main]` do?",
+    options: [
+      "Declares a Tokio thread pool size",
+      "Wraps `main` in a Tokio async runtime so `async fn main` works",
+      "Imports the Tokio crate automatically",
+      "Spawns a new OS thread per request"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which command runs an Axum project during development?",
+    options: [
+      "npm start",
+      "cargo serve",
+      "cargo run",
+      "axum start"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/project-layout" questions={quizLayout} />
+
+<ProgressTracker client:visible id="api-axum/project-layout" />

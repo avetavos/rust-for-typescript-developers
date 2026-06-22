@@ -1,0 +1,179 @@
+---
+title: 'Lifetimes'
+description: 'Lifetime คืออะไร ทำไมถึงมี และอ่าน annotation ''a บน function และ struct ได้อย่างไร — สำหรับ TypeScript developers ที่ไม่เคยเห็น concept นี้'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript ไม่มี concept นี้เลย
+
+TypeScript ไม่มี concept ของ lifetime เลย เมื่อคุณ hold reference ไปที่ object GC ยัง keep object นั้นไว้ตราบเท่าที่ reference ยังมีอยู่ คุณไม่ต้องคิดเลยว่า reference ยังถูกต้องอยู่ไหม
+
+Rust ไม่มี garbage collector ดังนั้นมันต้องพิสูจน์ — ตั้งแต่ compile time — ว่าทุก reference ถูกต้องตลอดช่วงที่ใช้งาน ระบบการพิสูจน์นี้เรียกว่า **lifetimes**
+
+<RsOnly title="Lifetime จริงๆ คืออะไร">
+
+**Lifetime** คือช่วงของโค้ดที่ reference ถูกต้อง ทุก reference ใน Rust มี lifetime ส่วนใหญ่ compiler infer lifetime อัตโนมัติ (เรียกว่า *lifetime elision*) และคุณไม่ต้องเขียนเลย
+
+คุณต้องเขียน explicit lifetime annotation (`'a`) ในสองสถานการณ์:
+
+1. Function return reference และ compiler ไม่รู้ว่ามาจาก input ตัวไหน
+2. Struct hold reference (ต้องรู้ว่า referenced data มีชีวิตอยู่นานแค่ไหน)
+
+Lifetime annotation ไม่ได้เปลี่ยนระยะเวลาที่ data มีชีวิต มันเป็น constraint ที่บอก compiler ว่า: "output reference นี้มีชีวิตนานเท่ากับ input reference นี้"
+
+</RsOnly>
+
+## ทำไมถึงต้องมี lifetime — ปัญหา dangling reference
+
+TypeScript ไม่มี dangling reference เลย — GC ป้องกันไม่ให้ underlying data ถูกคืนในขณะที่มี reference อยู่ Rust คืน data เมื่อ owner หลุด scope ถ้าไม่มี lifetime มันเป็นไปได้ที่จะ return reference ไปที่ data ที่ถูกคืนไปแล้ว:
+
+```rust
+// โค้ดนี้ compile ไม่ได้ — และนั่นคือจุดประสงค์
+fn dangle() -> &String {
+    let s = String::from("hello");
+    &s  // error[E0106]: missing lifetime specifier
+        // แม้ระบุ lifetime แล้ว ก็ยังล้มเหลว:
+        // s ถูก drop เมื่อ function จบ — reference จะ dangle!
+}
+// error[E0515]: cannot return reference to local variable `s`
+//  --> src/main.rs:3:5
+//   |
+// 3 |     &s
+//   |     ^^ returns a reference to data owned by the current function
+```
+
+Compiler จับได้ ไม่มีการป้องกันเทียบเท่าใน TypeScript เพราะ GC ป้องกันสถานการณ์นั้นอยู่แล้ว แต่แลกกับ runtime overhead
+
+## Lifetime annotation บน function
+
+เมื่อ function return reference ที่ derive มาจาก input compiler ต้องรู้ว่า output lifetime ผูกกับ input ตัวไหน คุณ annotate ด้วย `'a`:
+
+export const lifetimesTs = `// TypeScript — ไม่ต้องการ lifetime concept
+function longest(x: string, y: string): string {
+  return x.length >= y.length ? x : y;
+}
+
+const result = longest("long string", "xyz");
+console.log(result); // "long string"
+// TypeScript ไม่กังวลว่า returned string
+// จะมีชีวิตยาวกว่า input ไหม GC จัดการ`;
+
+export const lifetimesRs = `// 'a คือ lifetime parameter — มันบอกว่า:
+// "output มีชีวิตนานอย่างน้อยเท่ากับ input ทั้งคู่"
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() >= y.len() { x } else { y }
+}
+
+fn main() {
+    let s1 = String::from("long string");
+    let result;
+    {
+        let s2 = String::from("xyz");
+        result = longest(s1.as_str(), s2.as_str());
+        println!("longest: {}", result);
+        // result ต้องใช้ก่อน s2 ถูก drop
+    }
+}`;
+
+<TsGo client:visible ts={lifetimesTs} go={lifetimesRs} />
+
+<RsOnly title="วิธีอ่าน lifetime annotation">
+
+`fn longest<'a>(x: &'a str, y: &'a str) -> &'a str`
+
+อ่านว่า: "สำหรับ lifetime `'a` บางตัว ทั้ง `x` และ `y` ต้องมีชีวิตอย่างน้อยนาน `'a` และ returned reference จะมีชีวิตได้มากสุดแค่ `'a`"
+
+ในทางปฏิบัติ: returned reference จะถูกต้องตลอดช่วงที่ **สั้นกว่า** ของ lifetime `x` และ `y` ถ้าคุณพยายามใช้ result หลังจาก input ตัวใดตัวหนึ่งถูก drop compiler จะปฏิเสธ
+
+ชื่อ `'a` เป็นแค่ convention คุณสามารถเขียน `'x`, `'input`, หรือ identifier ตัวพิมพ์เล็กที่มี tick นำหน้า ชื่อตัวอักษรเดียวเป็น idiomatic
+
+</RsOnly>
+
+## Lifetime ใน struct
+
+ถ้า struct hold reference มันต้องประกาศ lifetime เพื่อบอกว่า "struct นี้อยู่ได้ไม่นานกว่า data ที่มัน reference":
+
+export const lifetimeStructTs = `// TypeScript — struct ที่ hold reference เป็นแค่ object property
+interface ImportantExcerpt {
+  part: string;  // แค่ string — GC เก็บไว้นานเท่าที่ต้องการ
+}
+
+const text = "Call me Ishmael. Some years ago...";
+const excerpt: ImportantExcerpt = { part: text.split(".")[0] };
+console.log(excerpt.part);`;
+
+export const lifetimeStructRs = `// Struct hold reference ไม่ใช่ owned data
+// 'a บอกว่า: ImportantExcerpt อยู่ได้ไม่นานกว่า &str ที่มัน reference
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let first_sentence = novel.split('.').next().expect("no period");
+    let excerpt = ImportantExcerpt { part: first_sentence };
+    println!("{}", excerpt.part);
+    // novel ยังมีชีวิตอยู่ที่นี่ ดังนั้น reference ใน excerpt ยังถูกต้อง
+}`;
+
+<TsGo client:visible ts={lifetimeStructTs} go={lifetimeStructRs} />
+
+## ลองเขียนเอง
+
+export const lifetimesCode = `fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+
+fn main() {
+    let s1 = String::from("long string");
+    let result;
+    {
+        let s2 = String::from("xyz");
+        result = longest(s1.as_str(), s2.as_str());
+        println!("longest: {}", result);
+    }
+}`;
+
+<Playground client:visible code={lifetimesCode} />
+
+export const quizLifetimes = [
+  {
+    q: "Lifetime annotation อย่าง `'a` ทำอะไรจริงๆ?",
+    options: [
+      "ขยายระยะเวลาชีวิตของ value ด้วย reference counting",
+      "เป็น constraint ที่บอก compiler ว่า reference ต้องถูกต้องนานแค่ไหนเมื่อเทียบกับ reference อื่น",
+      "ทำให้ value มีชีวิตตลอดโปรแกรม",
+      "เป็น syntax sugar สำหรับ Arc<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "เมื่อไหร่ที่คุณต้องเขียน explicit lifetime annotation ใน Rust?",
+    options: [
+      "เสมอ — compiler ไม่เคย infer lifetime",
+      "เมื่อ function return reference และ compiler ไม่รู้ว่ามาจาก input ตัวไหน หรือเมื่อ struct hold reference",
+      "เฉพาะกับ async function",
+      "เฉพาะเมื่อใช้ unsafe code"
+    ],
+    answer: 1
+  },
+  {
+    q: "ทำไม TypeScript ถึงไม่ต้องการ lifetime?",
+    options: [
+      "TypeScript value ถูก copy เสมอ ไม่มี reference",
+      "GC ของ TypeScript เก็บ data ไว้ตราบเท่าที่มี reference ป้องกัน dangling reference ตอน runtime",
+      "TypeScript รองรับแค่ primitive type",
+      "TypeScript reference เป็น static เสมอ"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/lifetimes" questions={quizLifetimes} />
+
+<ProgressTracker client:visible id="rs-only/lifetimes" />

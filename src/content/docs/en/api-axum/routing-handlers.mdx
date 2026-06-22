@@ -1,0 +1,156 @@
+---
+title: 'Routing and Handlers'
+description: 'Router, routes, async fn handlers, impl IntoResponse — vs Express routes.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Express routes vs Axum routes
+
+In Express you attach handlers directly to `app` or a `Router`. In Axum you build a `Router` struct by chaining `.route()` calls. There are no magic strings for HTTP verbs — instead you import functions like `get`, `post`, `put`, `delete` from `axum::routing`.
+
+export const tsRoutes = `import express from 'express';
+const router = express.Router();
+
+router.get('/users', listUsers);
+router.post('/users', createUser);
+router.get('/users/:id', getUser);
+router.delete('/users/:id', deleteUser);
+
+export default router;`;
+
+export const rsRoutes = `use axum::{
+    routing::{delete, get, post},
+    Router,
+};
+
+use crate::handlers::users::{
+    create_user, delete_user, get_user, list_users,
+};
+
+pub fn users_router() -> Router {
+    Router::new()
+        .route("/users", get(list_users).post(create_user))
+        .route("/users/:id", get(get_user).delete(delete_user))
+}`;
+
+<TsGo client:visible ts={tsRoutes} go={rsRoutes} />
+
+## Writing an `async fn` handler
+
+An Axum handler is any `async fn` whose arguments are extractors and whose return type implements `IntoResponse`. The simplest handler returns a string:
+
+export const tsSimple = `// Express
+async function hello(req, res) {
+  res.send('Hello, World!');
+}`;
+
+export const rsSimple = `// Axum — returning a plain string
+async fn hello() -> &'static str {
+    "Hello, World!"
+}`;
+
+<TsGo client:visible ts={tsSimple} go={rsSimple} />
+
+## `impl IntoResponse` — return anything
+
+Axum handlers can return many types: `&str`, `String`, `Json<T>`, `(StatusCode, Json<T>)`, or your own custom type as long as it implements `IntoResponse`.
+
+export const tsJson = `// Express — manual JSON response
+async function listUsers(req, res) {
+  const users = [{ id: 1, name: 'Alice' }];
+  res.status(200).json(users);
+}`;
+
+export const rsJson = `use axum::{http::StatusCode, Json};
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct User {
+    id: u32,
+    name: String,
+}
+
+async fn list_users() -> (StatusCode, Json<Vec<User>>) {
+    let users = vec![User { id: 1, name: "Alice".to_string() }];
+    (StatusCode::OK, Json(users))
+}`;
+
+<TsGo client:visible ts={tsJson} go={rsJson} />
+
+## Nested routers and mounting
+
+Just like Express lets you mount sub-routers at a prefix, Axum supports `Router::nest`:
+
+export const tsNest = `// Express
+import userRouter from './users.router';
+app.use('/api/v1', userRouter);`;
+
+export const rsNest = `use axum::Router;
+
+pub fn create_router() -> Router {
+    Router::new()
+        .nest("/api/v1", users_router())
+        .nest("/api/v1", health_router())
+}`;
+
+<TsGo client:visible ts={tsNest} go={rsNest} />
+
+<RsOnly title="IntoResponse — the return type contract">
+
+In Express, `res.json(...)` and `res.status(404).send(...)` are imperative calls on the response object. In Axum there is no response object — the handler **returns** the response.
+
+The return type only needs to implement `IntoResponse`. Axum ships implementations for:
+
+- `&str`, `String` → 200 text/plain
+- `Json<T>` → 200 application/json
+- `(StatusCode, Json<T>)` → custom status + JSON
+- `Result<T, E>` where both `T` and `E` implement `IntoResponse`
+- `StatusCode` alone → empty body with that status
+- `Response` → fully custom
+
+This means error handling is not special-cased — you return `Err(MyError)` and Axum calls `.into_response()` on it, just like the happy path.
+
+</RsOnly>
+
+> **Run locally** — handlers need a running Axum server. Use `cargo run` to start the server, then `curl http://localhost:3000/users` to test.
+
+export const quizRouting = [
+  {
+    q: "How do you attach a GET handler to `/users` in Axum?",
+    options: [
+      "`.get('/users', handler)`",
+      "`.route(\"/users\", get(handler))`",
+      "`Router::get(\"/users\").handler(handler)`",
+      "`#[get(\"/users\")] fn handler()`"
+    ],
+    answer: 1
+  },
+  {
+    q: "What trait must an Axum handler's return type implement?",
+    options: [
+      "Serialize",
+      "Respond",
+      "IntoResponse",
+      "HttpResponse"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which Axum function is equivalent to Express's `app.use('/api/v1', subRouter)`?",
+    options: [
+      "`Router::mount`",
+      "`Router::use_router`",
+      "`Router::nest`",
+      "`Router::prefix`"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/routing-handlers" questions={quizRouting} />
+
+<ProgressTracker client:visible id="api-axum/routing-handlers" />

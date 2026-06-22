@@ -1,0 +1,163 @@
+---
+title: 'JSON and Serde'
+description: 'serde Serialize/Deserialize, Json<T> request/response — vs zod/TypeScript types.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## TypeScript types vs Rust structs
+
+In TypeScript you define a type or interface for your API payload and use zod (or a similar library) for runtime validation. In Rust, the **struct is the type AND the validator** — `serde` derives serialization and deserialization at compile time, and missing or wrong-typed fields are rejected at the deserialization step automatically.
+
+export const tsZod = `import { z } from 'zod';
+
+// Define schema + type together
+const UserSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string().email(),
+});
+
+type User = z.infer<typeof UserSchema>;
+
+// Validate at runtime
+const parsed = UserSchema.parse(rawJson); // throws ZodError if invalid`;
+
+export const rsSerde = `use serde::{Deserialize, Serialize};
+
+// Derive gives you compile-time serialization AND runtime validation
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+// Deserializing validates structure and types automatically
+let user: User = serde_json::from_str(raw_json)?; // returns Err if invalid`;
+
+<TsGo client:visible ts={tsZod} go={rsSerde} />
+
+## `Json<T>` in Axum — request and response
+
+Axum's `Json<T>` extractor/responder is the bridge between HTTP bodies and your Rust types. When used as a **parameter**, it deserializes the request body. When used as a **return value**, it serializes the response.
+
+export const tsExpressJson = `// Express — parse body + respond with JSON
+app.post('/users', express.json(), async (req, res) => {
+  const user: CreateUser = CreateUserSchema.parse(req.body);
+  const saved = await db.save(user);
+  res.status(201).json(saved); // manual serialization call
+});`;
+
+export const rsAxumJson = `use axum::{http::StatusCode, Json};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+struct CreateUser { name: String, email: String }
+
+#[derive(Serialize)]
+struct User { id: u32, name: String, email: String }
+
+// Json<CreateUser> deserializes the body
+// (StatusCode, Json<User>) serializes the response
+async fn create_user(
+    Json(payload): Json<CreateUser>,
+) -> (StatusCode, Json<User>) {
+    let user = User { id: 1, name: payload.name, email: payload.email };
+    (StatusCode::CREATED, Json(user))
+}`;
+
+<TsGo client:visible ts={tsExpressJson} go={rsAxumJson} />
+
+## Serde field renaming and skipping
+
+Serde supports the same field-level transformations you get from TypeScript's class-transformer or zod `.transform()`:
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    id: u32,
+
+    #[serde(rename = "fullName")]
+    name: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    avatar_url: Option<String>,
+
+    #[serde(skip_deserializing)]
+    created_at: String,
+}
+```
+
+## Try it — serde serialize / deserialize
+
+The snippet below runs entirely in the browser. It does **not** use Axum (no server needed) — just `serde` and `serde_json`, which are available on the Rust Playground.
+
+export const serdeCode = `use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    id: u32,
+    name: String,
+    email: String,
+}
+
+fn main() {
+    // Serialize struct -> JSON string
+    let user = User {
+        id: 1,
+        name: String::from("Alice"),
+        email: String::from("alice@example.com"),
+    };
+    let json = serde_json::to_string_pretty(&user).unwrap();
+    println!("{}", json);
+
+    // Deserialize JSON string -> struct
+    let json_str = r#"{"id":2,"name":"Bob","email":"bob@example.com"}"#;
+    let parsed: User = serde_json::from_str(json_str).unwrap();
+    println!("{:?}", parsed);
+}`;
+
+<Playground client:visible code={serdeCode} />
+
+export const quizSerde = [
+  {
+    q: "Which two derive macros does serde provide for JSON serialization?",
+    options: [
+      "Clone and Copy",
+      "Serialize and Deserialize",
+      "Debug and Display",
+      "ToJson and FromJson"
+    ],
+    answer: 1
+  },
+  {
+    q: "When `Json<T>` is used as an Axum handler **parameter**, what does it do?",
+    options: [
+      "Serializes the response body to JSON",
+      "Deserializes the request body into type T, returning 422 if it fails",
+      "Reads query string parameters",
+      "Validates headers"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which serde attribute hides a field from the JSON output when it is `None`?",
+    options: [
+      "`#[serde(skip)]`",
+      "`#[serde(optional)]`",
+      "`#[serde(skip_serializing_if = \"Option::is_none\")]`",
+      "`#[serde(rename = \"null\")]`"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="api-axum/json-serde" questions={quizSerde} />
+
+<ProgressTracker client:visible id="api-axum/json-serde" />

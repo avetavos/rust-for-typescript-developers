@@ -1,0 +1,173 @@
+---
+title: 'Option, Result และ ไม่มี Null'
+description: 'Rust กำจัด null/undefined และ unchecked exception ด้วย Option<T> และ Result<T,E> ได้อย่างไร — และ operator ? ที่ทำให้สะดวกขึ้น'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript มี null, undefined, และ exception — Rust ไม่มีเลย
+
+TypeScript (และ JavaScript) มีสามวิธีในการแสดง "บางอย่างผิดพลาด":
+
+1. `null` — ความไม่มีของ value โดยตั้งใจ
+2. `undefined` — value ที่ยังไม่ได้ initialize หรือหายไป
+3. Exception ที่ throw — error ที่ escape call stack โดยไม่มองเห็น
+
+ทั้งสามมองไม่เห็นใน function signature function ที่ return `string` อาจ return `null` อย่างเงียบๆ throw error หรือทำงานปกติ — คุณบอกไม่ได้จาก type
+
+Rust ไม่มี `null`, ไม่มี `undefined`, และไม่มี exception Value ที่ไม่มีคือ `Option<T>` operation ที่ล้มเหลวได้ return `Result<T, E>` ทั้งคู่เป็นแค่ enum variant มองเห็นได้ใน function signature ทุกตัว
+
+## Option — type แบบ no-null
+
+`Option<T>` เป็น enum ที่มีสอง variant: `Some(T)` (มี value) และ `None` (ไม่มี value) Compiler บังคับให้คุณ handle ทั้งคู่
+
+export const optionTs = `// TypeScript — null อาจปรากฏอย่างเงียบๆ
+function findUser(id: number): string | null {
+  if (id === 1) return "Alice";
+  return null; // ลืมตรวจสอบได้ง่าย
+}
+
+const user = findUser(2);
+console.log(user?.toUpperCase() ?? "not found");
+// ถ้าไม่มี optional chaining: user.toUpperCase() จะ throw TypeError`;
+
+export const optionRs = `fn find_user(id: u32) -> Option<String> {
+    if id == 1 { Some("Alice".to_string()) } else { None }
+}
+
+fn main() {
+    // Pattern match — ต้อง handle ทั้งสอง case
+    match find_user(2) {
+        Some(name) => println!("found: {}", name),
+        None       => println!("not found"),
+    }
+
+    // Helper ที่สะดวก
+    let upper = find_user(1)
+        .map(|s| s.to_uppercase())
+        .unwrap_or_else(|| "NOT FOUND".to_string());
+    println!("{}", upper);
+}`;
+
+<TsGo client:visible ts={optionTs} go={optionRs} />
+
+## Result — type แบบ no-exception
+
+`Result<T, E>` เป็น enum ที่มีสอง variant: `Ok(T)` (สำเร็จ) และ `Err(E)` (ล้มเหลว) Function ที่ล้มเหลวได้ return `Result` ทำให้ error มองเห็นใน type signature
+
+export const resultTs = `// TypeScript — exception มองไม่เห็นใน signature
+function parseNumber(s: string): number {
+  const n = parseInt(s);
+  if (isNaN(n)) throw new Error(\`not a number: \${s}\`);
+  return n;
+}
+
+try {
+  const n = parseNumber("abc");
+  console.log(n * 2);
+} catch (e) {
+  // ลืม try/catch ได้ง่าย — และ signature ไม่ได้บอกใบ้เลย
+  console.error(e);
+}`;
+
+export const resultRs = `fn parse_and_double(s: &str) -> Result<i32, String> {
+    let n: i32 = s.parse().map_err(|_| format!("not a number: {}", s))?;
+    Ok(n * 2)
+}
+
+fn main() {
+    match parse_and_double("21") {
+        Ok(v)  => println!("doubled: {}", v),
+        Err(e) => println!("error: {}", e),
+    }
+
+    match parse_and_double("abc") {
+        Ok(v)  => println!("doubled: {}", v),
+        Err(e) => println!("error: {}", e),
+    }
+}`;
+
+<TsGo client:visible ts={resultTs} go={resultRs} />
+
+<RsOnly title="Operator ? — การ propagate error แบบ ergonomic">
+
+การเขียน `match` สำหรับทุก `Result` นั้น verbose มาก Operator `?` เป็น shorthand: ถ้า value เป็น `Ok(v)` จะ unwrap เป็น `v`; ถ้าเป็น `Err(e)` จะ return error จาก function ปัจจุบันทันที
+
+```rust
+fn parse_and_double(s: &str) -> Result<i32, String> {
+    // ? unwrap Ok หรือ return Err ทันที — เหมือน throw แต่อยู่ใน type
+    let n: i32 = s.parse().map_err(|_| format!("not a number: {}", s))?;
+    Ok(n * 2)
+}
+```
+
+ความแตกต่างสำคัญจาก `throw`: error **มองเห็นใน return type** caller เห็น `Result<i32, String>` และรู้ว่า function อาจล้มเหลว ไม่มีการ propagate แบบ unchecked ผ่าน call stack
+
+`?` ใช้ได้กับ `Option<T>` ด้วย: จะ return `None` ทันทีถ้า value เป็น `None` ใช้ได้เฉพาะใน function ที่ return `Result` หรือ `Option`
+
+</RsOnly>
+
+## ลองเขียนเอง
+
+export const optionResultCode = `fn parse_and_double(s: &str) -> Result<i32, String> {
+    let n: i32 = s.parse().map_err(|_| format!("not a number: {}", s))?;
+    Ok(n * 2)
+}
+
+fn main() {
+    match parse_and_double("21") {
+        Ok(v) => println!("doubled: {}", v),
+        Err(e) => println!("error: {}", e),
+    }
+
+    let maybe: Option<i32> = Some(42);
+    if let Some(v) = maybe {
+        println!("got: {}", v);
+    }
+
+    let none: Option<i32> = None;
+    println!("unwrap_or: {}", none.unwrap_or(0));
+}`;
+
+<Playground client:visible code={optionResultCode} />
+
+export const quizOptionResult = [
+  {
+    q: "`Option<T>` ใน Rust แทนอะไร?",
+    options: [
+      "Nullable pointer",
+      "Async value ที่ resolve ทีหลัง",
+      "Value ที่อาจมี (`Some(T)`) หรือไม่มี (`None`)",
+      "Error type"
+    ],
+    answer: 2
+  },
+  {
+    q: "Operator `?` ทำอะไรเมื่อใช้กับ `Result<T, E>`?",
+    options: [
+      "Panic ถ้า value เป็น Err",
+      "Unwrap Ok(v) เป็น v หรือ return Err ทันทีจาก function ปัจจุบัน",
+      "Convert Result เป็น Option",
+      "Retry operation"
+    ],
+    answer: 1
+  },
+  {
+    q: "Error model ของ Rust แตกต่างจาก `throw` ของ TypeScript อย่างไร?",
+    options: [
+      "Rust error ใช้สำหรับ panic เท่านั้น ไม่ใช่ recoverable error",
+      "Rust error ใช้ Result<T,E> — มองเห็นใน function signature — ทำให้ caller ต้อง handle หรือ propagate",
+      "Rust error propagate อัตโนมัติผ่าน call stack โดยไม่ต้อง syntax",
+      "ไม่มีความแตกต่าง — ? เหมือน throw"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rs-only/option-result-no-null" questions={quizOptionResult} />
+
+<ProgressTracker client:visible id="rs-only/option-result-no-null" />

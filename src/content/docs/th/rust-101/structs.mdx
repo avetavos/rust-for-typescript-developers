@@ -1,0 +1,129 @@
+---
+title: 'Structs'
+description: 'การนิยาม struct, impl block, เมธอด และ associated function ใน Rust เทียบกับ class ของ TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Structs ใน TypeScript เทียบกับ Rust
+
+TypeScript ใช้ `class` เพื่อรวมข้อมูลและพฤติกรรมเข้าด้วยกัน และใช้ `interface` หรือ object literal สำหรับรูปทรงของข้อมูลล้วน ๆ ส่วน Rust แยกข้อมูลออกจากพฤติกรรม: `struct` เก็บข้อมูล และ `impl` block ผูกเมธอดเข้ากับมัน ไม่มี inheritance — การทำ composition คือวิถีแบบ Rust
+
+## การนิยาม struct
+
+struct เปรียบเหมือน interface ของ TypeScript ที่เก็บข้อมูลได้จริง:
+
+```
+// TypeScript interface (shape only)
+interface Point { x: number; y: number; }
+
+// Rust struct (data + can have methods)
+struct Point { x: f64, y: f64 }
+```
+
+## การเพิ่มเมธอดด้วย impl
+
+เมธอดอยู่ใน `impl` block แยกต่างหาก เมธอดที่อ่านข้อมูลรับ `&self` (immutable reference) เมธอดที่ mutate รับ `&mut self` ส่วน function ใน `impl` ที่ไม่มีพารามิเตอร์ `self` เป็น **associated function** — เรียกด้วยไวยากรณ์ `::` มักใช้เป็น constructor
+
+export const structsTs = `class Point {
+  constructor(public x: number, public y: number) {}
+
+  static new(x: number, y: number) {
+    return new Point(x, y);
+  }
+
+  distanceFromOrigin(): number {
+    return Math.sqrt(this.x ** 2 + this.y ** 2);
+  }
+}
+
+const p = Point.new(3, 4);
+console.log(p.distanceFromOrigin()); // 5`;
+
+export const structsRs = `struct Point {
+    x: f64,
+    y: f64,
+}
+
+impl Point {
+    // associated function (constructor) — called with Point::new(...)
+    fn new(x: f64, y: f64) -> Self {
+        Point { x, y }
+    }
+
+    // method — called with p.distance_from_origin()
+    fn distance_from_origin(&self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+}
+
+fn main() {
+    let p = Point::new(3.0, 4.0);
+    println!("{}", p.distance_from_origin()); // 5
+}`;
+
+<TsGo client:visible ts={structsTs} go={structsRs} />
+
+## ลองเล่นดู
+
+export const structsCode = `struct Point {
+    x: f64,
+    y: f64,
+}
+
+impl Point {
+    fn new(x: f64, y: f64) -> Self {
+        Point { x, y }
+    }
+
+    fn distance_from_origin(&self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+}
+
+fn main() {
+    let p = Point::new(3.0, 4.0);
+    println!("distance = {}", p.distance_from_origin());
+}`;
+
+<Playground client:visible code={structsCode} />
+
+export const quizStructs = [
+  {
+    q: "ใน Rust คุณนิยามเมธอดบน struct ไว้ที่ไหน?",
+    options: [
+      "ภายใน body ของ struct โดยใช้ `fn`",
+      "ใน `impl` block แยกต่างหาก",
+      "เป็น free function ที่รับ struct เป็น argument ตัวแรก",
+      "โดยใช้ keyword `trait`"
+    ],
+    answer: 1
+  },
+  {
+    q: "`&self` หมายความว่าอะไรใน signature ของเมธอดใน Rust?",
+    options: [
+      "เมธอดรับ ownership ของ struct ไป",
+      "เมธอดสามารถ mutate struct ได้",
+      "เมธอด borrow struct แบบ immutable",
+      "เมธอดเป็น static"
+    ],
+    answer: 2
+  },
+  {
+    q: "คุณเรียก associated function (เช่น constructor) บน struct ชื่อ `Point` ของ Rust อย่างไร?",
+    options: [
+      "Point.new()",
+      "new Point()",
+      "Point::new()",
+      "self.new()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/structs" questions={quizStructs} />
+
+<ProgressTracker client:visible id="rust-101/structs" />

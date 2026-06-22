@@ -1,0 +1,210 @@
+---
+title: 'Enums as Algebraic Data Types'
+description: 'Rust enums carry data in each variant and are matched exhaustively — a far more powerful concept than TypeScript unions or string enums.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## TypeScript unions are structural — Rust enums carry data
+
+TypeScript has union types (`"circle" | "rectangle"`) and discriminated unions (objects with a `kind` field). These are powerful, but they are a convention — the compiler trusts you to set the discriminant correctly.
+
+Rust enums are **algebraic data types (ADTs)**. Each variant can carry its own data — different types per variant. The compiler enforces exhaustive pattern matching: if you add a new variant, every `match` in your codebase that handles the enum must be updated or the code will not compile.
+
+## Enums with data
+
+export const enumTs = `// TypeScript — discriminated union (convention-based)
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number }
+  | { kind: "triangle"; base: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":    return Math.PI * shape.radius ** 2;
+    case "rectangle": return shape.width * shape.height;
+    case "triangle":  return 0.5 * shape.base * shape.height;
+    // If you add a new variant and forget a case, TypeScript
+    // will warn only if you use a never-check pattern.
+  }
+}`;
+
+export const enumRs = `#[derive(Debug)]
+enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+    Triangle { base: f64, height: f64 },
+}
+
+impl Shape {
+    fn area(&self) -> f64 {
+        match self {
+            Shape::Circle(r)             => std::f64::consts::PI * r * r,
+            Shape::Rectangle(w, h)       => w * h,
+            Shape::Triangle { base, height } => 0.5 * base * height,
+        }
+    }
+}
+
+fn main() {
+    let shapes = vec![
+        Shape::Circle(3.0),
+        Shape::Rectangle(4.0, 5.0),
+        Shape::Triangle { base: 6.0, height: 4.0 },
+    ];
+    for s in &shapes {
+        println!("{:?} => area = {:.2}", s, s.area());
+    }
+}`;
+
+<TsGo client:visible ts={enumTs} go={enumRs} />
+
+<RsOnly title="Exhaustive match — the compiler as safety net">
+
+Rust's `match` is **exhaustive**: you must handle every variant, or the code will not compile.
+
+```rust
+enum Direction { North, South, East, West }
+
+fn describe(d: Direction) -> &'static str {
+    match d {
+        Direction::North => "north",
+        Direction::South => "south",
+        Direction::East  => "east",
+        // Direction::West is missing!
+    }
+}
+// error[E0004]: non-exhaustive patterns: `West` not covered
+//  --> src/main.rs:4:11
+```
+
+This means: when you add a new enum variant, the compiler tells you every place in the codebase that needs to handle it. TypeScript switch statements are not exhaustive by default — you need explicit `never` checks to get similar guarantees, and only if your team enforces them.
+
+You can use `_` as a catch-all if you intentionally want to ignore remaining variants:
+
+```rust
+match d {
+    Direction::North => "north",
+    _ => "not north",
+}
+```
+
+</RsOnly>
+
+## Enums for state machines
+
+Enums are the idiomatic way to model state machines in Rust. Each state variant carries only the data relevant to that state:
+
+export const stateTs = `// TypeScript — state machine with discriminated union
+type ConnectionState =
+  | { status: "disconnected" }
+  | { status: "connecting"; attempt: number }
+  | { status: "connected"; sessionId: string };
+
+function describe(state: ConnectionState): string {
+  switch (state.status) {
+    case "disconnected": return "not connected";
+    case "connecting":   return \`attempt \${state.attempt}\`;
+    case "connected":    return \`session \${state.sessionId}\`;
+  }
+}`;
+
+export const stateRs = `enum ConnectionState {
+    Disconnected,
+    Connecting { attempt: u32 },
+    Connected { session_id: String },
+}
+
+fn describe(state: &ConnectionState) -> String {
+    match state {
+        ConnectionState::Disconnected               => "not connected".to_string(),
+        ConnectionState::Connecting { attempt }     => format!("attempt {}", attempt),
+        ConnectionState::Connected { session_id }   => format!("session {}", session_id),
+    }
+}
+
+fn main() {
+    let states = vec![
+        ConnectionState::Disconnected,
+        ConnectionState::Connecting { attempt: 3 },
+        ConnectionState::Connected { session_id: "abc-123".to_string() },
+    ];
+    for s in &states {
+        println!("{}", describe(s));
+    }
+}`;
+
+<TsGo client:visible ts={stateTs} go={stateRs} />
+
+## Try it
+
+export const enumsAdtCode = `#[derive(Debug)]
+enum Shape {
+    Circle(f64),
+    Rectangle(f64, f64),
+    Triangle { base: f64, height: f64 },
+}
+
+impl Shape {
+    fn area(&self) -> f64 {
+        match self {
+            Shape::Circle(r)             => std::f64::consts::PI * r * r,
+            Shape::Rectangle(w, h)       => w * h,
+            Shape::Triangle { base, height } => 0.5 * base * height,
+        }
+    }
+}
+
+fn main() {
+    let shapes = vec![
+        Shape::Circle(3.0),
+        Shape::Rectangle(4.0, 5.0),
+        Shape::Triangle { base: 6.0, height: 4.0 },
+    ];
+    for s in &shapes {
+        println!("{:?} => area = {:.2}", s, s.area());
+    }
+}`;
+
+<Playground client:visible code={enumsAdtCode} />
+
+export const quizEnumsAdt = [
+  {
+    q: "What happens in Rust if your `match` does not cover all enum variants?",
+    options: [
+      "The unmatched variants return a default value",
+      "The program panics at runtime",
+      "The code does not compile — non-exhaustive patterns are a compile error",
+      "A warning is shown but the code still compiles"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is an algebraic data type (ADT) feature that Rust enums have but TypeScript enums do NOT?",
+    options: [
+      "Numeric values per variant",
+      "Each variant can carry its own different data types",
+      "Comparison with == by default",
+      "Iteration over all variants"
+    ],
+    answer: 1
+  },
+  {
+    q: "In a Rust `match`, what does the `_` arm do?",
+    options: [
+      "It causes a compile error for missing variants",
+      "It matches the first variant only",
+      "It acts as a catch-all for any remaining unmatched variants",
+      "It is the default label, equivalent to JavaScript's default"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rs-only/enums-adt" questions={quizEnumsAdt} />
+
+<ProgressTracker client:visible id="rs-only/enums-adt" />

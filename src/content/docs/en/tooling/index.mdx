@@ -1,0 +1,101 @@
+---
+title: 'Tooling, Testing & Deployment'
+description: 'An overview of Rust''s batteries-included toolchain (Cargo) versus the assemble-it-yourself Node.js ecosystem.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## One tool to rule them all
+
+In the Node.js world you assemble your own toolchain: `npm` (or `yarn`/`pnpm`) for packages, `tsc` for compilation, `eslint` for linting, `prettier` for formatting, `jest`/`vitest` for testing, and `esbuild`/`webpack`/`rollup` for bundling. Each tool has its own config file, its own CLI flags, and its own ecosystem of plugins.
+
+Rust ships with a single official tool — **Cargo** — that handles every one of those jobs:
+
+| Node / TS job | Cargo equivalent |
+|---|---|
+| `npm install` | `cargo add` / `cargo fetch` |
+| `tsc` | `cargo build` |
+| `node index.js` | `cargo run` |
+| `eslint` | `cargo clippy` |
+| `prettier` | `cargo fmt` |
+| `jest` | `cargo test` |
+| `npm publish` | `cargo publish` |
+| `npx tsdoc` | `cargo doc` |
+
+There is no "choose your own adventure." The Rust community converges on a single formatter (rustfmt), a single linter (Clippy), and a single test runner. This means every Rust project looks familiar.
+
+## What you will learn in this module
+
+- **cargo.mdx** — the `Cargo.toml` manifest, `Cargo.lock`, and the most important Cargo subcommands
+- **clippy-rustfmt.mdx** — linting with Clippy and formatting with rustfmt, mapped to eslint + prettier
+- **testing.mdx** — unit tests with `#[test]`, integration tests, and doctests, mapped to Jest
+- **workspaces-features.mdx** — multi-crate workspaces and feature flags, mapped to npm workspaces
+- **release-cross-compile.mdx** — optimized release builds and cross-compilation to static binaries
+- **docker-ci.mdx** — multi-stage Dockerfiles and GitHub Actions for Rust projects
+
+## Side-by-side: bootstrapping a project
+
+export const indexTs = `# Node / TypeScript
+npm init -y
+npm install typescript --save-dev
+npx tsc --init
+# Now you also need eslint, prettier, jest...`;
+
+export const indexRs = `# Rust
+cargo new my-app
+cd my-app
+cargo build    # compiles
+cargo run      # compiles + runs
+cargo test     # runs all tests
+cargo clippy   # lints
+cargo fmt      # formats`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+> This is a module overview lesson. Playground is not shown here — each subsequent lesson demonstrates a specific tool. Run the Cargo commands above in your terminal after installing Rust via [rustup.rs](https://rustup.rs).
+
+<RsOnly title="Why batteries-included matters">
+
+When every Rust project uses the same formatter, linter, and test runner, you can contribute to any open-source crate and feel at home immediately. There is no "this project uses Prettier but that one uses dprint" confusion. The official tools are also fast: `cargo fmt` and `cargo clippy` both run in milliseconds on typical projects.
+
+</RsOnly>
+
+export const quizIndex = [
+  {
+    q: "Which Cargo subcommand is equivalent to running `npx jest`?",
+    options: [
+      "cargo build",
+      "cargo check",
+      "cargo test",
+      "cargo run"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which tool formats Rust code (the equivalent of Prettier)?",
+    options: [
+      "cargo clippy",
+      "cargo fmt",
+      "cargo doc",
+      "rustc"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is the main advantage of Rust's single official toolchain over the Node.js ecosystem?",
+    options: [
+      "It is written in JavaScript so it is faster",
+      "Every Rust project uses the same formatter, linter, and test runner — no configuration bikeshedding",
+      "It requires no internet connection",
+      "It auto-generates TypeScript types"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="tooling/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="tooling/index" />

@@ -1,0 +1,174 @@
+---
+title: "Introduction — Why Rust for TypeScript Developers"
+description: 'Memory safety without a GC, fearless concurrency, great tooling, and a compiler that teaches you. Why Rust is worth learning alongside TypeScript.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## You already know how to build software
+
+You write TypeScript. You ship Node.js services, CLI tools, and React applications. You understand types, async/await, modules, and package management. That knowledge transfers — this course uses it as the bridge into Rust.
+
+## Why bother learning Rust?
+
+TypeScript solves a real problem: it adds types to JavaScript so bugs surface at compile time rather than in production. Rust takes that idea to the extreme — it makes an entire category of bugs (memory corruption, data races, null dereferences) **impossible by construction**, without a garbage collector.
+
+Here is the core value proposition:
+
+- **Memory safety without a GC.** No garbage collector pausing your program. Memory is tracked at compile time via the ownership system. You get the safety of a managed language with the performance of C.
+- **Fearless concurrency.** The same ownership rules that prevent memory bugs also prevent data races. If your code compiles, concurrent access is safe — the compiler says so.
+- **Predictable, near-zero latency.** No GC pauses, no JIT warm-up, no VM overhead. Rust programs start fast and stay fast.
+- **Great tooling from day one.** `cargo` is the best package manager and build tool in any systems language. `rustfmt` formats your code. `clippy` catches common mistakes. The ecosystem will feel familiar.
+- **The compiler as a helpful teacher.** Rust's error messages are legendary. When you make a mistake, the compiler explains what went wrong and often suggests the exact fix. It is strict, but fair.
+
+## Where Rust fits alongside TypeScript
+
+TypeScript (and Node.js) is excellent for:
+- Web APIs and backend services where developer velocity matters
+- Frontend and full-stack JavaScript applications
+- Rapid prototyping
+
+Rust shines for:
+- Performance-critical services (low-latency APIs, data pipelines)
+- WebAssembly modules compiled from Rust and called from your TypeScript frontend
+- CLI tools and developer tooling
+- Systems programming, embedded, and anywhere a GC is unacceptable
+
+The good news: you do not have to choose. Many production systems use both — TypeScript for the web layer and Rust for the hot path or WASM modules.
+
+## What this course covers
+
+This course is structured as a series of side-by-side comparisons. Every concept starts with what you already know in TypeScript, then shows the Rust equivalent.
+
+**Intro module (you are here):**
+- Why Rust? Mental model shifts.
+- Installing the toolchain (`rustup`, `cargo`)
+- Hello, world
+- Project anatomy (`Cargo.toml` vs `package.json`)
+
+**Rust 101 — Fundamentals:**
+- Variables, mutability, shadowing
+- Functions and expressions
+- Control flow (`if`, `match`, loops)
+- Structs (vs interfaces and classes)
+- Enums and pattern matching
+- Collections (`Vec`, `HashMap`)
+- `Option` and `Result` (vs `null`/`undefined` and `try/catch`)
+- Modules and crates (vs ESM and npm)
+
+## A quick taste
+
+Both snippets do the same thing. Notice that Rust looks structured and familiar, but has some notable differences: no semicolon on the last line of a function means "this is the return value", `println!` is a macro (not a function), and there is no runtime — just native machine code.
+
+export const indexTs = `// TypeScript
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+const result = add(3, 4);
+console.log(\`3 + 4 = \${result}\`);
+
+const language: string = "Rust";
+console.log(\`Time to learn \${language}!\`);`;
+
+export const indexRs = `fn add(a: i32, b: i32) -> i32 {
+    a + b // no semicolon = this is the return value
+}
+
+fn main() {
+    let result = add(3, 4);
+    println!("3 + 4 = {result}");
+
+    let language = "Rust";
+    println!("Time to learn {language}!");
+}`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+## Try it
+
+Run the Rust snippet above directly in your browser. No installation needed.
+
+export const indexCode = `fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn main() {
+    let result = add(3, 4);
+    println!("3 + 4 = {result}");
+
+    let language = "Rust";
+    println!("Time to learn {language}!");
+
+    // No null, no undefined -- use Option
+    let maybe: Option<i32> = Some(42);
+    if let Some(n) = maybe {
+        println!("Got a value: {n}");
+    }
+}`;
+
+<Playground client:visible code={indexCode} />
+
+<RsOnly title="No null, no undefined — Option instead">
+
+TypeScript has `null`, `undefined`, optional chaining (`?.`), and the non-null assertion (`!`). Rust has none of these. Instead, the absence of a value is represented by the `Option<T>` enum:
+
+```
+let name: Option<&str> = Some("Alice");
+let missing: Option<&str> = None;
+```
+
+The compiler forces you to handle both cases before you can use the value. There is no way to accidentally dereference `None` — it is a compile error, not a runtime crash.
+
+</RsOnly>
+
+export const quizIndex = [
+  {
+    q: "What is the primary reason Rust has no garbage collector?",
+    options: [
+      "Rust programs are too simple to need memory management",
+      "Memory is tracked statically at compile time via the ownership system",
+      "Rust uses reference counting exclusively",
+      "GC is planned for a future version"
+    ],
+    answer: 1
+  },
+  {
+    q: "In Rust, what does omitting the semicolon on the last line of a function mean?",
+    options: [
+      "A syntax error",
+      "The line is a comment",
+      "That expression is the return value of the function",
+      "The function returns unit (nothing)"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which Rust feature prevents data races at compile time?",
+    options: [
+      "The garbage collector",
+      "Async/await",
+      "The ownership and borrowing system",
+      "Mutexes automatically inserted by the compiler"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does Rust use instead of null or undefined?",
+    options: [
+      "A special null keyword",
+      "The Option<T> enum with Some and None variants",
+      "Nullable types like T?",
+      "undefined is a valid value in Rust"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="intro/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="intro/index" />

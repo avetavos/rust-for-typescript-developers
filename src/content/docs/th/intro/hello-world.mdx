@@ -1,0 +1,163 @@
+---
+title: "Hello, World — โปรแกรม Rust แรกของคุณ"
+description: 'fn main, println!, cargo run, และสิ่งที่ทำให้ Hello world ของ Rust แตกต่างจาก TypeScript'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## โปรแกรมที่ทุกภาษาเริ่มต้น
+
+การเขียน "Hello, world!" คือพิธีกรรมแรกในทุกภาษาใหม่ ใน TypeScript คุณใช้ `console.log` ใน Rust คุณใช้ `println!` มันดูคล้ายกันแต่ทำงานต่างกันมากภายใต้ Hood
+
+## เปรียบเทียบแบบเคียงข้างกัน
+
+export const helloTs = `// TypeScript hello world
+const greeting: string = "Hello, world!";
+console.log(greeting);
+
+// Template literals
+const name = "TypeScript developer";
+console.log(\`Welcome, \${name}!\`);`;
+
+export const helloRs = `fn main() {
+    let greeting: &str = "Hello, world!";
+    println!("{greeting}");
+
+    // Named argument in format string
+    let name = "TypeScript developer";
+    println!("Welcome, {name}!");
+}`;
+
+<TsGo client:visible ts={helloTs} go={helloRs} />
+
+มีหลายสิ่งที่ควรสังเกตทันที:
+
+- **`fn main()`** — ทุก Rust binary เริ่มต้นที่นี่ ไม่มี Module system หรือ Top-level execution แบบ Node.js; `main` คือ Entry point ที่จำเป็น
+- **`println!`** — เครื่องหมายอัศเจรีย์หมายความว่านี่คือ **Macro** ไม่ใช่ Function Format string ถูกตรวจสอบตั้งแต่ Compile time: `{greeting}` จะถูกแทนที่ด้วยค่าของตัวแปร `greeting` สิ่งนี้คล้ายกับ Template literal แต่การตรวจสอบเกิดขึ้นตั้งแต่ Compile time ไม่ใช่ Runtime
+- **`let greeting: &str`** — `&str` คือ String slice ซึ่งเป็น Reference ไปยังลำดับของ UTF-8 bytes คิดว่ามันเป็น Immutable view ในสตริง String type ที่ Owned และอยู่ใน Heap คือ `String`
+- **Semicolons** — Rust ใช้ Semicolons เพื่อจบ Statements เหมือนกับ TypeScript
+
+## การจัดรูปแบบด้วย println!
+
+`println!` มีความสามารถมากกว่า `console.log` Format string ใช้ `{}` เป็น Placeholder และคุณสามารถอ้างอิงตัวแปรด้วยชื่อ (`{name}`) หรือใช้ Positional placeholders:
+
+```
+println!("{}", value);           // positional
+println!("{value}");             // named (Rust 1.58+)
+println!("{:?}", value);         // debug format — works on most types
+println!("{:#?}", value);        // pretty debug format
+println!("{:.2}", 3.14159);      // 3.14 — two decimal places
+```
+
+## การรันโปรแกรม
+
+หลังจาก Scaffold ด้วย `cargo new hello-world` ไฟล์ `src/main.rs` จะมี:
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+รันมัน:
+
+```bash
+cargo run
+```
+
+คุณจะเห็น:
+
+```
+   Compiling hello-world v0.1.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.42s
+     Running `target/debug/hello-world`
+Hello, world!
+```
+
+การรันครั้งแรก Compile; การรันครั้งถัดไปจะ Compile เฉพาะไฟล์ที่เปลี่ยนแปลง — คล้ายกับการ Compile TypeScript แบบ Incremental
+
+## ลองทดสอบ
+
+รันโปรแกรม Rust ในเบราว์เซอร์ของคุณตอนนี้เลย ไม่ต้องติดตั้งอะไร
+
+export const helloCode = `fn main() {
+    println!("Hello, world!");
+
+    let name = "TypeScript developer";
+    println!("Welcome, {name}!");
+
+    // Debug formatting with {:?}
+    let numbers = [1, 2, 3, 4, 5];
+    println!("numbers = {numbers:?}");
+
+    // Formatted floats
+    let pi = 3.14159;
+    println!("pi = {pi:.2}");
+}`;
+
+<Playground client:visible code={helloCode} />
+
+<RsOnly title="println! คือ Macro ไม่ใช่ Function">
+
+`println!` คือ **Macro** — เครื่องหมาย `!` บอกให้รู้ ใน Rust Macros คือรูปแบบหนึ่งของ Metaprogramming: มันถูก Expand โดย Compiler ก่อนการสร้างโค้ด `println!` วิเคราะห์ Format string ตั้งแต่ Compile time และยืนยันว่า Argument types ตรงกับ Placeholders ถ้าคุณเขียน `println!("{}", name)` แต่ `name` ไม่ Printable Compiler จะบอกตั้งแต่ Compile time
+
+นี่แตกต่างโดยพื้นฐานจาก `console.log` ใน JavaScript ซึ่งรับค่าใดก็ได้และเรียก `.toString()` ขณะ Runtime ด้วย `println!` Format errors คือ Compile errors
+
+Macros มาตรฐานอื่นที่จะใช้บ่อย:
+- `print!` — เหมือน `println!` แต่ไม่มี Newline ท้าย
+- `format!` — Return `String` แทนที่จะ Print
+- `eprintln!` — Print ไปยัง `stderr`
+- `dbg!` — Print ค่าพร้อม Expression ของมัน ใช้สำหรับ Debug
+
+</RsOnly>
+
+export const quizHello = [
+  {
+    q: "เครื่องหมาย `!` หลัง `println` บ่งบอกอะไร?",
+    options: [
+      "มันคือ Logical NOT operator ที่ใช้กับผลลัพธ์",
+      "มันทำเครื่องหมาย println ว่าเป็น Unsafe operation",
+      "มันบ่งบอกว่า println คือ Macro ไม่ใช่ Function",
+      "มันเป็น Syntax ที่จำเป็นสำหรับคำสั่ง Print ทั้งหมดใน Rust"
+    ],
+    answer: 2
+  },
+  {
+    q: "Function Entry point ใน Rust binary program คืออะไร?",
+    options: [
+      "start()",
+      "run()",
+      "init()",
+      "main()"
+    ],
+    answer: 3
+  },
+  {
+    q: "Format specifier ใดที่ Print ค่าโดยใช้ Debug formatting ใน println!?",
+    options: [
+      "{}",
+      "{:?}",
+      "{:debug}",
+      "{!}"
+    ],
+    answer: 1
+  },
+  {
+    q: "คำสั่งใด Compile และรัน Rust project ทันที?",
+    options: [
+      "rustc main.rs && ./main",
+      "cargo run",
+      "cargo exec",
+      "rust run src/main.rs"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="intro/hello-world" questions={quizHello} />
+
+<ProgressTracker client:visible id="intro/hello-world" />

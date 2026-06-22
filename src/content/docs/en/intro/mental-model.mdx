@@ -1,0 +1,251 @@
+---
+title: "Mental Model — Mindset Shifts from TypeScript"
+description: 'The five biggest mindset shifts when coming to Rust from TypeScript or Node.js — ownership, compile-time safety, expressions, immutability, and errors as values.'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Five things that will feel different
+
+Most Rust frustration for new learners comes from fighting the mental model, not the syntax. TypeScript and Rust look superficially similar — both have types, functions, generics, and pattern matching — but they make fundamentally different trade-offs. Understanding these five shifts up front will save you hours of confusion.
+
+## 1. Ownership — no garbage collector
+
+In JavaScript and TypeScript, memory is managed by a garbage collector (GC). You create objects freely; the GC scans for unreachable values and frees them. You never think about allocation.
+
+In Rust, **every value has exactly one owner**. When the owner goes out of scope, the value is freed — no GC required. This is determined entirely at compile time.
+
+export const ownershipTs = `// TypeScript: GC manages memory
+// You can pass an object anywhere, copy references freely
+function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+let s1 = "hello";
+let s2 = s1;      // s1 is still valid — GC tracks both refs
+console.log(s1, s2);`;
+
+export const ownershipRs = `fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1; // s1 is *moved* into s2 — s1 is gone
+    println!("{s2}"); // fine
+    // println!("{s1}"); // compile error: value was moved
+}`;
+
+<TsGo client:visible ts={ownershipTs} go={ownershipRs} />
+
+The key insight: moving a value (assigning, passing to a function) transfers ownership. The old binding is no longer valid. This sounds harsh — but it means the compiler can guarantee at compile time that memory is freed exactly once, no double-frees, no use-after-free.
+
+## 2. Compile-time memory safety — the borrow checker
+
+Rust's *borrow checker* enforces ownership rules. It reads your code at compile time and rejects programs that could cause memory errors. There is no runtime check; there is no null pointer exception; there is no heap corruption.
+
+The rules:
+- You can have **one mutable reference** (`&mut T`) **or** any number of **immutable references** (`&T`) — never both at the same time.
+- References cannot outlive the value they point to.
+
+export const borrowTs = `// TypeScript: no borrow checker — races are possible at runtime
+let arr = [1, 2, 3];
+const ref1 = arr;
+const ref2 = arr;
+// both ref1 and ref2 point to the same array
+// mutating through one is invisible to callers expecting stability
+ref1.push(4);
+console.log(ref2); // [1, 2, 3, 4] — maybe surprising`;
+
+export const borrowRs = `fn main() {
+    let mut v = vec![1, 2, 3];
+
+    let r1 = &v;     // immutable borrow
+    let r2 = &v;     // second immutable borrow -- fine
+    println!("{r1:?} {r2:?}");
+    // r1 and r2 are no longer used after this point
+
+    let r3 = &mut v; // mutable borrow -- fine here, r1/r2 are done
+    r3.push(4);
+    println!("{r3:?}");
+}`;
+
+<TsGo client:visible ts={borrowTs} go={borrowRs} />
+
+## 3. Expressions over statements
+
+In TypeScript, `if`, `match`, and blocks are statements — they do not produce values. In Rust, almost everything is an expression that produces a value. This means you can assign the result of an `if` or `match` directly.
+
+export const expressionsTs = `// TypeScript: if is a statement, need ternary for expressions
+const score = 85;
+const grade = score >= 90 ? "A" : score >= 75 ? "B" : "C";
+console.log(grade);`;
+
+export const expressionsRs = `fn main() {
+    let score = 85;
+
+    // if is an expression in Rust -- assign its result directly
+    let grade = if score >= 90 {
+        "A"
+    } else if score >= 75 {
+        "B"
+    } else {
+        "C"
+    };
+
+    println!("{grade}");
+}`;
+
+<TsGo client:visible ts={expressionsTs} go={expressionsRs} />
+
+## 4. Immutability by default
+
+TypeScript's `let` creates a mutable binding. Rust's `let` creates an **immutable** binding. You must opt in to mutability with `let mut`.
+
+export const immutTs = `// TypeScript: let is mutable by default
+let count = 0;
+count = count + 1; // fine, let is mutable
+console.log(count); // 1`;
+
+export const immutRs = `fn main() {
+    let count = 0;
+    // count = count + 1; // compile error: cannot assign twice to immutable variable
+
+    let mut mutable_count = 0;
+    mutable_count += 1; // fine, explicitly mutable
+    println!("{mutable_count}");
+}`;
+
+<TsGo client:visible ts={immutTs} go={immutRs} />
+
+Immutability by default is not just a convention (like `const` in TypeScript) — it is enforced by the compiler. This makes code easier to reason about and enables the borrow checker to work correctly.
+
+## 5. Errors as values — no exceptions
+
+TypeScript uses `throw` and `try/catch` for error handling. Rust has **no exceptions**. Errors are returned as values using the `Result<T, E>` enum. A function that can fail returns `Result<Success, Error>` and the caller must handle both cases.
+
+export const errorsTs = `// TypeScript: exceptions are thrown, not returned
+function parseAge(s: string): number {
+  const n = parseInt(s, 10);
+  if (isNaN(n)) throw new Error(\`Invalid age: \${s}\`);
+  return n;
+}
+
+try {
+  const age = parseAge("abc");
+  console.log(age);
+} catch (e) {
+  console.error(e); // Error: Invalid age: abc
+}`;
+
+export const errorsRs = `fn parse_age(s: &str) -> Result<u32, String> {
+    s.parse::<u32>().map_err(|e| format!("Invalid age '{}': {}", s, e))
+}
+
+fn main() {
+    match parse_age("25") {
+        Ok(age) => println!("age = {age}"),
+        Err(e) => println!("error: {e}"),
+    }
+
+    match parse_age("abc") {
+        Ok(age) => println!("age = {age}"),
+        Err(e) => println!("error: {e}"),
+    }
+}`;
+
+<TsGo client:visible ts={errorsTs} go={errorsRs} />
+
+## Try it
+
+Experiment with expressions and Result-based error handling in the browser.
+
+export const mentalModelCode = `fn parse_number(s: &str) -> Result<i32, String> {
+    s.parse::<i32>().map_err(|e| format!("Cannot parse '{}': {}", s, e))
+}
+
+fn main() {
+    // expressions: if produces a value
+    let score = 85;
+    let grade = if score >= 90 { "A" } else if score >= 75 { "B" } else { "C" };
+    println!("grade = {grade}");
+
+    // errors as values
+    match parse_number("42") {
+        Ok(n) => println!("parsed: {n}"),
+        Err(e) => println!("error: {e}"),
+    }
+
+    match parse_number("oops") {
+        Ok(n) => println!("parsed: {n}"),
+        Err(e) => println!("error: {e}"),
+    }
+}`;
+
+<Playground client:visible code={mentalModelCode} />
+
+<RsOnly title="The ? operator — propagating errors ergonomically">
+
+Matching on every `Result` can get verbose. Rust provides the `?` operator: placed after a `Result`, it either unwraps the `Ok` value or returns the `Err` immediately to the caller. This is the Rust equivalent of re-throwing an exception, but it is explicit in the function signature.
+
+```
+fn read_number(s: &str) -> Result<i32, String> {
+    let n = s.parse::<i32>().map_err(|e| e.to_string())?;
+    Ok(n * 2)
+}
+```
+
+The `?` only works inside functions that return `Result` (or `Option`), making error propagation visible and intentional.
+
+</RsOnly>
+
+export const quizMentalModel = [
+  {
+    q: "When you assign `let s2 = s1;` in Rust (where s1 is a String), what happens to s1?",
+    options: [
+      "s1 is cloned so both are valid",
+      "s1 is moved into s2 and is no longer valid",
+      "s1 and s2 share a reference to the same heap allocation",
+      "s1 becomes immutable"
+    ],
+    answer: 1
+  },
+  {
+    q: "How many mutable references to a value can exist at the same time in Rust?",
+    options: [
+      "Unlimited — same as TypeScript",
+      "Zero — values are always immutable",
+      "Exactly one, and no immutable references can coexist with it",
+      "Two — one for reading, one for writing"
+    ],
+    answer: 2
+  },
+  {
+    q: "In Rust, `let x = if condition { 1 } else { 2 };` is valid because:",
+    options: [
+      "It is a special ternary syntax unique to Rust",
+      "if is an expression that produces a value",
+      "The compiler rewrites it to a ternary operator",
+      "x must be declared as mut for this to work"
+    ],
+    answer: 1
+  },
+  {
+    q: "How does Rust signal that a function can fail?",
+    options: [
+      "The function throws an exception",
+      "The function returns a nullable type T?",
+      "The function returns Result<T, E> and the caller must handle both variants",
+      "The function panics and the caller uses recover()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="intro/mental-model" questions={quizMentalModel} />
+
+<ProgressTracker client:visible id="intro/mental-model" />

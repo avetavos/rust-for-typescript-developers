@@ -1,0 +1,202 @@
+---
+title: 'Docker & CI — ส่ง Rust ขึ้น Production'
+description: 'Multi-stage Dockerfile สำหรับ Rust binary (builder + distroless) และ GitHub Actions workflow (fmt, clippy, test, build) เทียบกับ Node Docker และ CI'
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## ทำไม multi-stage Docker จึงสำคัญสำหรับ Rust
+
+Docker image ของ Node.js ต้องมี Node runtime ~180 MB (Alpine) เพียงเพื่อรัน Rust binary ไม่มี runtime dependency จึงสามารถ copy ไปไว้ใน image แบบ **distroless** หรือ **scratch** ได้เลย ผลคือ production image มักมีขนาดเพียง 5–30 MB
+
+เคล็ดลับคือ **multi-stage build**: Rust toolchain เต็มรูปแบบใน builder stage และเฉพาะ compiled binary ใน final stage
+
+## เปรียบเทียบ Dockerfile
+
+export const dockerTs = `# Node / TypeScript Dockerfile (multi-stage)
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
+# Final image: ~180 MB (Node runtime required)`;
+
+export const dockerRs = `# Rust Dockerfile (multi-stage → distroless)
+FROM rust:1.80-slim AS builder
+WORKDIR /app
+# Cache dependency แยกจาก source code
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release --locked
+RUN rm -rf src
+
+# Build source จริง
+COPY src ./src
+RUN touch src/main.rs && cargo build --release --locked
+
+FROM gcr.io/distroless/cc-debian12 AS runtime
+COPY --from=builder /app/target/release/my-app /usr/local/bin/my-app
+EXPOSE 8080
+CMD ["/usr/local/bin/my-app"]
+# Final image: ~20 MB (ไม่ต้องมี runtime)`;
+
+<TsGo client:visible ts={dockerTs} go={dockerRs} />
+
+## อธิบาย trick การ cache dependency
+
+pattern `COPY` สองขั้นตอนข้างต้นสำคัญมากสำหรับ rebuild ที่เร็ว:
+
+```dockerfile
+# ขั้นตอน 1: copy เฉพาะ manifest และ build stub main.rs
+# Docker layer-cache สิ่งนี้ — invalidate เฉพาะเมื่อ Cargo.toml/Cargo.lock เปลี่ยน
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release --locked
+
+# ขั้นตอน 2: copy source จริง — layer นี้ invalidate ทุกครั้งที่ code เปลี่ยน
+# แต่การ compile dependency ถูก cache ไว้แล้ว
+COPY src ./src
+RUN touch src/main.rs && cargo build --release --locked
+```
+
+นี่เทียบเท่ากับ pattern ของ Node ที่ `COPY package*.json ./` แล้ว `RUN npm ci` ก่อน `COPY . .`
+
+## GitHub Actions workflow
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check, Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (lint)
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Build release binary
+        run: cargo build --release --locked
+```
+
+## เปรียบเทียบ Node CI
+
+```yaml
+# .github/workflows/ci.yml (Node / TypeScript)
+name: CI
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx eslint src/
+      - run: npx prettier --check "src/**/*.ts"
+      - run: npm test
+      - run: npm run build
+```
+
+Rust workflow ใช้ `dtolnay/rust-toolchain` (action ทางการ) และ `Swatinem/rust-cache` เพื่อ cache `~/.cargo` registry และ `target/` ระหว่าง run — เทียบเท่ากับ `actions/setup-node` กับ `cache: 'npm'`
+
+> เหล่านี้คือ Dockerfile และ YAML configuration ไม่มี browser Playground สำหรับ Docker build — ใช้ไฟล์เหล่านี้ใน project ของคุณและ push ไปยัง GitHub เพื่อ trigger Actions workflow
+
+<RsOnly title="distroless vs scratch vs Alpine">
+
+สามตัวเลือกทั่วไปสำหรับ Rust final image:
+
+- **`scratch`** — ว่างเปล่าสมบูรณ์ ใช้เฉพาะกับ static binary แบบ musl (ไม่มี C runtime เลย) Image เล็กสุดที่เป็นไปได้
+- **`gcr.io/distroless/cc-debian12`** — Google's minimal image กับ C runtime (`libgcc`, `libssl`) จำเป็นเมื่อ binary link กับ glibc แบบ dynamic ~20 MB
+- **`alpine:3`** — เล็ก (~5 MB) มี shell และ package manager ใช้เมื่อต้องรัน shell script ควบคู่กับ binary แต่ต้องการ binary ที่ link กับ musl (หรือ `apk add gcompat`)
+
+สำหรับ Axum/Tokio HTTP service ส่วนใหญ่ที่ compile ด้วย default glibc target `gcr.io/distroless/cc-debian12` คือตัวเลือกที่ถูกต้อง
+
+</RsOnly>
+
+export const quizDocker = [
+  {
+    q: "ทำไม Rust Docker image จึงเล็กกว่า Node.js Docker image มาก?",
+    options: [
+      "Rust code compress ได้ดีกว่า",
+      "Rust binary ไม่มี runtime dependency — ส่งเฉพาะ compiled binary",
+      "Docker ลบไฟล์ที่ไม่ใช้จาก Rust image อัตโนมัติ",
+      "Rust ไม่รองรับ dynamic linking"
+    ],
+    answer: 1
+  },
+  {
+    q: "จุดประสงค์ของขั้นตอน stub `fn main() {}` ใน Rust Dockerfile คืออะไร?",
+    options: [
+      "ตรวจสอบว่า Rust toolchain ติดตั้งแล้ว",
+      "รัน unit test ก่อน build",
+      "Cache compiled dependency ใน Docker layer แยกจาก source code",
+      "เริ่มต้น distroless base image"
+    ],
+    answer: 2
+  },
+  {
+    q: "GitHub Action ใดติดตั้ง Rust toolchain ใน CI?",
+    options: [
+      "actions/setup-rust@v1",
+      "rust-lang/rust-toolchain@stable",
+      "dtolnay/rust-toolchain@stable",
+      "cargo/install-toolchain@v2"
+    ],
+    answer: 2
+  },
+  {
+    q: "ควรใช้ distroless base image ใดสำหรับ Axum service ที่ compile กับ glibc?",
+    options: [
+      "scratch",
+      "alpine:3",
+      "ubuntu:22.04",
+      "gcr.io/distroless/cc-debian12"
+    ],
+    answer: 3
+  }
+];
+
+<Quiz client:visible id="tooling/docker-ci" questions={quizDocker} />
+
+<ProgressTracker client:visible id="tooling/docker-ci" />
