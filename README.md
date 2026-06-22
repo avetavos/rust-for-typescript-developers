@@ -1,6 +1,6 @@
-# Python for TypeScript Developers
+# Rust for TypeScript Developers
 
-A bilingual, interactive course that teaches Python to TypeScript developers using a comparison-first approach. Every concept is introduced from the TypeScript perspective first, then mapped to the Python equivalent. All runnable examples execute entirely in the browser — no backend or local Python installation required for reading the course.
+A bilingual, interactive course that teaches Rust to TypeScript developers using a comparison-first approach. Every concept is introduced from the TypeScript perspective first, then mapped to the Rust equivalent. All runnable examples compile and run in the browser against the real Rust compiler — no backend or local Rust installation required for reading the course.
 
 ## Tech Stack
 
@@ -8,7 +8,7 @@ A bilingual, interactive course that teaches Python to TypeScript developers usi
 | ----- | ---------- |
 | Site framework | [Astro 6](https://astro.build) + [Starlight 0.40](https://starlight.astro.build) |
 | UI islands | [Preact](https://preactjs.com) (via `@astrojs/preact`) |
-| In-browser Python runner | [Pyodide](https://pyodide.org) (CPython compiled to WebAssembly), loaded from the jsDelivr CDN |
+| In-browser Rust runner | The official [Rust Playground](https://play.rust-lang.org) API, called directly from the browser (CORS-open) |
 | Unit tests | [Vitest](https://vitest.dev) + `@testing-library/preact` |
 | Styling | Starlight default + custom CSS (`src/styles/custom.css`) |
 | i18n | Starlight built-in, `defaultLocale: 'en'`, locales: `en` + `th` |
@@ -25,9 +25,8 @@ npm run preview    # Preview the production build locally
 npm test           # Run Vitest unit tests
 ```
 
-> There is **no build step for the runtime** — Python runs via Pyodide loaded from
-> the CDN at runtime, so there is nothing to compile or commit (unlike a self-hosted
-> WASM toolchain).
+> There is **no build step for the runtime** — Rust compiles on the public Rust
+> Playground at runtime, so there is nothing to compile, download, or commit.
 
 ## Content Structure
 
@@ -37,10 +36,10 @@ Lessons live at:
 src/content/docs/
   en/              # English content — served at /en/...
     intro/
-    python-101/
-    py-only/
+    rust-101/
+    rs-only/
     concurrency/
-    api-fastapi/
+    api-axum/
     advanced/
     tooling/
     index.mdx      # EN landing page (splash template)
@@ -53,17 +52,17 @@ src/content/docs/
 
 | Directory | Module | Topics |
 | --------- | ------ | ------ |
-| `intro` | Introduction & Setup | Why Python for TS devs, mental-model shifts, toolchain setup |
-| `python-101` | Python 101 — Fundamentals | Variables, functions, control flow, collections, classes, errors |
-| `py-only` | Python You Won't Find in TypeScript | Decorators, comprehensions, generators, dunder methods, context managers |
-| `concurrency` | Async & Concurrency | asyncio, tasks & gather, threading, the GIL, multiprocessing |
-| `api-fastapi` | Building an API with FastAPI | Routing, Pydantic models, validation, DI, middleware, testing (Express/Nest ↔ FastAPI) |
-| `advanced` | Advanced Python | Protocols vs structural typing, dataclasses, pattern matching, pytest, profiling |
-| `tooling` | Tooling, Testing & Deployment | ruff/black, mypy, pytest, venv/uv/poetry, Docker, CI |
+| `intro` | Introduction & Setup | Why Rust for TS devs, mental-model shifts, toolchain setup |
+| `rust-101` | Rust 101 — Fundamentals | Variables, functions, control flow, structs, enums, collections, Option/Result |
+| `rs-only` | Rust You Won't Find in TypeScript | Ownership, borrowing, lifetimes, traits, ADTs, no-null, no-GC |
+| `concurrency` | Concurrency | Threads, Send/Sync, channels, Arc/Mutex, async/await with Tokio |
+| `api-axum` | Building an API with Axum | Routing, extractors, state, serde, middleware, errors, sqlx, testing (Express/Nest ↔ Axum) |
+| `advanced` | Advanced Rust | Generics & trait bounds, trait objects, closures/iterators, `?`/thiserror, macros, smart pointers |
+| `tooling` | Tooling, Testing & Deployment | cargo, clippy, rustfmt, cargo test, workspaces, cross-compile, Docker, CI |
 
 ### Lesson File IDs
 
-Content IDs follow the `<module>/<slug>` convention, e.g. `python-101/variables`. The Starlight sidebar uses `autogenerate: { directory }` per locale root, so new `.mdx` files are picked up automatically.
+Content IDs follow the `<module>/<slug>` convention, e.g. `rust-101/variables`. The Starlight sidebar uses `autogenerate: { directory }` per locale root, so new `.mdx` files are picked up automatically.
 
 ### 7-Section Lesson Template
 
@@ -71,37 +70,39 @@ Each lesson MDX file follows this structure:
 
 1. **Intro** — one-paragraph framing of the concept, anchored in TypeScript
 2. **Concept** — prose explanation
-3. **TsGo** — `<TsGo ts={...} go={...} />` side-by-side comparison (left = TypeScript, right = Python; the `go` prop carries the Python code)
-4. **Playground** — `<Playground code={...} />` runnable Python snippet (omitted where it can't run in-browser, with a note)
-5. **PyOnly** — `<PyOnly>` callout for Python-only concepts with no TS equivalent
+3. **TsGo** — `<TsGo ts={...} go={...} />` side-by-side comparison (left = TypeScript, right = Rust; the `go` prop carries the Rust code)
+4. **Playground** — `<Playground code={...} />` runnable Rust snippet (omitted where it can't run, e.g. servers/multi-file crates, with a note)
+5. **RsOnly** — `<RsOnly>` callout for Rust-only concepts with no TS equivalent
 6. **Quiz** — `<Quiz questions={...} />` comprehension check
 7. **ProgressTracker** — `<ProgressTracker id="module/slug" />` (always last)
 
 Code snippets are hoisted into `export const` template literals and passed to the
 components by reference (e.g. `export const fooCode = \`...\`` then `<Playground code={fooCode} />`).
 
-> **⚠️ Authoring gotchas inside backtick template literals:**
-> - **Escape sequences must be double-backslashed** — write `\\n`, `\\t`. A single
->   `\n` is consumed by JS template-literal parsing and becomes a real newline before
->   the code reaches the renderer, breaking Python string literals.
-> - **Python f-strings use `{x}`, not `${x}`.** Do not write JS-style `${...}`
->   interpolation in Python code — it renders a literal `$`. (TypeScript code in the
->   `ts` prop legitimately uses `\${...}` inside its template literals.)
+> **⚠️ Authoring gotchas:**
+> - **Frontmatter `title`/`description` are single-quoted** when they contain a colon,
+>   backtick, or other YAML-significant character (e.g. a description mentioning
+>   `` `<T: Display>` ``). Quote them or the build's YAML parser fails.
+> - **Escape sequences in code template literals must be double-backslashed** —
+>   write `\\n`, `\\t`. A single `\n` is consumed by JS template-literal parsing.
+> - **Rust format strings use `{}` / `{var}`, never JS-style `${}`.** (TypeScript code
+>   in the `ts` prop legitimately uses `\${...}` inside its template literals.)
 
 ## How Runnable Code Works
 
-The Python runner is [Pyodide](https://pyodide.org) — CPython compiled to WebAssembly. When a reader first clicks "Run" in a `<Playground>`:
+The runner calls the official [Rust Playground](https://play.rust-lang.org) `/execute` endpoint directly from the browser (it sends `Access-Control-Allow-Origin: *`). When a reader clicks "Run" in a `<Playground>`:
 
-1. The browser lazy-loads Pyodide from the jsDelivr CDN (a pinned version; ~10 MB, cached after first load).
-2. The snippet is executed with `runPythonAsync` (so top-level `await` and `asyncio` work); `stdout`/`stderr` are captured and shown inline, including Python tracebacks.
+1. The snippet is POSTed to `play.rust-lang.org/execute` (stable channel, 2021 edition).
+2. On success, `stdout` is shown inline; on failure, the **real `rustc` / borrow-checker error** (`stderr`) is shown — great for teaching.
+3. On network failure, an "Open in Rust Playground" fallback link is offered.
 
-**Coverage:** the full Python standard library, basic generics, `asyncio` with top-level `await`. Code needing OS threads/processes (`threading`, `multiprocessing`, `concurrent.futures`), a running server (FastAPI), or third-party packages (Pydantic, SQLAlchemy) does **not** run in the browser — those lessons use code blocks with a "run locally" note and an "Open in an online REPL" fallback link.
+**Coverage:** the full standard library, threads, `async`/Tokio, and popular crates (serde, rand, anyhow, thiserror) all run on the Playground. Code that **binds a network port** (an Axum server) or needs a **multi-file crate** cannot run — those lessons use code blocks with a "run locally" note. Lessons that teach a *compile error* (e.g. the borrow checker) show the failing code in a fenced block with the `// error[E....]` annotation, and keep the runnable `<Playground>` for the working version.
 
-The pinned Pyodide version lives in `src/components/py-runner.ts` (`PYODIDE_VERSION`).
+The endpoint lives in `src/components/rust-runner.ts`.
 
 ## Deployment
 
-The site is fully static (`output: 'static'` in `astro.config.mjs`). Build output lands in `dist/`. Because Pyodide is loaded from a CDN, there is **no large committed asset** — deploy to any static host (GitHub Pages, Netlify, Vercel, Cloudflare Pages all work).
+The site is fully static (`output: 'static'` in `astro.config.mjs`). Build output lands in `dist/`. The runner is just a `fetch`, so there is **no large committed asset** — deploy to any static host (GitHub Pages, Netlify, Vercel, Cloudflare Pages all work).
 
 ### GitHub Pages (configured)
 
@@ -113,7 +114,7 @@ One-time setup:
 1. Create a GitHub repo and push (`main` branch).
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
 3. Confirm the base path in `astro.config.mjs` matches your setup:
-   - **Project site** (`https://USER.github.io/REPO/`): `site: 'https://USER.github.io'`, `base: '/REPO'` (currently `avetavos` / `python-for-typescript-developers`).
+   - **Project site** (`https://USER.github.io/REPO/`): `site: 'https://USER.github.io'`, `base: '/REPO'` (currently `avetavos` / `rust-for-typescript-developers`).
    - **User/org site** (`USER.github.io` repo) or **custom domain**: set `site` and **remove `base`** (served at root).
 
 If you change `base`, update the base-prefixed links in
@@ -127,4 +128,4 @@ links to `/en/...`):
 
 - **Netlify** — build command `npm run build`, publish dir `dist`
 - **Vercel** — static preset, no serverless functions needed
-- **Cloudflare Pages** — build command `npm run build`, output `dist` (works here because there is no large WASM file to upload)
+- **Cloudflare Pages** — build command `npm run build`, output `dist`
