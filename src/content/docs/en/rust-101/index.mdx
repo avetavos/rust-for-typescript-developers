@@ -1,5 +1,80 @@
 ---
-title: Rust 101
-description: Rust fundamentals for TypeScript developers.
+title: "Rust 101 — Fundamentals"
+description: A module overview and your first taste of Rust, anchored in TypeScript.
 ---
-Coming soon.
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Welcome to Rust 101
+
+You already know TypeScript. You understand types, functions, and how to build real software. This module uses that knowledge as a bridge — every concept is introduced by comparing it to something you already know, then showing the Rust way.
+
+## What you will learn
+
+This module covers the core building blocks of Rust that map to everyday TypeScript patterns:
+
+- **Variables** — `let`, `let mut`, `const`, shadowing, and type inference
+- **Functions** — typed parameters, return types, and expression-oriented syntax
+- **Control flow** — `if` as an expression, `match`, `loop`, `while`, `for`
+- **Structs** — the Rust alternative to classes and interfaces
+- **Enums** — algebraic data types and exhaustive pattern matching
+- **Collections** — `Vec`, `HashMap`, arrays, tuples, slices
+- **Option and Result** — replacing `null`/`undefined` and `try/catch`
+- **Modules and crates** — the Rust equivalent of ESM and npm
+
+By the end you will have the vocabulary to read and write real Rust programs.
+
+## Your first side-by-side
+
+Both programs greet the user. The structure is similar, but Rust is compiled, statically typed, and has no runtime — `println!` is a macro that resolves format strings at compile time.
+
+export const indexTs = `const name = "TypeScript developer";
+console.log(\`Hello, \${name}! Welcome to Rust.\`);`;
+
+export const indexRs = `fn main() {
+    let name = "TypeScript developer";
+    println!("Hello, {}! Welcome to Rust.", name);
+}`;
+
+<TsGo client:visible ts={indexTs} go={indexRs} />
+
+## Try it
+
+Run the Rust snippet above directly in your browser.
+
+export const indexCode = `fn main() {
+    let name = "TypeScript developer";
+    println!("Hello, {}! Welcome to Rust.", name);
+}`;
+
+<Playground client:visible code={indexCode} />
+
+export const quizIndex = [
+  {
+    q: "In Rust, what is println! ?",
+    options: [
+      "A built-in function from the standard library",
+      "A macro that resolves format strings at compile time",
+      "A method on the String type",
+      "A global variable"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is the entry point of every Rust binary program?",
+    options: [
+      "start()",
+      "init()",
+      "main()",
+      "run()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/index" questions={quizIndex} />
+
+<ProgressTracker client:visible id="rust-101/index" />

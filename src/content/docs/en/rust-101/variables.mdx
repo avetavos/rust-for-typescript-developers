@@ -1,0 +1,130 @@
+---
+title: Variables
+description: let, let mut, const, shadowing, type inference, and type annotations in Rust vs TypeScript.
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Variables in TypeScript vs Rust
+
+In TypeScript, `let` declares a mutable binding and `const` declares an immutable one. Rust flips the default: `let` is immutable by default, and you opt into mutability with `let mut`. Rust's `const` is similar to TypeScript's — a compile-time constant with a required type annotation.
+
+## Type inference and annotations
+
+Rust infers types just like TypeScript. You can annotate explicitly when you need clarity or when the compiler cannot infer the type on its own.
+
+```
+// TypeScript
+let score: number = 42;
+let name = "Alice";        // inferred as string
+
+// Rust
+let score: i32 = 42;
+let name = "Alice";        // inferred as &str
+```
+
+## Shadowing
+
+Rust allows you to re-declare a variable with `let` in the same scope — this is called *shadowing*. The new binding replaces the old one. This differs from mutation: you can even change the type. TypeScript does not allow re-declaring the same name with `let` in the same scope.
+
+export const variablesTs = `// TypeScript: cannot shadow with let in same scope
+const x = 5;
+// let x = x + 1; // SyntaxError
+
+// Workaround: use a new name or use let + reassign
+let count = 5;
+count = count + 1;
+console.log(count); // 6`;
+
+export const variablesRs = `fn main() {
+    let x = 5;
+    // x = 6; // ERROR: cannot assign twice to immutable variable
+    let x = x + 1; // shadowing: a new binding named x
+    println!("{x}"); // 6
+
+    let mut y = 10; // explicitly mutable
+    y += 5;
+    println!("{y}"); // 15
+
+    const MAX_POINTS: u32 = 100_000; // compile-time constant
+    println!("{MAX_POINTS}");
+}`;
+
+<TsGo client:visible ts={variablesTs} go={variablesRs} />
+
+## Try it
+
+export const variablesCode = `fn main() {
+    let x = 5;
+    println!("x = {x}");
+    let x = x + 1;
+    println!("after shadowing, x = {x}");
+    let mut y = 10;
+    y += 5;
+    println!("mutable y = {y}");
+    const MAX_POINTS: u32 = 100_000;
+    println!("const MAX_POINTS = {MAX_POINTS}");
+}`;
+
+<Playground client:visible code={variablesCode} />
+
+<RsOnly title="Immutability by default">
+
+In TypeScript, `let` creates a mutable binding — you can reassign it freely. In Rust, `let` creates an **immutable** binding by default. Trying to reassign it is a **compile error**, not a runtime error.
+
+This is a design choice that pays off at scale: the compiler guarantees that a value cannot change unless you explicitly opt in with `let mut`. Immutability by default makes code easier to reason about, enables compiler optimizations, and prevents a whole class of bugs.
+
+```
+let x = 5;
+x = 6; // error[E0384]: cannot assign twice to immutable variable `x`
+```
+
+To allow mutation, you must be explicit:
+
+```
+let mut x = 5;
+x = 6; // fine
+```
+
+</RsOnly>
+
+export const quizVariables = [
+  {
+    q: "What does `let x = 5;` create in Rust?",
+    options: [
+      "A mutable variable",
+      "An immutable binding",
+      "A compile-time constant",
+      "A reference"
+    ],
+    answer: 1
+  },
+  {
+    q: "Which keyword do you use to allow reassignment of a variable in Rust?",
+    options: [
+      "var",
+      "const",
+      "mut",
+      "ref"
+    ],
+    answer: 2
+  },
+  {
+    q: "What is shadowing in Rust?",
+    options: [
+      "Reassigning a mutable variable",
+      "Re-declaring a variable with `let` in the same scope, creating a new binding",
+      "Hiding a variable inside a closure",
+      "Declaring a variable without a type annotation"
+    ],
+    answer: 1
+  }
+];
+
+<Quiz client:visible id="rust-101/variables" questions={quizVariables} />
+
+<ProgressTracker client:visible id="rust-101/variables" />

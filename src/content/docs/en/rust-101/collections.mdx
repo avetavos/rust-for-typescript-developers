@@ -1,0 +1,123 @@
+---
+title: Collections
+description: Vec, HashMap, arrays, tuples, slices, and iteration in Rust vs JavaScript arrays and objects.
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Collections in JavaScript vs Rust
+
+JavaScript's `Array`, `Object`, and `Map` cover most collection needs. Rust has direct equivalents with one key difference: collections are **typed and fixed-element** — a `Vec<i32>` holds only `i32` values and the compiler enforces it.
+
+## Vec — the growable array
+
+`Vec<T>` is Rust's heap-allocated growable array, equivalent to a JS array (when all elements share a type). Create one with the `vec!` macro or `Vec::new()`.
+
+## Arrays and tuples
+
+Fixed-size arrays `[T; N]` live on the stack. Tuples `(T1, T2, ...)` hold heterogeneous values — similar to a TypeScript tuple type.
+
+## HashMap — key/value store
+
+`HashMap<K, V>` is Rust's equivalent of a JS `Map` or a TS `Record<string, V>`. It lives in `std::collections`.
+
+## Iteration
+
+Rust iterators are lazy and composable — `filter`, `map`, `collect` work like JS array methods but are evaluated only when consumed.
+
+export const collectionsTs = `// Array
+const numbers = [1, 2, 3, 4, 5];
+const odds = numbers.filter(x => x % 2 !== 0);
+console.log(odds); // [1, 3, 5]
+
+// Map
+const scores = new Map<string, number>();
+scores.set("Alice", 95);
+scores.set("Bob", 87);
+console.log(scores.get("Alice")); // 95
+
+// Tuple (TypeScript)
+const pair: [string, number] = ["Alice", 95];`;
+
+export const collectionsRs = `use std::collections::HashMap;
+
+fn main() {
+    // Vec
+    let numbers = vec![1, 2, 3, 4, 5];
+    let odds: Vec<i32> = numbers.iter()
+        .filter(|&&x| x % 2 != 0)
+        .copied()
+        .collect();
+    println!("{:?}", odds); // [1, 3, 5]
+
+    // HashMap
+    let mut scores: HashMap<&str, i32> = HashMap::new();
+    scores.insert("Alice", 95);
+    scores.insert("Bob", 87);
+    if let Some(s) = scores.get("Alice") {
+        println!("{s}"); // 95
+    }
+
+    // Tuple
+    let pair: (&str, i32) = ("Alice", 95);
+    println!("{} scored {}", pair.0, pair.1);
+}`;
+
+<TsGo client:visible ts={collectionsTs} go={collectionsRs} />
+
+## Try it
+
+export const collectionsCode = `fn main() {
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let odds: Vec<i32> = numbers.iter().filter(|&&x| x % 2 != 0).copied().collect();
+    println!("Odd numbers: {:?}", odds);
+
+    let mut scores = std::collections::HashMap::new();
+    scores.insert("Alice", 95);
+    scores.insert("Bob", 87);
+    if let Some(s) = scores.get("Alice") {
+        println!("Alice scored {s}");
+    }
+}`;
+
+<Playground client:visible code={collectionsCode} />
+
+export const quizCollections = [
+  {
+    q: "What is the Rust equivalent of a JavaScript growable array?",
+    options: [
+      "[T; N]",
+      "Vec<T>",
+      "Slice<T>",
+      "Array<T>"
+    ],
+    answer: 1
+  },
+  {
+    q: "What does `.collect()` do at the end of a Rust iterator chain?",
+    options: [
+      "It eagerly evaluates and discards the iterator",
+      "It converts the lazy iterator into a concrete collection like Vec",
+      "It counts the elements",
+      "It sorts the elements"
+    ],
+    answer: 1
+  },
+  {
+    q: "How do you access the second element of a Rust tuple `t`?",
+    options: [
+      "t[1]",
+      "t.get(1)",
+      "t.1",
+      "t.second()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/collections" questions={quizCollections} />
+
+<ProgressTracker client:visible id="rust-101/collections" />

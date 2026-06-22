@@ -1,0 +1,133 @@
+---
+title: Functions
+description: fn, typed parameters, return types, and expression-oriented syntax in Rust vs TypeScript.
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Functions in TypeScript vs Rust
+
+TypeScript functions are defined with `function` or arrow syntax, with optional type annotations. In Rust, all functions are defined with `fn`, and **all parameter and return types are required** — the compiler never infers them across function boundaries. This keeps function signatures as explicit, readable contracts.
+
+## Syntax comparison
+
+TypeScript uses `: Type` for parameters and `: ReturnType` after the closing paren. Rust uses the same `: Type` syntax for parameters and `-> ReturnType` after the param list.
+
+```
+// TypeScript
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+// Rust
+fn add(a: i32, b: i32) -> i32 {
+    a + b   // no semicolon — this is the return value
+}
+```
+
+Notice the last line has no semicolon. In Rust, a block's final expression (without `;`) is implicitly returned. Adding a semicolon turns it into a statement that returns `()` (unit), which would be a type error here.
+
+export const functionsTs = `function add(a: number, b: number): number {
+  return a + b;
+}
+
+function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+console.log(add(3, 4));      // 7
+console.log(greet("Alice")); // Hello, Alice!`;
+
+export const functionsRs = `fn add(a: i32, b: i32) -> i32 {
+    a + b  // last expression, no semicolon = return value
+}
+
+fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+fn main() {
+    println!("{}", add(3, 4));      // 7
+    println!("{}", greet("Alice")); // Hello, Alice!
+}`;
+
+<TsGo client:visible ts={functionsTs} go={functionsRs} />
+
+## Try it
+
+export const functionsCode = `fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+fn main() {
+    let sum = add(3, 4);
+    println!("3 + 4 = {sum}");
+    let msg = greet("Rustacean");
+    println!("{msg}");
+}`;
+
+<Playground client:visible code={functionsCode} />
+
+<RsOnly title="Expression-oriented language">
+
+In TypeScript, `if` and blocks are statements — they don't produce values. You need the ternary `? :` to produce a value conditionally. Rust is an expression-oriented language: `if`, `match`, and block expressions all produce values.
+
+```
+// No ternary needed in Rust — if is an expression
+let label = if score >= 60 { "pass" } else { "fail" };
+```
+
+This also means function bodies don't need a `return` statement for the common case. The last expression in the function body is automatically returned. You still can use `return` for early returns.
+
+```
+fn absolute(n: i32) -> i32 {
+    if n < 0 { -n } else { n }  // the whole if is the return value
+}
+```
+
+</RsOnly>
+
+export const quizFunctions = [
+  {
+    q: "In Rust, what does a missing semicolon on the last line of a function body mean?",
+    options: [
+      "A syntax error",
+      "The expression is the return value",
+      "The function returns unit ()",
+      "The value is discarded"
+    ],
+    answer: 1
+  },
+  {
+    q: "Are return type annotations required on Rust functions?",
+    options: [
+      "No, Rust always infers them",
+      "Only for public functions",
+      "Yes, the compiler requires explicit return types on fn definitions",
+      "Only when the function has more than one return path"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which Rust type represents 'no meaningful return value' (equivalent to void)?",
+    options: [
+      "null",
+      "undefined",
+      "void",
+      "()"
+    ],
+    answer: 3
+  }
+];
+
+<Quiz client:visible id="rust-101/functions" questions={quizFunctions} />
+
+<ProgressTracker client:visible id="rust-101/functions" />

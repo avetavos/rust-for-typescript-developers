@@ -1,0 +1,120 @@
+---
+title: Modules and Crates
+description: mod, use, visibility, crates, Cargo.toml, and cargo add in Rust vs ESM and npm.
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Modules and crates in TypeScript vs Rust
+
+TypeScript uses ESM `import`/`export` for code organisation and `npm` (or similar) for third-party packages. Rust has two parallel concepts: **modules** (`mod`/`use`) for organising code within a project, and **crates** (packages managed by Cargo) for third-party dependencies.
+
+## Modules: mod and use
+
+A module groups related items. Use `pub` to make items visible outside the module — the default is private.
+
+```
+// src/math.rs  (a module file)
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+fn helper() { }  // private — not accessible outside
+
+// src/main.rs
+mod math;          // declare the module (pulls in math.rs)
+use math::add;     // bring add into scope
+
+fn main() {
+    println!("{}", add(1, 2));
+}
+```
+
+Modules can also be declared inline with `mod name { ... }`.
+
+## Crates and Cargo
+
+A **crate** is Rust's equivalent of an npm package. `Cargo.toml` is `package.json`. The workflow maps directly:
+
+| npm | Cargo |
+|---|---|
+| `npm install serde` | `cargo add serde` |
+| `package.json` | `Cargo.toml` |
+| `node_modules/` | `~/.cargo/registry/` (shared cache) |
+| `import { x } from 'pkg'` | `use pkg::x;` |
+
+## Visibility rules
+
+- Items are **private by default** — only accessible in the same module and its descendants.
+- `pub` makes an item accessible from anywhere.
+- `pub(crate)` restricts visibility to the current crate only.
+- `pub(super)` restricts to the parent module.
+
+export const modulesTs = `// math.ts — named exports
+export function add(a: number, b: number): number {
+  return a + b;
+}
+function helper() {}  // not exported = module-private
+
+// main.ts
+import { add } from './math';
+console.log(add(1, 2));
+
+// package.json dependency
+// "serde": "1.0"  (hypothetical)`;
+
+export const modulesRs = `// src/math.rs
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+fn helper() {}  // private
+
+// src/main.rs
+mod math;
+use math::add;
+
+fn main() {
+    println!("{}", add(1, 2));
+}
+
+// Cargo.toml dependency
+// [dependencies]
+// serde = "1"`;
+
+<TsGo client:visible ts={modulesTs} go={modulesRs} />
+
+> Playground note: multi-file module trees require `cargo` — run locally with `cargo run`.
+
+export const quizModules = [
+  {
+    q: "What is the default visibility of a function in a Rust module?",
+    options: [
+      "Public — visible everywhere",
+      "Private — only visible within the same module and its descendants",
+      "Protected — visible within the crate",
+      "Internal — visible within the file"
+    ],
+    answer: 1
+  },
+  {
+    q: "What is the Rust equivalent of `npm install serde`?",
+    options: [
+      "rust install serde",
+      "cargo install serde",
+      "cargo add serde",
+      "use serde;"
+    ],
+    answer: 2
+  },
+  {
+    q: "What does `use std::collections::HashMap;` do in Rust?",
+    options: [
+      "Imports the HashMap crate from crates.io",
+      "Declares a new module called HashMap",
+      "Brings HashMap into scope so you can use it without the full path",
+      "Creates a type alias for HashMap"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/modules-crates" questions={quizModules} />
+
+<ProgressTracker client:visible id="rust-101/modules-crates" />

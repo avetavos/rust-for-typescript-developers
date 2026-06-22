@@ -1,0 +1,129 @@
+---
+title: Structs
+description: Struct definition, impl blocks, methods, and associated functions in Rust vs TypeScript classes.
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+
+## Structs in TypeScript vs Rust
+
+TypeScript uses `class` to bundle data and behavior, and `interface` or object literals for plain data shapes. Rust separates data from behavior: a `struct` holds the data, and an `impl` block attaches methods to it. There is no inheritance — composition is the Rust way.
+
+## Defining a struct
+
+A struct is like a TypeScript interface that actually holds data:
+
+```
+// TypeScript interface (shape only)
+interface Point { x: number; y: number; }
+
+// Rust struct (data + can have methods)
+struct Point { x: f64, y: f64 }
+```
+
+## Adding methods with impl
+
+Methods go in a separate `impl` block. Methods that read data take `&self` (immutable reference). Methods that mutate take `&mut self`. Functions in `impl` without a `self` parameter are **associated functions** — called with `::` syntax, used as constructors.
+
+export const structsTs = `class Point {
+  constructor(public x: number, public y: number) {}
+
+  static new(x: number, y: number) {
+    return new Point(x, y);
+  }
+
+  distanceFromOrigin(): number {
+    return Math.sqrt(this.x ** 2 + this.y ** 2);
+  }
+}
+
+const p = Point.new(3, 4);
+console.log(p.distanceFromOrigin()); // 5`;
+
+export const structsRs = `struct Point {
+    x: f64,
+    y: f64,
+}
+
+impl Point {
+    // associated function (constructor) — called with Point::new(...)
+    fn new(x: f64, y: f64) -> Self {
+        Point { x, y }
+    }
+
+    // method — called with p.distance_from_origin()
+    fn distance_from_origin(&self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+}
+
+fn main() {
+    let p = Point::new(3.0, 4.0);
+    println!("{}", p.distance_from_origin()); // 5
+}`;
+
+<TsGo client:visible ts={structsTs} go={structsRs} />
+
+## Try it
+
+export const structsCode = `struct Point {
+    x: f64,
+    y: f64,
+}
+
+impl Point {
+    fn new(x: f64, y: f64) -> Self {
+        Point { x, y }
+    }
+
+    fn distance_from_origin(&self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+}
+
+fn main() {
+    let p = Point::new(3.0, 4.0);
+    println!("distance = {}", p.distance_from_origin());
+}`;
+
+<Playground client:visible code={structsCode} />
+
+export const quizStructs = [
+  {
+    q: "In Rust, where do you define methods on a struct?",
+    options: [
+      "Inside the struct body using `fn`",
+      "In a separate `impl` block",
+      "As free functions that take the struct as the first argument",
+      "Using the `trait` keyword"
+    ],
+    answer: 1
+  },
+  {
+    q: "What does `&self` mean in a Rust method signature?",
+    options: [
+      "The method takes ownership of the struct",
+      "The method can mutate the struct",
+      "The method borrows the struct immutably",
+      "The method is static"
+    ],
+    answer: 2
+  },
+  {
+    q: "How do you call an associated function (like a constructor) on a Rust struct named `Point`?",
+    options: [
+      "Point.new()",
+      "new Point()",
+      "Point::new()",
+      "self.new()"
+    ],
+    answer: 2
+  }
+];
+
+<Quiz client:visible id="rust-101/structs" questions={quizStructs} />
+
+<ProgressTracker client:visible id="rust-101/structs" />

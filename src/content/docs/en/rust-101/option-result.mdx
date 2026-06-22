@@ -1,0 +1,183 @@
+---
+title: Option and Result
+description: Option<T>, Result<T,E>, match, unwrap_or, and the ? operator in Rust vs null/undefined and try/catch.
+---
+
+import TsGo from '../../../../components/TsGo.tsx';
+import Playground from '../../../../components/Playground.tsx';
+import Quiz from '../../../../components/Quiz.tsx';
+import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import RsOnly from '../../../../components/RsOnly.astro';
+
+## Option and Result in TypeScript vs Rust
+
+TypeScript uses `T | null | undefined` for optional values and `try/catch` for errors. Rust encodes both in the type system:
+
+- `Option<T>` — either `Some(value)` or `None`. No null, no undefined.
+- `Result<T, E>` — either `Ok(value)` or `Err(error)`. No exceptions.
+
+The type system forces you to handle both cases before you can use the value.
+
+## Option — absence without null
+
+```
+// TypeScript: null can silently propagate
+function findUser(id: number): User | null { ... }
+const user = findUser(42);
+console.log(user.name); // runtime crash if null
+
+// Rust: the compiler won't let you use the value without handling None
+fn find_user(id: u32) -> Option<User> { ... }
+match find_user(42) {
+    Some(user) => println!("{}", user.name),
+    None       => println!("not found"),
+}
+```
+
+## Result — errors as values
+
+```
+// TypeScript: error can be thrown anywhere
+function divide(a: number, b: number): number {
+  if (b === 0) throw new Error("division by zero");
+  return a / b;
+}
+
+// Rust: error is part of the return type
+fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 { Err("division by zero".to_string()) }
+    else { Ok(a / b) }
+}
+```
+
+## Convenience methods
+
+| TypeScript | Rust |
+|---|---|
+| `value ?? defaultVal` | `option.unwrap_or(defaultVal)` |
+| `value!` (non-null assertion) | `option.unwrap()` (panics if None) |
+| `value ?? (() => { throw ... })()` | `option.expect("msg")` (panics with message) |
+
+## The ? operator
+
+In a function that returns `Result`, `?` on a `Result` value either unwraps `Ok` or returns the `Err` early — eliminating nested `match` chains:
+
+```
+fn read_number(s: &str) -> Result<i32, std::num::ParseIntError> {
+    let n = s.trim().parse::<i32>()?; // returns Err early if parse fails
+    Ok(n * 2)
+}
+```
+
+export const optionResultTs = `// Option-like: null / undefined
+function divide(a: number, b: number): number | null {
+  if (b === 0) return null;
+  return a / b;
+}
+const r = divide(10, 2) ?? 0;
+console.log(r); // 5
+
+// Error handling: try/catch
+try {
+  const val = JSON.parse("bad json");
+} catch (e) {
+  console.error("parse error", e);
+}`;
+
+export const optionResultRs = `fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 {
+        Err(String::from("division by zero"))
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    match divide(10.0, 2.0) {
+        Ok(v)  => println!("{v}"),    // 5
+        Err(e) => println!("{e}"),
+    }
+
+    let maybe: Option<i32> = Some(42);
+    let value = maybe.unwrap_or(0);
+    println!("{value}"); // 42
+}`;
+
+<TsGo client:visible ts={optionResultTs} go={optionResultRs} />
+
+## Try it
+
+export const optionResultCode = `fn divide(a: f64, b: f64) -> Result<f64, String> {
+    if b == 0.0 {
+        Err(String::from("division by zero"))
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    match divide(10.0, 2.0) {
+        Ok(result) => println!("10 / 2 = {result}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    match divide(5.0, 0.0) {
+        Ok(result) => println!("5 / 0 = {result}"),
+        Err(e) => println!("Error: {e}"),
+    }
+    let maybe: Option<i32> = Some(42);
+    let value = maybe.unwrap_or(0);
+    println!("Option value: {value}");
+}`;
+
+<Playground client:visible code={optionResultCode} />
+
+<RsOnly title="No null — errors as values">
+
+Rust has **no null and no undefined**. There is no way to have a value of type `String` that is secretly absent — the type `String` always holds a real string. Absence is encoded as `Option<String>`, and the compiler enforces that you check before using it.
+
+Similarly, Rust has **no exceptions**. Functions that can fail return `Result<T, E>`. Errors are values in the type system, not invisible control flow that can propagate up the call stack silently. You always know which functions can fail because their signature says `Result`.
+
+This eliminates two entire classes of production bugs:
+- Null pointer / undefined dereference crashes
+- Uncaught exceptions causing unexpected behavior at runtime
+
+In production Rust code, `unwrap()` and `expect()` should only appear in tests or prototypes. Real code uses `match`, `unwrap_or`, `unwrap_or_else`, `?`, or dedicated error-handling crates like `thiserror` and `anyhow`.
+
+</RsOnly>
+
+export const quizOptionResult = [
+  {
+    q: "What does `Option<T>` represent in Rust?",
+    options: [
+      "A value that might throw an exception",
+      "A value that is either Some(T) or None, with no null",
+      "A value that is either Ok(T) or Err(E)",
+      "A nullable pointer"
+    ],
+    answer: 1
+  },
+  {
+    q: "What does the `?` operator do on a `Result` in Rust?",
+    options: [
+      "Converts the Result to an Option",
+      "Panics if the Result is Err",
+      "Unwraps Ok, or returns Err early from the current function",
+      "Logs the error and continues"
+    ],
+    answer: 2
+  },
+  {
+    q: "Which method returns a default value if an Option is None?",
+    options: [
+      "option.default()",
+      "option.or_else()",
+      "option.unwrap()",
+      "option.unwrap_or(default)"
+    ],
+    answer: 3
+  }
+];
+
+<Quiz client:visible id="rust-101/option-result" questions={quizOptionResult} />
+
+<ProgressTracker client:visible id="rust-101/option-result" />
