@@ -1,6 +1,60 @@
 ---
-title: 'Rust for TypeScript Developers'
-description: 'Learn Rust as a TypeScript developer.'
+title: Rust for TypeScript Developers
+description: Learn Rust the fast way — every concept compared to the TypeScript you already know.
 template: splash
+hero:
+  tagline: Learn Rust by mapping it to the TypeScript you already know. Runnable examples on the real compiler, side-by-side comparisons, quizzes — all in your browser.
+  actions:
+    - text: Start with the Introduction
+      link: /rust-for-typescript-developers/en/intro/
+      icon: right-arrow
+      variant: primary
+    - text: Jump to Rust 101
+      link: /rust-for-typescript-developers/en/rust-101/
+      icon: open-book
 ---
-Coming soon.
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What you'll learn
+
+<CardGrid>
+  <Card title="Introduction & Setup" icon="rocket">
+    Why Rust for TS devs, the mental-model shifts, and the toolchain. [Start →](/rust-for-typescript-developers/en/intro/)
+  </Card>
+  <Card title="Rust 101 — Fundamentals" icon="open-book">
+    Variables, functions, structs, enums, Option/Result — TypeScript ↔ Rust. [Learn →](/rust-for-typescript-developers/en/rust-101/)
+  </Card>
+  <Card title="Rust You Won't Find in TypeScript" icon="puzzle">
+    Ownership, borrowing, lifetimes, traits — the borrow checker, explained. [Explore →](/rust-for-typescript-developers/en/rs-only/)
+  </Card>
+  <Card title="Concurrency" icon="random">
+    Threads, channels, Arc/Mutex, async/await with Tokio — fearless concurrency. [Dive in →](/rust-for-typescript-developers/en/concurrency/)
+  </Card>
+  <Card title="Building an API with Axum" icon="laptop">
+    Routing, extractors, state, serde — Express/Nest ↔ Axum. [Build →](/rust-for-typescript-developers/en/api-axum/)
+  </Card>
+  <Card title="Advanced Rust" icon="star">
+    Generics & trait bounds, trait objects, iterators, macros, smart pointers. [Go deeper →](/rust-for-typescript-developers/en/advanced/)
+  </Card>
+  <Card title="Tooling, Testing & Deployment" icon="setting">
+    cargo, clippy, rustfmt, cargo test, cross-compile, Docker, CI. [Ship it →](/rust-for-typescript-developers/en/tooling/)
+  </Card>
+</CardGrid>
+
+## How this course works
+
+<CardGrid>
+  <Card title="Comparison-first" icon="approve-check">
+    Every concept starts from the TypeScript you know, then shows the Rust way.
+  </Card>
+  <Card title="Run Rust in your browser" icon="rocket">
+    Runnable examples compile and run on the official Rust Playground — real `rustc`, real compiler errors, no setup.
+  </Card>
+  <Card title="Quizzes & progress" icon="bars">
+    Check your understanding after each lesson; your progress is saved locally.
+  </Card>
+  <Card title="Bilingual" icon="translate">
+    Available in English and ไทย — switch anytime from the top bar.
+  </Card>
+</CardGrid>

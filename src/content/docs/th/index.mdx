@@ -1,6 +1,60 @@
 ---
-title: 'Rust for TypeScript Developers'
-description: 'Learn Rust as a TypeScript developer.'
+title: Rust สำหรับนักพัฒนา TypeScript
+description: เรียน Rust แบบเร็ว — เทียบทุกแนวคิดกับ TypeScript ที่คุณรู้อยู่แล้ว
 template: splash
+hero:
+  tagline: เรียน Rust โดยเทียบกับ TypeScript ที่คุณคุ้นเคยอยู่แล้ว ตัวอย่างรันได้จริงบน compiler ตัวจริง เทียบโค้ดแบบเคียงข้าง และแบบทดสอบ — ทั้งหมดในเบราว์เซอร์
+  actions:
+    - text: เริ่มที่บทแนะนำ
+      link: /rust-for-typescript-developers/th/intro/
+      icon: right-arrow
+      variant: primary
+    - text: ข้ามไป Rust 101
+      link: /rust-for-typescript-developers/th/rust-101/
+      icon: open-book
 ---
-Coming soon.
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## สิ่งที่คุณจะได้เรียน
+
+<CardGrid>
+  <Card title="บทแนะนำ & การติดตั้ง" icon="rocket">
+    ทำไมต้อง Rust สำหรับนัก TS, การปรับมุมมอง, และ toolchain. [เริ่ม →](/rust-for-typescript-developers/th/intro/)
+  </Card>
+  <Card title="Rust 101 — พื้นฐาน" icon="open-book">
+    ตัวแปร ฟังก์ชัน struct, enum, Option/Result — TypeScript ↔ Rust. [เรียน →](/rust-for-typescript-developers/th/rust-101/)
+  </Card>
+  <Card title="Rust ที่ไม่มีใน TypeScript" icon="puzzle">
+    Ownership, borrowing, lifetime, trait — เข้าใจ borrow checker. [สำรวจ →](/rust-for-typescript-developers/th/rs-only/)
+  </Card>
+  <Card title="Concurrency" icon="random">
+    Threads, channels, Arc/Mutex, async/await ด้วย Tokio — fearless concurrency. [ลงลึก →](/rust-for-typescript-developers/th/concurrency/)
+  </Card>
+  <Card title="สร้าง API ด้วย Axum" icon="laptop">
+    Routing, extractor, state, serde — Express/Nest ↔ Axum. [สร้าง →](/rust-for-typescript-developers/th/api-axum/)
+  </Card>
+  <Card title="Rust ขั้นสูง" icon="star">
+    Generics & trait bounds, trait object, iterator, macro, smart pointer. [เจาะลึก →](/rust-for-typescript-developers/th/advanced/)
+  </Card>
+  <Card title="เครื่องมือ ทดสอบ & Deploy" icon="setting">
+    cargo, clippy, rustfmt, cargo test, cross-compile, Docker, CI. [ส่งขึ้นจริง →](/rust-for-typescript-developers/th/tooling/)
+  </Card>
+</CardGrid>
+
+## คอร์สนี้ทำงานยังไง
+
+<CardGrid>
+  <Card title="เทียบกับ TypeScript ก่อนเสมอ" icon="approve-check">
+    ทุกแนวคิดเริ่มจาก TypeScript ที่คุณรู้ แล้วค่อยแสดงวิธีของ Rust
+  </Card>
+  <Card title="รัน Rust ในเบราว์เซอร์" icon="rocket">
+    ตัวอย่างรันได้จริงโดย compile บน Rust Playground อย่างเป็นทางการ — `rustc` ตัวจริง เห็น error จาก compiler จริง ไม่ต้องติดตั้ง
+  </Card>
+  <Card title="แบบทดสอบ & ความคืบหน้า" icon="bars">
+    ทบทวนความเข้าใจหลังแต่ละบท ความคืบหน้าถูกบันทึกไว้ในเครื่อง
+  </Card>
+  <Card title="สองภาษา" icon="translate">
+    มีทั้งภาษาอังกฤษและไทย — สลับได้ตลอดจากแถบด้านบน
+  </Card>
+</CardGrid>
