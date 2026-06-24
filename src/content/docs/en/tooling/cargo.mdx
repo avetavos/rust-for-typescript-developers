@@ -7,6 +7,13 @@ import TsGo from '../../../../components/TsGo.tsx';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+export const cargoNewTree = `flowchart TD
+  root["my-app/"] --> toml["Cargo.toml — like package.json"]
+  root --> lock["Cargo.lock — like package-lock.json"]
+  root --> src["src/"]
+  src --> main["main.rs — entry point"]`;
 
 ## Cargo is npm + tsc + jest in one
 
@@ -27,13 +34,7 @@ cd my-app
 ```
 
 `cargo new` creates:
-```
-my-app/
-├── Cargo.toml      # ← like package.json
-├── Cargo.lock      # ← like package-lock.json
-└── src/
-    └── main.rs     # ← entry point
-```
+<Mermaid code={cargoNewTree} title="What cargo new creates" />
 
 ## Cargo.toml vs package.json
 

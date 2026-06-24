@@ -13,6 +13,9 @@ export default defineConfig({
   output: 'static',
   integrations: [starlight({
       title: 'Rust for TypeScript Developers',
+      head: [
+        { tag: 'script', attrs: { type: 'module', src: '/rust-for-typescript-developers/enhance.js' } },
+      ],
       defaultLocale: 'en',
       locales: {
         en: { label: 'English', lang: 'en' },

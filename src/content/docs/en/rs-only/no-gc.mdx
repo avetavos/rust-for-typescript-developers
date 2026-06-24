@@ -8,6 +8,15 @@ import Playground from '../../../../components/Playground.tsx';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+export const cleanupDiagram = `flowchart TD
+  subgraph TS["TypeScript / Node.js"]
+    a1["Object created"] --> a2["..."] --> a3["GC runs at some unknown time"] --> a4["memory freed"]
+  end
+  subgraph RS["Rust"]
+    b1["Value created"] --> b2["owner goes out of scope"] --> b3["memory freed IMMEDIATELY"]
+  end`;
 
 ## Every language you know has a garbage collector. Rust does not.
 
@@ -101,13 +110,7 @@ GC languages trade runtime overhead for programmer convenience. Rust trades expl
 
 ## Deterministic vs non-deterministic cleanup
 
-```
-TypeScript / Node.js:
-  Object created → ... → GC runs at some unknown time → memory freed
-
-Rust:
-  Value created → owner goes out of scope → memory freed IMMEDIATELY
-```
+<Mermaid code={cleanupDiagram} title="Deterministic vs non-deterministic cleanup" />
 
 This determinism is why Rust is used for OS kernels, game engines, WebAssembly runtimes, and databases. When a file handle or network socket needs to be closed at a precise moment, "the GC will handle it eventually" is not acceptable.
 

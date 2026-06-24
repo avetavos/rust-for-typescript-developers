@@ -3,42 +3,42 @@ title: 'Project Layout'
 description: 'Cargo project structure for an Axum service, main.rs, and dependencies vs an Express/Nest project.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+export const tsLayoutDiagram = `flowchart TD
+  root["my-api/ (Express/NestJS project)"] --> pkg["package.json — dependencies + scripts"]
+  root --> tsc["tsconfig.json — TypeScript compiler config"]
+  root --> src["src/"]
+  src --> main["main.ts — entry point"]
+  src --> appmod["app.module.ts — (NestJS) root module"]
+  src --> users["users/"]
+  users --> ctrl["users.controller.ts"]
+  users --> svc["users.service.ts"]
+  users --> mod["users.module.ts"]
+  root --> dist["dist/ — compiled output"]`;
+
+export const rsLayoutDiagram = `flowchart TD
+  root["my-api/ (Axum project)"] --> toml["Cargo.toml — dependencies + metadata (= package.json)"]
+  root --> lock["Cargo.lock — lockfile (= package-lock.json)"]
+  root --> src["src/"]
+  src --> main["main.rs — entry point"]
+  src --> routes["routes/"]
+  routes --> rmod["mod.rs — route definitions"]
+  src --> handlers["handlers/"]
+  handlers --> husers["users.rs — handler functions"]
+  src --> models["models.rs — serde structs (request/response types)"]
+  src --> state["state.rs — shared AppState"]
+  src --> errors["errors.rs — custom error types"]`;
 
 ## From `package.json` to `Cargo.toml`
 
 Every Node.js project starts with `package.json`. In Rust the equivalent is `Cargo.toml`. It declares your crate name, version, and dependencies. Cargo is both the package manager and the build tool — no separate `npm` vs `tsc` vs `ts-node`.
 
-export const tsLayout = `# Express/NestJS project
-my-api/
-├── package.json        # dependencies + scripts
-├── tsconfig.json       # TypeScript compiler config
-├── src/
-│   ├── main.ts         # entry point
-│   ├── app.module.ts   # (NestJS) root module
-│   └── users/
-│       ├── users.controller.ts
-│       ├── users.service.ts
-│       └── users.module.ts
-└── dist/               # compiled output`;
+<Mermaid code={tsLayoutDiagram} title="Express/NestJS project layout" />
 
-export const rsLayout = `# Axum project
-my-api/
-├── Cargo.toml          # dependencies + metadata (= package.json)
-├── Cargo.lock          # lockfile (= package-lock.json)
-└── src/
-    ├── main.rs         # entry point
-    ├── routes/
-    │   └── mod.rs      # route definitions
-    ├── handlers/
-    │   └── users.rs    # handler functions
-    ├── models.rs       # serde structs (request/response types)
-    ├── state.rs        # shared AppState
-    └── errors.rs       # custom error types`;
-
-<TsGo client:visible ts={tsLayout} go={rsLayout} />
+<Mermaid code={rsLayoutDiagram} title="Axum project layout" />
 
 ## `Cargo.toml` for an Axum service
 

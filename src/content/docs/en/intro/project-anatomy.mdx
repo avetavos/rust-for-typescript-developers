@@ -7,6 +7,33 @@ import TsGo from '../../../../components/TsGo.tsx';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+export const binCrateTree = `flowchart TD
+  root["my-app/"] --> toml["Cargo.toml — project manifest (= package.json)"]
+  root --> lock["Cargo.lock — pinned dependency versions (= package-lock.json)"]
+  root --> src["src/"]
+  src --> main["main.rs — entry point (= src/index.ts)"]`;
+
+export const libCrateTree = `flowchart TD
+  root["my-lib/"] --> toml["Cargo.toml"]
+  root --> src["src/"]
+  src --> lib["lib.rs — library entry point (= index.ts that only exports)"]`;
+
+export const moduleTree = `flowchart TD
+  root["my-app/"] --> src["src/"]
+  src --> main["main.rs — fn main() { ... }"]
+  src --> lib["lib.rs — pub fn library_code() { ... }"]
+  src --> utils["utils.rs — a module (pub mod utils;)"]
+  src --> models["models/"]
+  models --> mod["mod.rs — module root (or models.rs in Rust 2018+)"]
+  models --> user["user.rs — pub struct User { ... }"]`;
+
+export const targetTree = `flowchart TD
+  root["target/"] --> debug["debug/ — cargo build (fast compile, no optimisation)"]
+  debug --> dbin["my-app — the executable"]
+  root --> release["release/ — cargo build --release (slower compile, fast binary)"]
+  release --> rbin["my-app"]`;
 
 > Playground note: Project anatomy inherently involves multiple files and directory structure — it cannot be demonstrated in a single-file browser playground. Run the examples locally with `cargo new` and `cargo run`.
 
@@ -14,13 +41,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 When you run `cargo new my-app`, Cargo creates a minimal but complete project:
 
-```
-my-app/
-├── Cargo.toml      ← project manifest (= package.json)
-├── Cargo.lock      ← pinned dependency versions (= package-lock.json)
-└── src/
-    └── main.rs     ← entry point (= src/index.ts)
-```
+<Mermaid code={binCrateTree} title="What cargo new gives you (binary crate)" />
 
 For a library (no `main`, just an API for other crates to use):
 
@@ -28,12 +49,7 @@ For a library (no `main`, just an API for other crates to use):
 cargo new --lib my-lib
 ```
 
-```
-my-lib/
-├── Cargo.toml
-└── src/
-    └── lib.rs      ← library entry point (= index.ts that only exports)
-```
+<Mermaid code={libCrateTree} title="Library crate layout" />
 
 ## Cargo.toml vs package.json
 
@@ -85,16 +101,7 @@ Key differences:
 
 A binary crate has `src/main.rs`. A library crate has `src/lib.rs`. You can have both in the same project — `src/lib.rs` contains the shared logic, `src/main.rs` calls into it.
 
-```
-my-app/
-└── src/
-    ├── main.rs         ← fn main() { ... }
-    ├── lib.rs          ← pub fn library_code() { ... }
-    ├── utils.rs        ← a module (pub mod utils;)
-    └── models/
-        ├── mod.rs      ← module root (or models.rs in Rust 2018+)
-        └── user.rs     ← pub struct User { ... }
-```
+<Mermaid code={moduleTree} title="A project with modules" />
 
 In TypeScript you use `import/export`. In Rust you use `mod` to declare a module and `use` to bring items into scope:
 
@@ -127,13 +134,7 @@ fn main() {
 
 When you run `cargo build`, Rust compiles everything into `target/`. This is the equivalent of `dist/` plus `node_modules/.cache/`. You never commit it to version control.
 
-```
-target/
-├── debug/           ← cargo build (fast compile, no optimisation)
-│   └── my-app       ← the executable
-└── release/         ← cargo build --release (slower compile, fast binary)
-    └── my-app
-```
+<Mermaid code={targetTree} title="The target/ directory" />
 
 Add `target/` to your `.gitignore`. Cargo does this automatically when you run `cargo new`.
 

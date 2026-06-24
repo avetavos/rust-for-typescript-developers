@@ -8,6 +8,15 @@ import Playground from '../../../../components/Playground.tsx';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+export const cleanupDiagram = `flowchart TD
+  subgraph TS["TypeScript / Node.js"]
+    a1["Object created"] --> a2["..."] --> a3["GC runs at some unknown time"] --> a4["memory freed"]
+  end
+  subgraph RS["Rust"]
+    b1["Value created"] --> b2["owner goes out of scope"] --> b3["memory freed IMMEDIATELY"]
+  end`;
 
 ## ทุกภาษาที่คุณรู้จักมี garbage collector — Rust ไม่มี
 
@@ -101,13 +110,7 @@ GC language แลก runtime overhead กับความสะดวกข�
 
 ## Deterministic vs non-deterministic cleanup
 
-```
-TypeScript / Node.js:
-  Object สร้าง → ... → GC run ที่เวลาไม่รู้จัก → memory คืน
-
-Rust:
-  Value สร้าง → owner หลุด scope → memory คืนทันที
-```
+<Mermaid code={cleanupDiagram} title="Deterministic vs non-deterministic cleanup" />
 
 ความแน่นอนนี้คือเหตุผลที่ Rust ถูกใช้สำหรับ OS kernel, game engine, WebAssembly runtime, และ database เมื่อ file handle หรือ network socket ต้องถูกปิดในจุดที่แน่นอน "GC จะจัดการในที่สุด" ไม่ใช่คำตอบที่ยอมรับได้
 
