@@ -1,0 +1,31 @@
+{
+  "id": "/rust-for-typescript-developers/",
+  "name": "Rust for TypeScript Developers",
+  "short_name": "Rust for TypeScript Developers",
+  "start_url": "/rust-for-typescript-developers/en/",
+  "scope": "/rust-for-typescript-developers/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1117",
+  "theme_color": "#CE422B",
+  "icons": [
+    {
+      "src": "/rust-for-typescript-developers/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/rust-for-typescript-developers/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/rust-for-typescript-developers/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
