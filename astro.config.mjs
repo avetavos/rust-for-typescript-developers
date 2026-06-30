@@ -8,22 +8,22 @@ import preact from '@astrojs/preact';
 export default defineConfig({
   // GitHub Pages project site. Update `site` to your GitHub username and `base`
   // to your repo name if they differ.
-  site: 'https://avetavos.github.io',
-  base: '/rust-for-typescript-developers',
+  site: 'https://rust-for-typescript-developers.avetavos.com',
+  base: '/',
   output: 'static',
   integrations: [starlight({
       title: 'Rust for TypeScript Developers',
       head: [
-        { tag: 'script', attrs: { type: 'module', src: '/rust-for-typescript-developers/enhance.js' } },
-        { tag: 'link', attrs: { rel: 'manifest', href: '/rust-for-typescript-developers/manifest.webmanifest' } },
-        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/rust-for-typescript-developers/apple-touch-icon.png' } },
-        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/rust-for-typescript-developers/icon-192.png' } },
+        { tag: 'script', attrs: { type: 'module', src: '/enhance.js' } },
+        { tag: 'link', attrs: { rel: 'manifest', href: '/manifest.webmanifest' } },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icon-192.png' } },
         { tag: 'meta', attrs: { name: 'theme-color', content: '#CE422B' } },
         { tag: 'meta', attrs: { name: 'mobile-web-app-capable', content: 'yes' } },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-capable', content: 'yes' } },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' } },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-title', content: "Rust for TypeScript Developers" } },
-        { tag: 'script', content: "if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/rust-for-typescript-developers/sw.js',{scope:'/rust-for-typescript-developers/'}).catch(function(){})})}" },
+        { tag: 'script', content: "if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){})})}" },
       ],
       defaultLocale: 'en',
       locales: {
