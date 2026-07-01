@@ -3,8 +3,8 @@ title: 'Send and Sync'
 description: 'How Rust''s Send and Sync marker traits give the compiler enough information to prevent data races at compile time — with no equivalent in TypeScript.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -67,7 +67,7 @@ fn main() {
     println!("collected: {:?}", result); // collected: [0, 1, 2, 3]
 }`;
 
-<TsGo client:visible ts={sendSyncTs} go={sendSyncRs} />
+<TsGo ts={sendSyncTs} go={sendSyncRs} />
 
 <RsOnly title="Compile-time data race prevention (no JS equivalent)">
 
@@ -136,7 +136,7 @@ fn main() {
     println!("collected: {:?}", result);
 }`;
 
-<Playground client:visible code={sendSyncCode} />
+<Playground code={sendSyncCode} />
 
 export const quizSendSync = [
   {

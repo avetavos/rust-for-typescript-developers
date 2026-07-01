@@ -3,7 +3,7 @@ title: "โครงสร้างโปรเจกต์ — Cargo.toml, src/
 description: 'Cargo.toml vs package.json, src/main.rs และ src/lib.rs, ไดเรกทอรี target/, Crates vs node_modules, และการแนะนำ Rust modules เบื้องต้น'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -89,7 +89,7 @@ tokio = { version = "1", features = ["full"] }
 [dev-dependencies]
 pretty_assertions = "1"`;
 
-<TsGo client:visible ts={cargoTomlTs} go={cargoTomlRs} />
+<TsGo ts={cargoTomlTs} go={cargoTomlRs} />
 
 ความแตกต่างหลัก:
 - ไม่มี Section `scripts` คุณรัน `cargo run`, `cargo test` ฯลฯ โดยตรง
@@ -128,7 +128,7 @@ fn main() {
     println!("{}", add(1, 2));
 }`;
 
-<TsGo client:visible ts={modulesTs} go={modulesRs} />
+<TsGo ts={modulesTs} go={modulesRs} />
 
 ## ไดเรกทอรี target/
 

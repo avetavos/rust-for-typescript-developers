@@ -3,8 +3,8 @@ title: 'ภาพรวม Concurrency'
 description: 'โมเดล "fearless concurrency" ของ Rust — OS threads จริง, async/await, และการป้องกัน data race ณ compile time — เทียบกับ single-threaded event loop และ Web Workers ของ JavaScript'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -58,7 +58,7 @@ fn main() {
     println!("{r1} {r2}"); // fearless concurrency
 }`;
 
-<TsGo client:visible ts={overviewTs} go={overviewRs} />
+<TsGo ts={overviewTs} go={overviewRs} />
 
 ## ลองรันเลย
 
@@ -72,7 +72,7 @@ fn main() {
     println!("{r1} {r2}");
 }`;
 
-<Playground client:visible code={overviewCode} />
+<Playground code={overviewCode} />
 
 <RsOnly title="Fearless concurrency — ความปลอดภัยระดับ compile time">
 

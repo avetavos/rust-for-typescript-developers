@@ -3,8 +3,8 @@ title: 'Generics & Trait Bounds'
 description: 'Generic functions and structs with trait bounds (`<T: Display>`, `where`), compared to TypeScript generics and constraints.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -53,7 +53,7 @@ fn main() {
     print_and_debug(3.14_f64);
 }`;
 
-<TsGo client:visible ts={genericTs} go={genericRs} />
+<TsGo ts={genericTs} go={genericRs} />
 
 ## Generic structs
 
@@ -98,7 +98,7 @@ fn main() {
     println!("{:?}", s.pop()); // Some(2)
 }`;
 
-<TsGo client:visible ts={structTs} go={structRs} />
+<TsGo ts={structTs} go={structRs} />
 
 ## Multiple trait bounds and the `+` syntax
 
@@ -156,7 +156,7 @@ fn main() {
     describe("hello");
 }`;
 
-<Playground client:visible code={genericPlayground} />
+<Playground code={genericPlayground} />
 
 export const quizGenerics = [
   {

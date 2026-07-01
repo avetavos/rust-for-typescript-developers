@@ -3,8 +3,8 @@ title: 'Threads'
 description: 'Spawning real OS threads with std::thread::spawn, moving data into threads, and joining handles — compared to JavaScript where true parallelism requires Web Workers.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -51,7 +51,7 @@ fn main() {
     println!("result: {result}"); // result: 20
 }`;
 
-<TsGo client:visible ts={threadsTs} go={threadsRs} />
+<TsGo ts={threadsTs} go={threadsRs} />
 
 ## Spawning multiple threads and collecting results
 
@@ -93,7 +93,7 @@ fn main() {
     println!("total: {total}"); // total: 45
 }`;
 
-<TsGo client:visible ts={threadsMultiTs} go={threadsMultiRs} />
+<TsGo ts={threadsMultiTs} go={threadsMultiRs} />
 
 ## Try it
 
@@ -121,7 +121,7 @@ fn main() {
     println!("total: {total}");
 }`;
 
-<Playground client:visible code={threadsCode} />
+<Playground code={threadsCode} />
 
 <RsOnly title="move closures and thread ownership">
 

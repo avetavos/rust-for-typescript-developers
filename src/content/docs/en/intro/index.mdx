@@ -3,8 +3,8 @@ title: "Introduction — Why Rust for TypeScript Developers"
 description: 'Memory safety without a GC, fearless concurrency, great tooling, and a compiler that teaches you. Why Rust is worth learning alongside TypeScript.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -87,7 +87,7 @@ fn main() {
     println!("Time to learn {language}!");
 }`;
 
-<TsGo client:visible ts={indexTs} go={indexRs} />
+<TsGo ts={indexTs} go={indexRs} />
 
 ## Try it
 
@@ -111,7 +111,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={indexCode} />
+<Playground code={indexCode} />
 
 <RsOnly title="No null, no undefined — Option instead">
 

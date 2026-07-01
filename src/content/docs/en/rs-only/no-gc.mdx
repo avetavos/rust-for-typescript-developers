@@ -3,8 +3,8 @@ title: 'No Garbage Collector'
 description: 'How Rust achieves memory safety without a GC — deterministic drop, RAII, and why ownership is memory management — for TypeScript developers.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -92,7 +92,7 @@ fn main() {
     println!("end — resource already released");
 }`;
 
-<TsGo client:visible ts={noGcTs} go={noGcRs} />
+<TsGo ts={noGcTs} go={noGcRs} />
 
 <RsOnly title="Ownership IS memory management">
 
@@ -142,7 +142,7 @@ fn main() {
     println!("end — resource already released");
 }`;
 
-<Playground client:visible code={noGcCode} />
+<Playground code={noGcCode} />
 
 export const quizNoGc = [
   {

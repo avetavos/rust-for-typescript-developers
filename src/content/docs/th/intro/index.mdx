@@ -3,8 +3,8 @@ title: "บทนำ — ทำไม Rust ถึงเหมาะสำหร�
 description: 'ความปลอดภัยของหน่วยความจำโดยไม่มี GC, Fearless concurrency, เครื่องมือที่ยอดเยี่ยม, และ compiler ที่สอนคุณ — เหตุผลที่ Rust คุ้มค่าแก่การเรียนรู้ควบคู่ TypeScript'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -87,7 +87,7 @@ fn main() {
     println!("Time to learn {language}!");
 }`;
 
-<TsGo client:visible ts={indexTs} go={indexRs} />
+<TsGo ts={indexTs} go={indexRs} />
 
 ## ลองเลย
 
@@ -111,7 +111,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={indexCode} />
+<Playground code={indexCode} />
 
 <RsOnly title="ไม่มี null, ไม่มี undefined — ใช้ Option แทน">
 

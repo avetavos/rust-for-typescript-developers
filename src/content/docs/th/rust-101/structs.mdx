@@ -3,8 +3,8 @@ title: 'Structs'
 description: 'การนิยาม struct, impl block, เมธอด และ associated function ใน Rust เทียบกับ class ของ TypeScript'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -65,7 +65,7 @@ fn main() {
     println!("{}", p.distance_from_origin()); // 5
 }`;
 
-<TsGo client:visible ts={structsTs} go={structsRs} />
+<TsGo ts={structsTs} go={structsRs} />
 
 ## ลองเล่นดู
 
@@ -89,7 +89,7 @@ fn main() {
     println!("distance = {}", p.distance_from_origin());
 }`;
 
-<Playground client:visible code={structsCode} />
+<Playground code={structsCode} />
 
 export const quizStructs = [
   {

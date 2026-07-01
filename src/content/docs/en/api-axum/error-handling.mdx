@@ -3,7 +3,7 @@ title: 'Error Handling'
 description: 'Returning Result, custom error types implementing IntoResponse — vs Express error middleware.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -65,7 +65,7 @@ async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
         .map(Json)
 }`;
 
-<TsGo client:visible ts={tsError} go={rsError} />
+<TsGo ts={tsError} go={rsError} />
 
 ## The `?` operator
 
@@ -125,7 +125,7 @@ impl IntoResponse for AppError {
     }
 }`;
 
-<TsGo client:visible ts={tsErrorUnion} go={rsThiserror} />
+<TsGo ts={tsErrorUnion} go={rsThiserror} />
 
 <RsOnly title="Why no global error handler?">
 

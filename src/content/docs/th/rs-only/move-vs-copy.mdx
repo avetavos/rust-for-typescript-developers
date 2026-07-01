@@ -3,8 +3,8 @@ title: 'Move vs Copy'
 description: 'Rust แยกแยะ Copy type (stack value ราคาถูก) จาก move type (heap value) อย่างไร และเมื่อไหร่ควรใช้ Clone — สำหรับ TypeScript developers'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -45,7 +45,7 @@ export const copyRs = `fn main() {
     println!("t1={:?} t2={:?}", t1, t2);
 }`;
 
-<TsGo client:visible ts={copyTs} go={copyRs} />
+<TsGo ts={copyTs} go={copyRs} />
 
 <RsOnly title="Type ไหนบ้างที่ implement Copy?">
 
@@ -100,7 +100,7 @@ fn main() {
     println!("p4={:?}", p4);
 }`;
 
-<TsGo client:visible ts={moveTs} go={moveRs} />
+<TsGo ts={moveTs} go={moveRs} />
 
 ## ลองเขียนเอง
 
@@ -124,7 +124,7 @@ fn main() {
     println!("s1={} s2={}", s1, s2);
 }`;
 
-<Playground client:visible code={moveCopyCode} />
+<Playground code={moveCopyCode} />
 
 export const quizMoveCopy = [
   {

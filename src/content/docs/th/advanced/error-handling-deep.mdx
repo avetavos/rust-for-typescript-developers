@@ -3,8 +3,8 @@ title: 'Error Handling (เชิงลึก)'
 description: '`?` operator, custom error types, `thiserror` และ `anyhow` crates เทียบกับ TypeScript try/catch และ typed error classes'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -63,7 +63,7 @@ fn main() {
     println!("{:?}", parse_id("0"));
 }`;
 
-<TsGo client:visible ts={errTs} go={errRs} />
+<TsGo ts={errTs} go={errRs} />
 
 ## `?` operator
 
@@ -140,7 +140,7 @@ fn main() {
     }
 }`;
 
-<TsGo client:visible ts={thiserrorTs} go={thiserrorRs} />
+<TsGo ts={thiserrorTs} go={thiserrorRs} />
 
 ## `anyhow` — error handling ระดับ application
 
@@ -207,7 +207,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={errPlayground} />
+<Playground code={errPlayground} />
 
 export const quizErrors = [
   {

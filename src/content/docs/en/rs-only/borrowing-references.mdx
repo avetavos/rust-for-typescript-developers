@@ -3,8 +3,8 @@ title: 'Borrowing & References'
 description: 'Shared and exclusive references in Rust — the borrow checker rules explained for TypeScript developers, with the classic error case shown.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -39,7 +39,7 @@ fn main() {
     // greeting is still valid here — we only borrowed it
 }`;
 
-<TsGo client:visible ts={borrowSharedTs} go={borrowSharedRs} />
+<TsGo ts={borrowSharedTs} go={borrowSharedRs} />
 
 ## Mutable references — `&mut T`
 
@@ -69,7 +69,7 @@ fn main() {
     println!("{} and {}", r1, r2);
 }`;
 
-<TsGo client:visible ts={borrowMutTs} go={borrowMutRs} />
+<TsGo ts={borrowMutTs} go={borrowMutRs} />
 
 <RsOnly title="The two borrow rules — why they exist">
 
@@ -132,7 +132,7 @@ fn main() {
     println!("{} and {}", r1, r2);
 }`;
 
-<Playground client:visible code={borrowCode} />
+<Playground code={borrowCode} />
 
 export const quizBorrowing = [
   {

@@ -3,8 +3,8 @@ title: 'Ownership'
 description: 'How Rust''s ownership model replaces garbage collection — one owner, scope-based drop, and move semantics explained for TypeScript developers.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -51,7 +51,7 @@ export const ownershipRs = `fn main() {
     // Rust automatically frees the String data. No GC needed.
 }`;
 
-<TsGo client:visible ts={ownershipTs} go={ownershipRs} />
+<TsGo ts={ownershipTs} go={ownershipRs} />
 
 <RsOnly title="Scope-based drop — deterministic cleanup">
 
@@ -96,7 +96,7 @@ fn main() {
     // println!("{}", s); // error[E0382]: use of moved value: \`s\`
 }`;
 
-<TsGo client:visible ts={ownerFnTs} go={ownerFnRs} />
+<TsGo ts={ownerFnTs} go={ownerFnRs} />
 
 <RsOnly title="Why move-by-default is a feature, not a footgun">
 
@@ -132,7 +132,7 @@ fn main() {
     println!("x is still valid: {}", x); // fine — i32 is Copy
 }`;
 
-<Playground client:visible code={ownershipCode} />
+<Playground code={ownershipCode} />
 
 export const quizOwnership = [
   {

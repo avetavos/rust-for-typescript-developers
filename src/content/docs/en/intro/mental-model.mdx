@@ -3,8 +3,8 @@ title: "Mental Model — Mindset Shifts from TypeScript"
 description: 'The five biggest mindset shifts when coming to Rust from TypeScript or Node.js — ownership, compile-time safety, expressions, immutability, and errors as values.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -40,7 +40,7 @@ fn main() {
     // println!("{s1}"); // compile error: value was moved
 }`;
 
-<TsGo client:visible ts={ownershipTs} go={ownershipRs} />
+<TsGo ts={ownershipTs} go={ownershipRs} />
 
 The key insight: moving a value (assigning, passing to a function) transfers ownership. The old binding is no longer valid. This sounds harsh — but it means the compiler can guarantee at compile time that memory is freed exactly once, no double-frees, no use-after-free.
 
@@ -74,7 +74,7 @@ export const borrowRs = `fn main() {
     println!("{r3:?}");
 }`;
 
-<TsGo client:visible ts={borrowTs} go={borrowRs} />
+<TsGo ts={borrowTs} go={borrowRs} />
 
 ## 3. Expressions over statements
 
@@ -100,7 +100,7 @@ export const expressionsRs = `fn main() {
     println!("{grade}");
 }`;
 
-<TsGo client:visible ts={expressionsTs} go={expressionsRs} />
+<TsGo ts={expressionsTs} go={expressionsRs} />
 
 ## 4. Immutability by default
 
@@ -120,7 +120,7 @@ export const immutRs = `fn main() {
     println!("{mutable_count}");
 }`;
 
-<TsGo client:visible ts={immutTs} go={immutRs} />
+<TsGo ts={immutTs} go={immutRs} />
 
 Immutability by default is not just a convention (like `const` in TypeScript) — it is enforced by the compiler. This makes code easier to reason about and enables the borrow checker to work correctly.
 
@@ -158,7 +158,7 @@ fn main() {
     }
 }`;
 
-<TsGo client:visible ts={errorsTs} go={errorsRs} />
+<TsGo ts={errorsTs} go={errorsRs} />
 
 ## Try it
 
@@ -186,7 +186,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={mentalModelCode} />
+<Playground code={mentalModelCode} />
 
 <RsOnly title="The ? operator — propagating errors ergonomically">
 

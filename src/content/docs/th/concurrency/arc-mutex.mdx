@@ -3,8 +3,8 @@ title: 'Arc และ Mutex'
 description: 'การแชร์ mutable state ข้าม threads อย่างปลอดภัยด้วย Arc<Mutex<T>> ใน Rust — เทียบกับ JavaScript ที่ไม่มี shared mutable state ระหว่าง Workers'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -77,7 +77,7 @@ fn main() {
     println!("final counter = {}", *counter.lock().unwrap()); // 5
 }`;
 
-<TsGo client:visible ts={arcMutexTs} go={arcMutexRs} />
+<TsGo ts={arcMutexTs} go={arcMutexRs} />
 
 ## รวบรวมผลลัพธ์จากหลาย thread
 
@@ -113,7 +113,7 @@ fn main() {
     println!("squares: {:?}", res); // squares: [1, 4, 9, 16, 25]
 }`;
 
-<TsGo client:visible ts={arcMutexCollectTs} go={arcMutexCollectRs} />
+<TsGo ts={arcMutexCollectTs} go={arcMutexCollectRs} />
 
 ## ลองรันเลย
 
@@ -140,7 +140,7 @@ fn main() {
     println!("final counter = {}", *counter.lock().unwrap());
 }`;
 
-<Playground client:visible code={arcMutexCode} />
+<Playground code={arcMutexCode} />
 
 <RsOnly title="RAII locking และ poison">
 

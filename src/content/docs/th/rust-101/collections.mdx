@@ -3,8 +3,8 @@ title: 'Collections'
 description: 'Vec, HashMap, array, tuple, slice และการ iterate ใน Rust เทียบกับ array และ object ของ JavaScript'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -66,7 +66,7 @@ fn main() {
     println!("{} scored {}", pair.0, pair.1);
 }`;
 
-<TsGo client:visible ts={collectionsTs} go={collectionsRs} />
+<TsGo ts={collectionsTs} go={collectionsRs} />
 
 ## ลองเล่นดู
 
@@ -83,7 +83,7 @@ export const collectionsCode = `fn main() {
     }
 }`;
 
-<Playground client:visible code={collectionsCode} />
+<Playground code={collectionsCode} />
 
 export const quizCollections = [
   {

@@ -3,7 +3,7 @@ title: 'การสร้าง API ด้วย Axum'
 description: 'ทำไมต้องใช้ Axum? เปรียบเทียบ Axum กับ Express/Nest และสิ่งที่จะสร้างในโมดูลนี้'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -54,7 +54,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }`;
 
-<TsGo client:visible ts={tsHello} go={rsHello} />
+<TsGo ts={tsHello} go={rsHello} />
 
 > **รันบนเครื่องของคุณ** — Axum ผูก port และทำงานตลอดเวลา จึงไม่สามารถรันใน browser sandbox ได้ ใช้ `cargo run` หลังจากตั้งค่าโปรเจกต์ในบทถัดไป
 

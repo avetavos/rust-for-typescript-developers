@@ -3,7 +3,7 @@ title: 'Modules and Crates'
 description: 'mod, use, visibility, crate, Cargo.toml และ cargo add ใน Rust เทียบกับ ESM และ npm'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -78,7 +78,7 @@ fn main() {
 // [dependencies]
 // serde = "1"`;
 
-<TsGo client:visible ts={modulesTs} go={modulesRs} />
+<TsGo ts={modulesTs} go={modulesRs} />
 
 > หมายเหตุ Playground: โครงสร้าง module หลายไฟล์ต้องใช้ `cargo` — รันบนเครื่องของคุณด้วย `cargo run`
 

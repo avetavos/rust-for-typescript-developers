@@ -3,8 +3,8 @@ title: 'Trait Objects'
 description: 'Dynamic dispatch ด้วย `dyn Trait` และ `Box<dyn Trait>`, static vs dynamic dispatch เทียบกับ TypeScript interfaces และ polymorphism'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -76,7 +76,7 @@ fn main() {
     }
 }`;
 
-<TsGo client:visible ts={dynTs} go={dynRs} />
+<TsGo ts={dynTs} go={dynRs} />
 
 ## `Box<dyn Trait>` — heap-allocated trait objects
 
@@ -153,7 +153,7 @@ fn main() {
     println!("Total area: {:.2}", total);
 }`;
 
-<Playground client:visible code={dynPlayground} />
+<Playground code={dynPlayground} />
 
 export const quizDyn = [
   {

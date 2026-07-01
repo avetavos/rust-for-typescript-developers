@@ -3,7 +3,7 @@ title: 'Clippy & rustfmt — Linting and Formatting'
 description: 'cargo clippy (lint) and cargo fmt (format) compared to eslint and prettier. One canonical style for all Rust code.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -72,7 +72,7 @@ if doubled.is_empty() {
     println!("empty");
 }`;
 
-<TsGo client:visible ts={clippyTs} go={clippyRs} />
+<TsGo ts={clippyTs} go={clippyRs} />
 
 ## Suppressing a lint
 

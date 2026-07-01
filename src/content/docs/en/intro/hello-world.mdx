@@ -3,8 +3,8 @@ title: "Hello, World — Your First Rust Program"
 description: 'fn main, println!, cargo run, and what makes Rust hello-world different from TypeScript.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -32,7 +32,7 @@ export const helloRs = `fn main() {
     println!("Welcome, {name}!");
 }`;
 
-<TsGo client:visible ts={helloTs} go={helloRs} />
+<TsGo ts={helloTs} go={helloRs} />
 
 There are several things to notice immediately:
 
@@ -99,7 +99,7 @@ export const helloCode = `fn main() {
     println!("pi = {pi:.2}");
 }`;
 
-<Playground client:visible code={helloCode} />
+<Playground code={helloCode} />
 
 <RsOnly title="println! is a macro, not a function">
 

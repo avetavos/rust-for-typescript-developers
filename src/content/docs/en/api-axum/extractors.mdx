@@ -3,7 +3,7 @@ title: 'Extractors'
 description: 'Path, Query, and Json extractors for type-safe request parsing — vs Express req.params / req.body.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -30,7 +30,7 @@ async fn get_user(Path(id): Path<Uuid>) -> Json<User> {
     Json(user)
 }`;
 
-<TsGo client:visible ts={tsPath} go={rsPath} />
+<TsGo ts={tsPath} go={rsPath} />
 
 ## From `req.query` to `Query<T>`
 
@@ -63,7 +63,7 @@ async fn list_users(Query(pagination): Query<Pagination>) -> Json<Vec<User>> {
     Json(users)
 }`;
 
-<TsGo client:visible ts={tsQuery} go={rsQuery} />
+<TsGo ts={tsQuery} go={rsQuery} />
 
 ## From `req.body` to `Json<T>`
 
@@ -106,7 +106,7 @@ async fn create_user(
     (StatusCode::CREATED, Json(user))
 }`;
 
-<TsGo client:visible ts={tsBody} go={rsBody} />
+<TsGo ts={tsBody} go={rsBody} />
 
 ## Combining multiple extractors
 

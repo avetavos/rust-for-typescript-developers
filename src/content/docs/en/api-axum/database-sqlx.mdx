@@ -3,7 +3,7 @@ title: 'Database with SQLx'
 description: 'sqlx queries, connection pool, async — vs an ORM in Node.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -46,7 +46,7 @@ pub async fn create_pool() -> PgPool {
         .expect("Failed to connect to database")
 }`;
 
-<TsGo client:visible ts={tsPool} go={rsPool} />
+<TsGo ts={tsPool} go={rsPool} />
 
 ## Queries with `query_as!`
 
@@ -94,7 +94,7 @@ async fn find_user(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<User>> {
     .await
 }`;
 
-<TsGo client:visible ts={tsPrismaQuery} go={rsSqlxQuery} />
+<TsGo ts={tsPrismaQuery} go={rsSqlxQuery} />
 
 ## Insert and delete
 

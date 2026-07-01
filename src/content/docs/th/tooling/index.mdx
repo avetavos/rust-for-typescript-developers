@@ -3,7 +3,7 @@ title: 'Tooling, Testing & Deployment'
 description: 'ภาพรวมของ Toolchain แบบ batteries-included ของ Rust (Cargo) เทียบกับ Node.js ที่ต้องประกอบเองทุกอย่าง'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -53,7 +53,7 @@ cargo test     # runs all tests
 cargo clippy   # lints
 cargo fmt      # formats`;
 
-<TsGo client:visible ts={indexTs} go={indexRs} />
+<TsGo ts={indexTs} go={indexRs} />
 
 > นี่คือบทภาพรวมของโมดูล ไม่มี Playground ในบทนี้ — บทถัดไปแต่ละบทจะสาธิต tool เฉพาะ รัน Cargo command ข้างต้นใน terminal ของคุณหลังจากติดตั้ง Rust ผ่าน [rustup.rs](https://rustup.rs)
 

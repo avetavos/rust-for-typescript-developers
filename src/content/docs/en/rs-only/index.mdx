@@ -3,8 +3,8 @@ title: "Rust You Won't Find in TypeScript"
 description: 'An overview of the Rust-only concepts — ownership, borrowing, lifetimes, and more — that have no direct equivalent in TypeScript or JavaScript.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -71,7 +71,7 @@ fn calc_len(s: &String) -> usize {
     s.len()
 }`;
 
-<TsGo client:visible ts={indexTs} go={indexRs} />
+<TsGo ts={indexTs} go={indexRs} />
 
 ## Try it
 
@@ -96,7 +96,7 @@ fn calc_len(s: &String) -> usize {
     s.len()
 }`;
 
-<Playground client:visible code={indexCode} />
+<Playground code={indexCode} />
 
 export const quizIndex = [
   {

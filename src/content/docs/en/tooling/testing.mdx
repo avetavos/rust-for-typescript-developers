@@ -3,8 +3,8 @@ title: 'Testing — #[test], cargo test, and Doctests'
 description: 'Unit tests with #[test], assert_eq!, cargo test, and doctests in Rust compared to Jest.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -53,7 +53,7 @@ mod tests {
     }
 }`;
 
-<TsGo client:visible ts={testingTs} go={testingRs} />
+<TsGo ts={testingTs} go={testingRs} />
 
 The `#[cfg(test)]` attribute means the test module is only compiled when running `cargo test` — it is stripped from release builds automatically.
 
@@ -126,7 +126,7 @@ fn main() {
     println!("All assertions passed!");
 }`;
 
-<Playground client:visible code={testingCode} />
+<Playground code={testingCode} />
 
 <RsOnly title="Integration tests">
 

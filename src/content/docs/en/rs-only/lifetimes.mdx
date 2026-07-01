@@ -3,8 +3,8 @@ title: 'Lifetimes'
 description: 'What lifetimes are, why they exist, and how to read ''a annotations on functions and structs — for TypeScript developers who have never seen this concept.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -80,7 +80,7 @@ fn main() {
     }
 }`;
 
-<TsGo client:visible ts={lifetimesTs} go={lifetimesRs} />
+<TsGo ts={lifetimesTs} go={lifetimesRs} />
 
 <RsOnly title="How to read lifetime annotations">
 
@@ -121,7 +121,7 @@ fn main() {
     // novel is still alive here, so the reference in excerpt is valid
 }`;
 
-<TsGo client:visible ts={lifetimeStructTs} go={lifetimeStructRs} />
+<TsGo ts={lifetimeStructTs} go={lifetimeStructRs} />
 
 ## Try it
 
@@ -139,7 +139,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={lifetimesCode} />
+<Playground code={lifetimesCode} />
 
 export const quizLifetimes = [
   {

@@ -3,8 +3,8 @@ title: 'Closures & Iterators'
 description: 'Rust closures (`Fn`/`FnMut`/`FnOnce`), iterator adapters (`map`/`filter`/`collect`, lazy evaluation) เทียบกับ TypeScript arrow functions และ array methods'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -50,7 +50,7 @@ export const closureRs = `fn main() {
     println!("{count}"); // 2
 }`;
 
-<TsGo client:visible ts={closureTs} go={closureRs} />
+<TsGo ts={closureTs} go={closureRs} />
 
 ## ลำดับชั้นของ `Fn` traits
 
@@ -113,7 +113,7 @@ export const iterRs = `fn main() {
     println!("{:?}", all_words);
 }`;
 
-<TsGo client:visible ts={iterTs} go={iterRs} />
+<TsGo ts={iterTs} go={iterRs} />
 
 <RsOnly title="move closures">
 
@@ -155,7 +155,7 @@ export const iterPlayground = `fn main() {
     println!("{:?}", result);
 }`;
 
-<Playground client:visible code={iterPlayground} />
+<Playground code={iterPlayground} />
 
 export const quizClosures = [
   {

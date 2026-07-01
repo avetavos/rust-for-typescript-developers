@@ -3,8 +3,8 @@ title: 'Macros'
 description: 'Declarative `macro_rules!` และ derive macros ใน Rust — คืออะไร ทำไมถึงมี และเทียบกับ TypeScript decorators และ code generation อย่างไร'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -72,7 +72,7 @@ fn main() {
     println!("p1 == p2: {}", p1 == p2); // PartialEq derived
 }`;
 
-<TsGo client:visible ts={macroTs} go={macroRs} />
+<TsGo ts={macroTs} go={macroRs} />
 
 ## `vec![]` — macro ที่คุณใช้ทุกวัน
 
@@ -132,7 +132,7 @@ fn main() {
     println!("p1 == p2: {}", p1 == p2);
 }`;
 
-<Playground client:visible code={macroPlayground} />
+<Playground code={macroPlayground} />
 
 export const quizMacros = [
   {

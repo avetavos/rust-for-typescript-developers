@@ -3,8 +3,8 @@ title: "Rust 101 — พื้นฐาน"
 description: 'ภาพรวมของโมดูลและการสัมผัส Rust ครั้งแรก โดยใช้ TypeScript เป็นจุดอ้างอิง'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -39,7 +39,7 @@ export const indexRs = `fn main() {
     println!("Hello, {}! Welcome to Rust.", name);
 }`;
 
-<TsGo client:visible ts={indexTs} go={indexRs} />
+<TsGo ts={indexTs} go={indexRs} />
 
 ## ลองเล่นดู
 
@@ -50,7 +50,7 @@ export const indexCode = `fn main() {
     println!("Hello, {}! Welcome to Rust.", name);
 }`;
 
-<Playground client:visible code={indexCode} />
+<Playground code={indexCode} />
 
 export const quizIndex = [
   {

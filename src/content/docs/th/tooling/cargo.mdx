@@ -3,7 +3,7 @@ title: 'Cargo — Package Manager & Build Tool ของ Rust'
 description: 'cargo new, build, run, add, test, doc, Cargo.toml และ Cargo.lock เทียบกับ npm และ package.json'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -65,7 +65,7 @@ serde = { version = "1", features = ["derive"] }
 [dev-dependencies]
 # crate สำหรับ test เท่านั้นใส่ที่นี่`;
 
-<TsGo client:visible ts={cargoTs} go={cargoRs} />
+<TsGo ts={cargoTs} go={cargoRs} />
 
 ## เพิ่ม dependencies
 

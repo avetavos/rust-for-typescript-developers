@@ -3,7 +3,7 @@ title: 'Middleware และ Tower'
 description: 'Tower middleware layers, logging, CORS — เทียบกับ Express middleware'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -41,7 +41,7 @@ let app = Router::new()
             )
     );`;
 
-<TsGo client:visible ts={tsMiddleware} go={rsMiddleware} />
+<TsGo ts={tsMiddleware} go={rsMiddleware} />
 
 ## CORS layer
 
@@ -100,7 +100,7 @@ let app = Router::new()
     .route("/health", get(health))
     .nest("/api", protected_routes);`;
 
-<TsGo client:visible ts={tsScoped} go={rsScopedLayer} />
+<TsGo ts={tsScoped} go={rsScopedLayer} />
 
 <RsOnly title="Service model ของ Tower">
 

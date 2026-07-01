@@ -3,7 +3,7 @@ title: 'Release Build & Cross-Compilation'
 description: 'cargo build --release, cross-compilation ด้วย --target และการสร้าง static binary เดียวด้วย musl เทียบกับการส่ง Node.js runtime'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -37,7 +37,7 @@ cargo build --release
 # ไม่มี runtime, ไม่มี package manager, ไม่มี node_modules
 scp target/release/my-app user@server:/usr/local/bin/`;
 
-<TsGo client:visible ts={releaseTs} go={releaseRs} />
+<TsGo ts={releaseTs} go={releaseRs} />
 
 ## Debug vs release build
 

@@ -3,7 +3,7 @@ title: "Project Anatomy — Cargo.toml, src/, and the Module System"
 description: 'Cargo.toml vs package.json, src/main.rs and src/lib.rs, the target/ directory, crates vs node_modules, and a first look at Rust modules.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -89,7 +89,7 @@ tokio = { version = "1", features = ["full"] }
 [dev-dependencies]
 pretty_assertions = "1"`;
 
-<TsGo client:visible ts={cargoTomlTs} go={cargoTomlRs} />
+<TsGo ts={cargoTomlTs} go={cargoTomlRs} />
 
 Key differences:
 - There is no `scripts` section. You run `cargo run`, `cargo test`, etc. directly.
@@ -128,7 +128,7 @@ fn main() {
     println!("{}", add(1, 2));
 }`;
 
-<TsGo client:visible ts={modulesTs} go={modulesRs} />
+<TsGo ts={modulesTs} go={modulesRs} />
 
 ## The target/ directory
 

@@ -3,8 +3,8 @@ title: 'Async/Await and Tokio'
 description: 'Rust''s async/await syntax and the Tokio runtime — compared to JavaScript''s async/await, Promise.all, and the event loop. Key similarities and the critical difference that Rust async needs an explicit runtime.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -64,7 +64,7 @@ async fn main() {
     println!("{user1} {user2}"); // user_1 user_2
 }`;
 
-<TsGo client:visible ts={asyncTs} go={asyncRs} />
+<TsGo ts={asyncTs} go={asyncRs} />
 
 ## Spawning async tasks (tokio::spawn)
 
@@ -104,7 +104,7 @@ async fn main() {
     println!("total: {total}"); // total: 12
 }`;
 
-<TsGo client:visible ts={asyncSpawnTs} go={asyncSpawnRs} />
+<TsGo ts={asyncSpawnTs} go={asyncSpawnRs} />
 
 ## Try it
 
@@ -124,7 +124,7 @@ async fn main() {
     println!("{user1} {user2}");
 }`;
 
-<Playground client:visible code={asyncCode} />
+<Playground code={asyncCode} />
 
 <RsOnly title="Rust async needs an explicit runtime — and Futures are lazy">
 

@@ -3,7 +3,7 @@ title: "Setup — การติดตั้ง Rust และ Toolchain"
 description: 'การติดตั้ง Rust ด้วย rustup, Workflow ของ cargo เทียบกับ npm/node/tsc, และโปรเจกต์ cargo แรกของคุณ'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
+import TsGo from '../../../../components/TsGo.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -70,7 +70,7 @@ cargo run                     # compile + run in one step
 cargo build                   # compile only (output in target/)
 cargo build --release         # optimised production build`;
 
-<TsGo client:visible ts={setupTs} go={setupRs} />
+<TsGo ts={setupTs} go={setupRs} />
 
 ## cargo add — การเพิ่ม Dependencies
 

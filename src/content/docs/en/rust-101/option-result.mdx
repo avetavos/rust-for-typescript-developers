@@ -3,8 +3,8 @@ title: 'Option and Result'
 description: 'Option<T>, Result<T,E>, match, unwrap_or, and the ? operator in Rust vs null/undefined and try/catch.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -103,7 +103,7 @@ fn main() {
     println!("{value}"); // 42
 }`;
 
-<TsGo client:visible ts={optionResultTs} go={optionResultRs} />
+<TsGo ts={optionResultTs} go={optionResultRs} />
 
 ## Try it
 
@@ -129,7 +129,7 @@ fn main() {
     println!("Option value: {value}");
 }`;
 
-<Playground client:visible code={optionResultCode} />
+<Playground code={optionResultCode} />
 
 <RsOnly title="No null — errors as values">
 

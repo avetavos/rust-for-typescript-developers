@@ -3,8 +3,8 @@ title: 'JSON และ Serde'
 description: 'serde Serialize/Deserialize, Json<T> request/response — เทียบกับ zod/TypeScript types'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -39,7 +39,7 @@ struct User {
 // Deserializing validates structure and types automatically
 let user: User = serde_json::from_str(raw_json)?; // returns Err if invalid`;
 
-<TsGo client:visible ts={tsZod} go={rsSerde} />
+<TsGo ts={tsZod} go={rsSerde} />
 
 ## `Json<T>` ใน Axum — request และ response
 
@@ -70,7 +70,7 @@ async fn create_user(
     (StatusCode::CREATED, Json(user))
 }`;
 
-<TsGo client:visible ts={tsExpressJson} go={rsAxumJson} />
+<TsGo ts={tsExpressJson} go={rsAxumJson} />
 
 ## การเปลี่ยนชื่อและ skip fields ด้วย Serde
 
@@ -123,7 +123,7 @@ fn main() {
     println!("{:?}", parsed);
 }`;
 
-<Playground client:visible code={serdeCode} />
+<Playground code={serdeCode} />
 
 export const quizSerde = [
   {

@@ -3,8 +3,8 @@ title: 'Enum แบบ Algebraic Data Type'
 description: 'Rust enum พก data ในแต่ละ variant และถูก match แบบ exhaustive — concept ที่ทรงพลังกว่า TypeScript union หรือ string enum มาก'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -61,7 +61,7 @@ fn main() {
     }
 }`;
 
-<TsGo client:visible ts={enumTs} go={enumRs} />
+<TsGo ts={enumTs} go={enumRs} />
 
 <RsOnly title="Exhaustive match — compiler เป็น safety net">
 
@@ -138,7 +138,7 @@ fn main() {
     }
 }`;
 
-<TsGo client:visible ts={stateTs} go={stateRs} />
+<TsGo ts={stateTs} go={stateRs} />
 
 ## ลองเขียนเอง
 
@@ -170,7 +170,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={enumsAdtCode} />
+<Playground code={enumsAdtCode} />
 
 export const quizEnumsAdt = [
   {

@@ -3,8 +3,8 @@ title: 'Control Flow'
 description: 'if as an expression, match, loop, while, and for in Rust vs TypeScript.'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
@@ -71,7 +71,7 @@ export const controlFlowRs = `fn main() {
     }
 }`;
 
-<TsGo client:visible ts={controlFlowTs} go={controlFlowRs} />
+<TsGo ts={controlFlowTs} go={controlFlowRs} />
 
 ## Try it
 
@@ -94,7 +94,7 @@ fn main() {
     }
 }`;
 
-<Playground client:visible code={controlFlowCode} />
+<Playground code={controlFlowCode} />
 
 export const quizControlFlow = [
   {

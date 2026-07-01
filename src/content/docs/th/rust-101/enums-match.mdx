@@ -3,8 +3,8 @@ title: 'Enums and Match'
 description: 'enum ที่มี data variant, exhaustive match และ if let ใน Rust เทียบกับ discriminated union ของ TypeScript'
 ---
 
-import TsGo from '../../../../components/TsGo.tsx';
-import Playground from '../../../../components/Playground.tsx';
+import TsGo from '../../../../components/TsGo.astro';
+import Playground from '../../../../components/Playground.astro';
 import Quiz from '../../../../components/Quiz.tsx';
 import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 import RsOnly from '../../../../components/RsOnly.astro';
@@ -69,7 +69,7 @@ fn area(shape: &Shape) -> f64 {
     }
 }`;
 
-<TsGo client:visible ts={enumsTs} go={enumsRs} />
+<TsGo ts={enumsTs} go={enumsRs} />
 
 ## ลองเล่นดู
 
@@ -92,7 +92,7 @@ fn main() {
     println!("Rectangle area: {:.2}", area(&r));
 }`;
 
-<Playground client:visible code={enumsCode} />
+<Playground code={enumsCode} />
 
 <RsOnly title="Algebraic Data Types และ exhaustive matching">
 
