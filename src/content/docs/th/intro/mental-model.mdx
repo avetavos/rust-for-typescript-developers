@@ -15,9 +15,9 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## 1. Ownership — ไม่มี garbage collector
 
-ใน JavaScript และ TypeScript หน่วยความจำถูกจัดการโดย garbage collector (GC) คุณสร้าง object ได้อย่างอิสระ GC สแกนหาค่าที่เข้าไม่ถึงแล้ว free มัน คุณไม่เคยคิดเรื่อง allocation
+ใน JavaScript และ TypeScript หน่วยความจำถูกจัดการโดย garbage collector (GC) คุณสร้าง object ได้อย่างอิสระ แล้ว GC จะคอยสแกนหาค่าที่เข้าไม่ถึงแล้วคืน memory ให้เอง คุณแทบไม่ต้องคิดเรื่อง allocation เลย
 
-ใน Rust **ทุกค่ามีเจ้าของเพียงหนึ่งเดียว** เมื่อเจ้าของออกไปนอก scope ค่านั้นก็ถูก free — ไม่ต้องมี GC สิ่งนี้ถูกกำหนดทั้งหมดตั้งแต่ขั้น compile
+ใน Rust **ทุกค่ามีเจ้าของเพียงหนึ่งเดียว** เมื่อเจ้าของหลุด scope ค่านั้นก็ถูก free — ไม่ต้องมี GC และทั้งหมดนี้ถูกกำหนดตั้งแต่ขั้น compile
 
 export const ownershipTs = `// TypeScript: GC manages memory
 // You can pass an object anywhere, copy references freely
@@ -46,7 +46,7 @@ fn main() {
 
 ## 2. ความปลอดภัยของหน่วยความจำตั้งแต่ขั้น compile — borrow checker
 
-*borrow checker* ของ Rust บังคับใช้กฎ ownership มันอ่านโค้ดของคุณตั้งแต่ขั้น compile และปฏิเสธโปรแกรมที่อาจทำให้เกิดข้อผิดพลาดด้านหน่วยความจำ ไม่มีการตรวจสอบตอน runtime ไม่มี null pointer exception ไม่มี heap corruption
+*borrow checker* ของ Rust คือคนบังคับใช้กฎ ownership โดยจะอ่านโค้ดของคุณตั้งแต่ขั้น compile และปฏิเสธโปรแกรมที่อาจทำให้หน่วยความจำพัง ไม่มีการตรวจตอน runtime ไม่มี null pointer exception ไม่มี heap corruption
 
 กฎมีดังนี้:
 - คุณสามารถมี **mutable reference หนึ่งอัน** (`&mut T`) **หรือ** จำนวนใดก็ได้ของ **immutable references** (`&T`) — แต่ไม่เกิดขึ้นพร้อมกัน
@@ -78,7 +78,7 @@ export const borrowRs = `fn main() {
 
 ## 3. Expressions มากกว่า statements
 
-ใน TypeScript `if`, `match`, และ blocks เป็น statements — มันไม่ produce ค่า ใน Rust เกือบทุกอย่างเป็น expression ที่ produce ค่า ซึ่งหมายความว่าคุณสามารถ assign ผลลัพธ์ของ `if` หรือ `match` ได้โดยตรง
+ใน TypeScript `if` และ block เป็น statement — ไม่ให้ค่ากลับมา ส่วนใน Rust เกือบทุกอย่างเป็น expression ที่ให้ค่า คุณจึง assign ผลลัพธ์ของ `if` หรือ `match` ได้ตรง ๆ
 
 export const expressionsTs = `// TypeScript: if is a statement, need ternary for expressions
 const score = 85;
@@ -122,7 +122,7 @@ export const immutRs = `fn main() {
 
 <TsGo ts={immutTs} go={immutRs} />
 
-Immutability เป็นค่าเริ่มต้นไม่ใช่แค่แบบแผน (เช่น `const` ใน TypeScript) — มันถูกบังคับใช้โดย compiler สิ่งนี้ทำให้โค้ดเหตุผลง่ายขึ้นและทำให้ borrow checker ทำงานได้ถูกต้อง
+Immutability เป็นค่าเริ่มต้น ไม่ใช่แค่แบบแผนอย่าง `const` ใน TypeScript — compiler เป็นคนบังคับใช้ให้ ผลคืออ่านโค้ดแล้วเดาพฤติกรรมได้ง่ายขึ้น และเป็นฐานให้ borrow checker ทำงานได้ถูกต้อง
 
 ## 5. Errors เป็นค่า — ไม่มี exceptions
 
@@ -190,7 +190,7 @@ fn main() {
 
 <RsOnly title="ตัวดำเนินการ ? — การส่งต่อ errors อย่างสะดวก">
 
-การ match ทุก `Result` อาจทำให้โค้ดยืดยาว Rust มีตัวดำเนินการ `?`: วางหลัง `Result` จะ unwrap ค่า `Ok` หรือ return `Err` ทันทีให้ caller สิ่งนี้คือเทียบเท่ากับการ re-throw exception ของ Rust แต่ชัดเจนใน function signature
+การ match ทุก `Result` ทำให้โค้ดยืดยาวได้ Rust จึงมีตัวดำเนินการ `?` มาให้: วางไว้หลัง `Result` แล้วจะ unwrap ค่า `Ok` หรือไม่ก็ return `Err` กลับไปให้ caller ทันที เทียบได้กับการ re-throw exception แต่ปรากฏชัดอยู่ใน function signature
 
 ```
 fn read_number(s: &str) -> Result<i32, String> {
@@ -219,7 +219,7 @@ export const quizMentalModel = [
     options: [
       "ไม่จำกัด — เหมือนกับ TypeScript",
       "ศูนย์ — ค่าต่างๆ เป็น immutable เสมอ",
-      "หนึ่งอันเท่านั้น และไม่สามารถมี immutable references อยู่ร่วมกับมันได้",
+      "หนึ่งตัวเท่านั้น และห้ามมี immutable reference อยู่ร่วมด้วย",
       "สอง — หนึ่งสำหรับอ่าน หนึ่งสำหรับเขียน"
     ],
     answer: 2
@@ -227,7 +227,7 @@ export const quizMentalModel = [
   {
     q: "ใน Rust `let x = if condition { 1 } else { 2 };` ใช้ได้เพราะ:",
     options: [
-      "มันเป็น ternary syntax พิเศษที่มีเฉพาะใน Rust",
+      "เป็น ternary syntax พิเศษที่มีเฉพาะใน Rust",
       "if เป็น expression ที่ produce ค่า",
       "compiler เขียนใหม่เป็น ternary operator",
       "x ต้องถูกประกาศเป็น mut จึงจะใช้ได้"

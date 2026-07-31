@@ -28,7 +28,7 @@ import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
 ## การติดตั้ง Rust
 
-วิธีการอย่างเป็นทางการในการติดตั้ง Rust คือผ่าน `rustup` ซึ่งเป็น Rust toolchain installer รันคำสั่งนี้ใน Terminal:
+วิธีการอย่างเป็นทางการในการติดตั้ง Rust คือผ่าน `rustup` ที่เป็น Rust toolchain installer รันคำสั่งนี้ใน Terminal:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -82,7 +82,7 @@ cargo add serde --features derive  # with a feature flag
 cargo add tokio --features full    # tokio async runtime
 ```
 
-นี่คือ Equivalent ของ `npm install serde` ไฟล์ `Cargo.toml` จะถูกอัปเดตโดยอัตโนมัติ เหมือนกับ `package.json`
+เทียบเท่ากับ `npm install serde` โดย Cargo จะอัปเดตไฟล์ `Cargo.toml` ให้อัตโนมัติ เหมือนกับ `package.json`
 
 ## คำสั่ง cargo หลัก
 
@@ -100,7 +100,7 @@ cargo doc --open       # build and open local docs
 cargo check            # type-check without producing a binary (fast)
 ```
 
-`cargo check` มีประโยชน์มากเป็นพิเศษ: มันรัน Borrow checker และ Type checker โดยไม่ Compile เป็น Machine code จริงๆ ทำให้เร็วกว่า `cargo build` มาก นี่คือคำสั่งที่ใช้ระหว่าง Iterate — เทียบเท่ากับการรัน `tsc --noEmit`
+`cargo check` มีประโยชน์เป็นพิเศษ: รัน Borrow checker และ Type checker ให้ครบ โดยไม่ Compile ออกมาเป็น Machine code จริง จึงเร็วกว่า `cargo build` มาก เป็นคำสั่งที่ใช้บ่อยที่สุดระหว่าง Iterate — เทียบได้กับการรัน `tsc --noEmit`
 
 ## การอัปเดต Rust
 

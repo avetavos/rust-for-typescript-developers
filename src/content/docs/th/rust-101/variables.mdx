@@ -29,7 +29,7 @@ let name = "Alice";        // inferred as &str
 
 ## Shadowing
 
-Rust อนุญาตให้คุณประกาศตัวแปรซ้ำด้วย `let` ใน scope เดิมได้ — สิ่งนี้เรียกว่า *shadowing* binding ตัวใหม่จะแทนที่ตัวเก่า ซึ่งต่างจากการ mutate: คุณสามารถเปลี่ยน type ได้ด้วยซ้ำ ส่วน TypeScript ไม่อนุญาตให้ประกาศชื่อเดิมซ้ำด้วย `let` ใน scope เดียวกัน
+Rust อนุญาตให้ประกาศตัวแปรชื่อเดิมซ้ำด้วย `let` ใน scope เดียวกันได้ — เรียกว่า *shadowing* โดย binding ตัวใหม่จะไปแทนที่ตัวเก่า ซึ่งต่างจากการ mutate: คุณเปลี่ยน type ได้ด้วยซ้ำ ส่วน TypeScript ไม่อนุญาตให้ประกาศชื่อเดิมซ้ำด้วย `let` ใน scope เดียวกัน
 
 export const variablesTs = `// TypeScript: cannot shadow with let in same scope
 const x = 5;

@@ -10,14 +10,14 @@ import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
 ## ยินดีต้อนรับสู่ Rust 101
 
-คุณรู้จัก TypeScript อยู่แล้ว คุณเข้าใจเรื่อง type, function และวิธีสร้างซอฟต์แวร์จริง ๆ โมดูลนี้ใช้ความรู้เหล่านั้นเป็นสะพานเชื่อม — ทุกแนวคิดจะถูกแนะนำด้วยการเปรียบเทียบกับสิ่งที่คุณรู้อยู่แล้ว จากนั้นจึงแสดงวิธีแบบ Rust
+คุณรู้จัก TypeScript อยู่แล้ว คุณเข้าใจเรื่อง type, function และวิธีสร้างซอฟต์แวร์จริง ๆ โมดูลนี้ใช้ความรู้เหล่านั้นเป็นสะพานเชื่อม — เราจะเปิดทุกแนวคิดด้วยการเทียบกับสิ่งที่คุณรู้อยู่แล้ว จากนั้นจึงแสดงวิธีแบบ Rust
 
 ## สิ่งที่คุณจะได้เรียนรู้
 
 โมดูลนี้ครอบคลุมองค์ประกอบพื้นฐานของ Rust ที่แมปเข้ากับแพตเทิร์น TypeScript ที่ใช้ในชีวิตประจำวัน:
 
 - **Variables** — `let`, `let mut`, `const`, shadowing และ type inference
-- **Functions** — พารามิเตอร์ที่มี type, return type และไวยากรณ์แบบ expression-oriented
+- **Functions** — parameter ที่มี type, return type และไวยากรณ์แบบ expression-oriented
 - **Control flow** — `if` ในฐานะ expression, `match`, `loop`, `while`, `for`
 - **Structs** — ทางเลือกของ Rust แทน class และ interface
 - **Enums** — algebraic data types และ exhaustive pattern matching
@@ -58,7 +58,7 @@ export const quizIndex = [
     options: [
       "ฟังก์ชัน built-in จาก standard library",
       "macro ที่จัดการ format string ตอน compile time",
-      "เมธอดบน type String",
+      "method บน type String",
       "ตัวแปร global"
     ],
     answer: 1

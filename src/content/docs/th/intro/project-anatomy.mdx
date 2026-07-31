@@ -95,11 +95,11 @@ pretty_assertions = "1"`;
 - ไม่มี Section `scripts` คุณรัน `cargo run`, `cargo test` ฯลฯ โดยตรง
 - `edition` สอดคล้องกับ Rust language edition (2015, 2018, 2021) ใช้ `2021` เสมอสำหรับโปรเจกต์ใหม่
 - Dependencies ไม่ต้องมี Package `@types/` Rust types เป็นส่วนหนึ่งของ Crate เสมอ
-- **Feature flags** (`features = ["derive"]`) คือ Equivalent ของ Rust สำหรับ Optional peer dependencies หรือ Configuration flags มันให้ Crates เปิดเผย API เพิ่มเติมที่ Compile เฉพาะเมื่อร้องขอ
+- **Feature flags** (`features = ["derive"]`) คือของเทียบเท่า Optional peer dependency หรือ Configuration flag ในฝั่ง Rust ช่วยให้ Crate เปิด API เพิ่มเติมที่ Compile ต่อเมื่อมีการร้องขอเท่านั้น
 
 ## src/main.rs และ src/lib.rs
 
-Binary crate มี `src/main.rs` Library crate มี `src/lib.rs` คุณสามารถมีทั้งคู่ในโปรเจกต์เดียวกัน — `src/lib.rs` มี Logic ที่แชร์, `src/main.rs` เรียกใช้มัน
+Binary crate มี `src/main.rs` ส่วน Library crate มี `src/lib.rs` และจะมีทั้งคู่ในโปรเจกต์เดียวกันก็ได้ — เก็บ Logic ที่แชร์ไว้ใน `src/lib.rs` แล้วให้ `src/main.rs` เรียกใช้
 
 <Mermaid code={moduleTree} title="A project with modules" />
 
@@ -132,11 +132,11 @@ fn main() {
 
 ## ไดเรกทอรี target/
 
-เมื่อคุณรัน `cargo build` Rust จะ Compile ทุกอย่างลงใน `target/` นี่คือ Equivalent ของ `dist/` บวก `node_modules/.cache/` คุณไม่ควร Commit มันลง Version control
+เมื่อรัน `cargo build` Rust จะ Compile ทุกอย่างลงใน `target/` เทียบได้กับ `dist/` บวก `node_modules/.cache/` และไม่ควร Commit เข้า Version control
 
 <Mermaid code={targetTree} title="The target/ directory" />
 
-เพิ่ม `target/` ลงใน `.gitignore` Cargo จะทำสิ่งนี้โดยอัตโนมัติเมื่อคุณรัน `cargo new`
+เพิ่ม `target/` ลงใน `.gitignore` ได้เลย ซึ่ง Cargo ใส่ให้อัตโนมัติอยู่แล้วเมื่อคุณรัน `cargo new`
 
 ## Crates vs node_modules
 
@@ -153,11 +153,11 @@ Global cache หมายความว่า:
 
 <RsOnly title="Editions — เรื่องราวความเข้ากันได้ของ Rust">
 
-Rust ใช้ **Editions** เพื่อนำ Breaking changes เข้ามาในภาษาในขณะที่รักษา Backward compatibility Edition ถูกกำหนดต่อโปรเจกต์ใน `Cargo.toml` และไม่ส่งผลต่อ ABI — Crates บน Edition ต่างกันทำงานร่วมกันได้อย่างอิสระ
+Rust ใช้ **Editions** เพื่อนำ Breaking changes เข้ามาในภาษาโดยยังรักษา Backward compatibility ไว้ได้ Edition กำหนดแยกต่อโปรเจกต์ใน `Cargo.toml` และไม่ส่งผลต่อ ABI — Crate ที่อยู่คนละ Edition ทำงานร่วมกันได้อย่างอิสระ
 
 Edition ปัจจุบัน: 2015, 2018, 2021 เสมอเริ่มโปรเจกต์ใหม่ด้วย `edition = "2021"`
 
-สิ่งนี้คล้ายคลึงกับ `target` และ `lib` settings ของ TypeScript ใน `tsconfig.json` แต่ง่ายกว่า: คุณตั้งค่าครั้งเดียวและ Compiler จัดการทุกอย่าง
+คล้ายกับ setting `target` และ `lib` ของ TypeScript ใน `tsconfig.json` แต่ง่ายกว่า: ตั้งค่าครั้งเดียวแล้ว Compiler จัดการที่เหลือให้หมด
 
 </RsOnly>
 

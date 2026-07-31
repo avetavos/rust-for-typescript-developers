@@ -43,7 +43,7 @@ fn main() {
 
 ## Mutable reference — `&mut T`
 
-Mutable reference (`&mut T`) ให้คุณทั้งอ่านและแก้ไข value แต่ Rust มีกฎ exclusive: **ในขณะที่มี `&mut` reference อยู่ ห้ามมี reference อื่นใด — ไม่ว่า shared หรือ mutable — พร้อมกัน**
+Mutable reference (`&mut T`) ให้คุณทั้งอ่านและแก้ไข value แต่ Rust มีกฎ exclusive: **ตราบใดที่ `&mut` reference ยังอยู่ ห้ามมี reference อื่นใด — ไม่ว่า shared หรือ mutable — พร้อมกัน**
 
 export const borrowMutTs = `// TypeScript — ไม่มีข้อจำกัดสำหรับ read + write พร้อมกัน
 function appendWorld(s: { value: string }): void {
@@ -81,7 +81,7 @@ Rust บังคับใช้กฎสองข้อนี้เกี่ย
 กฎเหล่านี้กำจัด bug class ทั้งหมดที่พบใน C, C++, และแม้แต่ Go:
 
 - **Data race:** สอง thread mutate data เดียวกันพร้อมกัน → กฎข้อ 1 ป้องกัน compile time
-- **Iterator invalidation:** Mutate `Vec` ในขณะที่ iterate → กฎข้อ 1 จับได้
+- **Iterator invalidation:** Mutate `Vec` ระหว่างที่ iterate → กฎข้อ 1 จับได้
 - **Use-after-free:** ใช้ reference หลัง owner ถูก drop → กฎข้อ 2 จับได้
 
 TypeScript ไม่มีการป้องกันเหล่านี้เลย JS array สามารถถูก mutate จากโค้ดใดก็ได้ที่ถือ reference ได้ตลอดเวลา
@@ -161,7 +161,7 @@ export const quizBorrowing = [
       "ห้ามมี shared reference เกินสองตัว",
       "มี shared ref ได้หลายตัว หรือ mutable ref ได้หนึ่งตัว — ห้ามมีทั้งสองพร้อมกัน",
       "Mutable reference ต้องประกาศที่บนสุดของ function",
-      "Reference ต้องมีชีวิตยาวกว่า function ที่สร้างมัน"
+      "Reference ต้องมีชีวิตยาวกว่า function ที่สร้างขึ้น"
     ],
     answer: 1
   }

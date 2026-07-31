@@ -27,7 +27,7 @@ Node.js, Python, Go, Java, C# — ทุกภาษา mainstream ที่ค�
 - **Memory overhead:** GC runtime เก็บ data structure พิเศษเพื่อ track live object
 - **Non-determinism:** คุณไม่สามารถทำนายได้ว่า object จะถูกคืนเมื่อไหร่
 
-Rust **ไม่มีสิ่งใดเหล่านี้เลย** มันบรรลุ memory safety ผ่าน ownership model เพียงอย่างเดียว Compiler พิสูจน์ — แบบ static — ว่า memory ถูกจัดการถูกต้อง และ generate โค้ดเพื่อคืน allocation แต่ละอันในจุดที่ถูกต้องพอดี
+Rust **ไม่มีสิ่งเหล่านี้เลย** แต่ได้ memory safety มาจาก ownership model ล้วน ๆ ตัว Compiler พิสูจน์แบบ static ว่า memory ถูกจัดการถูกต้อง แล้ว generate โค้ดคืน allocation แต่ละก้อนในจุดที่ถูกต้องพอดี
 
 <RsOnly title="RAII — Resource Acquisition Is Initialization">
 
@@ -96,7 +96,7 @@ fn main() {
 
 <RsOnly title="Ownership คือ memory management">
 
-ใน Rust, ownership model คือ memory management model ไม่มีการแยกระหว่าง "ownership ทำงานอย่างไร" กับ "memory ถูกคืนอย่างไร" มันเป็นสิ่งเดียวกัน:
+ใน Rust ownership model คือ memory management model ไม่มีการแยกระหว่าง "ownership ทำงานอย่างไร" กับ "memory ถูกคืนอย่างไร" เพราะเป็นเรื่องเดียวกัน:
 
 1. ทุก heap allocation เป็น owner โดยตัวแปรแค่ตัวเดียว
 2. เมื่อตัวแปรนั้นหลุด scope allocation ก็ถูกคืน
@@ -108,7 +108,7 @@ GC language แลก runtime overhead กับความสะดวกข�
 
 </RsOnly>
 
-## Deterministic vs non-deterministic cleanup
+## การ cleanup แบบ deterministic กับ non-deterministic
 
 <Mermaid code={cleanupDiagram} title="Deterministic vs non-deterministic cleanup" />
 

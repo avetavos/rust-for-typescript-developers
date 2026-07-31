@@ -112,7 +112,7 @@ Return type ต้องการเพียงแค่ implement `IntoRespons
 - `StatusCode` เดี่ยว → empty body พร้อม status นั้น
 - `Response` → กำหนดเองได้เต็มรูปแบบ
 
-นั่นหมายความว่าการจัดการ error ไม่ใช่กรณีพิเศษ — คุณ return `Err(MyError)` และ Axum เรียก `.into_response()` บนมัน เหมือนกับ happy path
+แปลว่าการจัดการ error ไม่ใช่กรณีพิเศษ — คุณ return `Err(MyError)` แล้ว Axum ก็เรียก `.into_response()` ให้เหมือนกับ happy path ทุกประการ
 
 </RsOnly>
 

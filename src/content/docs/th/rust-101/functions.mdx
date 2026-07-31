@@ -1,6 +1,6 @@
 ---
 title: 'Functions'
-description: 'fn, พารามิเตอร์ที่มี type, return type และไวยากรณ์แบบ expression-oriented ใน Rust เทียบกับ TypeScript'
+description: 'fn, parameter ที่มี type, return type และไวยากรณ์แบบ expression-oriented ใน Rust เทียบกับ TypeScript'
 ---
 
 import TsGo from '../../../../components/TsGo.astro';
@@ -11,11 +11,11 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## Functions ใน TypeScript เทียบกับ Rust
 
-function ใน TypeScript นิยามด้วย `function` หรือ arrow syntax พร้อม type annotation ที่ใส่หรือไม่ใส่ก็ได้ ส่วนใน Rust ทุก function นิยามด้วย `fn` และ **type ของพารามิเตอร์และค่า return ทุกตัวจำเป็นต้องระบุ** — compiler จะไม่ infer ข้ามขอบเขตของ function เลย สิ่งนี้ทำให้ signature ของ function เป็นสัญญา (contract) ที่ชัดเจนและอ่านง่าย
+function ใน TypeScript นิยามด้วย `function` หรือ arrow syntax พร้อม type annotation ที่ใส่หรือไม่ใส่ก็ได้ ส่วนใน Rust ทุก function นิยามด้วย `fn` และ **ต้องระบุ type ของ parameter กับค่า return ทุกตัว** — compiler จะไม่ infer ข้ามขอบเขตของ function เลย ทำให้ signature ของ function กลายเป็น contract ที่ชัดเจนและอ่านง่าย
 
 ## เปรียบเทียบไวยากรณ์
 
-TypeScript ใช้ `: Type` สำหรับพารามิเตอร์ และ `: ReturnType` หลังวงเล็บปิด ส่วน Rust ใช้ไวยากรณ์ `: Type` แบบเดียวกันสำหรับพารามิเตอร์ และ `-> ReturnType` หลังรายการพารามิเตอร์
+TypeScript ใช้ `: Type` กับ parameter และ `: ReturnType` หลังวงเล็บปิด ส่วน Rust ใช้ `: Type` แบบเดียวกันกับ parameter แล้วต่อท้ายรายการ parameter ด้วย `-> ReturnType`
 
 ```
 // TypeScript
@@ -29,7 +29,7 @@ fn add(a: i32, b: i32) -> i32 {
 }
 ```
 
-สังเกตว่าบรรทัดสุดท้ายไม่มี semicolon ใน Rust นั้น expression สุดท้ายของ block (ที่ไม่มี `;`) จะถูก return โดยปริยาย การเติม semicolon จะเปลี่ยนมันเป็น statement ที่ return `()` (unit) ซึ่งในกรณีนี้จะกลายเป็น type error
+สังเกตว่าบรรทัดสุดท้ายไม่มี semicolon ใน Rust นั้น expression สุดท้ายของ block (ที่ไม่มี `;`) จะถูก return โดยปริยาย ถ้าเติม semicolon เข้าไป expression นั้นจะกลายเป็น statement ที่ return `()` (unit) ซึ่งในกรณีนี้จะกลายเป็น type error
 
 export const functionsTs = `function add(a: number, b: number): number {
   return a + b;
@@ -78,7 +78,7 @@ fn main() {
 
 <RsOnly title="ภาษาแบบ expression-oriented">
 
-ใน TypeScript นั้น `if` และ block เป็น statement — มันไม่ให้ค่ากลับมา คุณต้องใช้ ternary `? :` เพื่อให้ได้ค่าตามเงื่อนไข ส่วน Rust เป็นภาษาแบบ expression-oriented: `if`, `match` และ block expression ล้วนให้ค่ากลับมาทั้งสิ้น
+ใน TypeScript นั้น `if` และ block เป็น statement — ไม่ให้ค่ากลับมา คุณต้องใช้ ternary `? :` เพื่อให้ได้ค่าตามเงื่อนไข ส่วน Rust เป็นภาษาแบบ expression-oriented: `if`, `match` และ block expression ล้วนให้ค่ากลับมาทั้งสิ้น
 
 ```
 // No ternary needed in Rust — if is an expression

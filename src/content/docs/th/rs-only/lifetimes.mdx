@@ -13,7 +13,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 TypeScript ไม่มี concept ของ lifetime เลย เมื่อคุณ hold reference ไปที่ object GC ยัง keep object นั้นไว้ตราบเท่าที่ reference ยังมีอยู่ คุณไม่ต้องคิดเลยว่า reference ยังถูกต้องอยู่ไหม
 
-Rust ไม่มี garbage collector ดังนั้นมันต้องพิสูจน์ — ตั้งแต่ compile time — ว่าทุก reference ถูกต้องตลอดช่วงที่ใช้งาน ระบบการพิสูจน์นี้เรียกว่า **lifetimes**
+Rust ไม่มี garbage collector จึงต้องพิสูจน์ตั้งแต่ compile time ว่าทุก reference ยังใช้งานได้จริงตลอดช่วงที่ถูกใช้ ระบบการพิสูจน์นี้เรียกว่า **lifetime**
 
 <RsOnly title="Lifetime จริงๆ คืออะไร">
 
@@ -24,13 +24,13 @@ Rust ไม่มี garbage collector ดังนั้นมันต้อ�
 1. Function return reference และ compiler ไม่รู้ว่ามาจาก input ตัวไหน
 2. Struct hold reference (ต้องรู้ว่า referenced data มีชีวิตอยู่นานแค่ไหน)
 
-Lifetime annotation ไม่ได้เปลี่ยนระยะเวลาที่ data มีชีวิต มันเป็น constraint ที่บอก compiler ว่า: "output reference นี้มีชีวิตนานเท่ากับ input reference นี้"
+Lifetime annotation ไม่ได้เปลี่ยนระยะเวลาที่ data มีชีวิต แต่เป็น constraint ที่บอก compiler ว่า: "output reference นี้มีชีวิตนานเท่ากับ input reference นี้"
 
 </RsOnly>
 
 ## ทำไมถึงต้องมี lifetime — ปัญหา dangling reference
 
-TypeScript ไม่มี dangling reference เลย — GC ป้องกันไม่ให้ underlying data ถูกคืนในขณะที่มี reference อยู่ Rust คืน data เมื่อ owner หลุด scope ถ้าไม่มี lifetime มันเป็นไปได้ที่จะ return reference ไปที่ data ที่ถูกคืนไปแล้ว:
+TypeScript ไม่มี dangling reference เลย — GC จะไม่ยอมคืน underlying data ตราบใดที่ยังมี reference ชี้อยู่ ส่วน Rust คืน data ทันทีที่ owner หลุด scope ถ้าไม่มี lifetime ก็เป็นไปได้ที่จะ return reference ไปยัง data ที่ถูกคืนไปแล้ว:
 
 ```rust
 // โค้ดนี้ compile ไม่ได้ — และนั่นคือจุดประสงค์
@@ -88,7 +88,7 @@ fn main() {
 
 อ่านว่า: "สำหรับ lifetime `'a` บางตัว ทั้ง `x` และ `y` ต้องมีชีวิตอย่างน้อยนาน `'a` และ returned reference จะมีชีวิตได้มากสุดแค่ `'a`"
 
-ในทางปฏิบัติ: returned reference จะถูกต้องตลอดช่วงที่ **สั้นกว่า** ของ lifetime `x` และ `y` ถ้าคุณพยายามใช้ result หลังจาก input ตัวใดตัวหนึ่งถูก drop compiler จะปฏิเสธ
+ในทางปฏิบัติ: returned reference จะถูกต้องตลอดช่วงที่ **สั้นกว่า** ของ lifetime `x` และ `y` ถ้าคุณพยายามใช้ result หลังจาก input ตัวใดตัวหนึ่งถูก drop ไปแล้ว ตัว compiler จะปฏิเสธทันที
 
 ชื่อ `'a` เป็นแค่ convention คุณสามารถเขียน `'x`, `'input`, หรือ identifier ตัวพิมพ์เล็กที่มี tick นำหน้า ชื่อตัวอักษรเดียวเป็น idiomatic
 
@@ -96,7 +96,7 @@ fn main() {
 
 ## Lifetime ใน struct
 
-ถ้า struct hold reference มันต้องประกาศ lifetime เพื่อบอกว่า "struct นี้อยู่ได้ไม่นานกว่า data ที่มัน reference":
+ถ้า struct hold reference ไว้ ต้องประกาศ lifetime เพื่อบอกว่า "struct นี้อยู่ได้ไม่นานกว่า data ที่ reference ถึง":
 
 export const lifetimeStructTs = `// TypeScript — struct ที่ hold reference เป็นแค่ object property
 interface ImportantExcerpt {

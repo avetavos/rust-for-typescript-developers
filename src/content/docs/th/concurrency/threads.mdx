@@ -11,7 +11,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## Threads ใน TypeScript vs Rust
 
-ใน Node.js หรือ browser คุณไม่สามารถรัน JavaScript แบบ parallel บน CPU core อื่นได้โดยตรง คุณสามารถ spawn **Web Worker** ได้ แต่มันรันในกระบวนการแยกต่างหาก: คุณไม่สามารถแชร์ closure หรือส่ง reference ข้ามไปได้ — มีเพียงข้อมูลที่ serialize ได้เท่านั้นที่ผ่าน `postMessage` ได้
+ใน Node.js หรือ browser คุณรัน JavaScript แบบ parallel บน CPU core อื่นตรง ๆ ไม่ได้ จะ spawn **Web Worker** ก็ทำได้ แต่ Worker รันอยู่ในกระบวนการแยก: แชร์ closure หรือส่ง reference ข้ามไปไม่ได้ — ส่งได้เฉพาะข้อมูลที่ serialize ได้ผ่าน `postMessage` เท่านั้น
 
 Rust ให้ **OS threads จริง** ผ่าน `std::thread::spawn` threads เหล่านี้รันในกระบวนการเดียวกัน แชร์ address space เดียวกัน และสามารถรับค่า (ไม่ใช่สำเนา) จาก parent thread ได้ — ตราบใดที่ ownership rules ถูกต้อง
 

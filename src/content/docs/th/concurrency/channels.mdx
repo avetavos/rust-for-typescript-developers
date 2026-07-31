@@ -13,7 +13,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 หนึ่งในวิธีที่ปลอดภัยที่สุดในการประสาน concurrency คือ **message passing**: แทนที่จะแชร์ memory threads จะสื่อสารโดยการส่งค่าผ่าน channel Go ทำให้ pattern นี้เป็นที่นิยมด้วย goroutines และ channels Rust มีแนวคิดเดียวกันใน standard library ผ่าน `std::sync::mpsc`
 
-ใน JavaScript message passing คือ *วิธีเดียว* ในการสื่อสารข้ามขอบเขต Worker — `postMessage` ส่งสำเนา serialized ของข้อมูล Rust channels แตกต่างออกไป: มันโอน **ownership** ของค่า thread ที่ส่งจะสละสิทธิ์ในค่านั้น และ thread ที่รับจะ own มันแต่เพียงผู้เดียว ไม่มีสำเนา ไม่มี lock
+ใน JavaScript message passing คือ *วิธีเดียว* ในการสื่อสารข้ามขอบเขต Worker — `postMessage` ส่งสำเนาข้อมูลที่ serialize แล้ว ส่วน channel ของ Rust ต่างออกไป: โอน **ownership** ของค่าไปเลย ฝั่งที่ส่งจะสละสิทธิ์ในค่านั้น และ thread ที่รับกลายเป็นเจ้าของแต่เพียงผู้เดียว ไม่มีสำเนา ไม่มี lock
 
 ## std::sync::mpsc
 
@@ -64,7 +64,7 @@ fn main() {
 
 <TsGo ts={channelsTs} go={channelsRs} />
 
-## Multiple producers (fan-in pattern)
+## หลาย producer (fan-in pattern)
 
 ส่วน "multi-producer" ของ `mpsc` ให้คุณ clone `Sender` และกระจายไปยังหลาย thread threads ทั้งหมดเขียนเข้า receiver เดียวกัน นี่คือ pattern **fan-in** แบบคลาสสิก
 
@@ -142,14 +142,14 @@ fn main() {
 
 <RsOnly title="การโอน ownership ผ่าน channels">
 
-เมื่อคุณเรียก `tx.send(value)` `value` จะถูก **move** เข้าไปใน channel thread ที่ส่งไม่สามารถใช้มันได้อีก thread ที่รับจะได้ ownership แต่เพียงผู้เดียวเมื่อเรียก `rx.recv()`
+เมื่อคุณเรียก `tx.send(value)` ตัว `value` จะถูก **move** เข้าไปใน channel ฝั่ง thread ที่ส่งจะใช้ค่านั้นไม่ได้อีก และฝั่งที่รับจะได้ ownership แต่เพียงผู้เดียวเมื่อเรียก `rx.recv()`
 
 การโอน ownership นี้คือสิ่งที่ทำให้ Rust channels ปราศจาก race โดยไม่ต้องสำเนา:
 
 - ไม่มีสอง thread ที่สามารถถือ mutable reference ไปยังค่าเดียวกันพร้อมกันได้
 - การส่งคือการโอน ownership — ไม่ใช่ copy ไม่ใช่ lock ไม่ใช่ reference
 
-สิ่งนี้แตกต่างอย่างมากจาก `postMessage` ของ JavaScript ซึ่ง *ต้อง* serialize (copy) หรือ transfer แบบ `Transferable` เพราะไม่มีแนวคิด ownership ระดับ type ใน Rust type system บังคับ handoff
+ต่างจาก `postMessage` ของ JavaScript อย่างมาก เพราะฝั่งนั้น *ต้อง* serialize (copy) หรือ transfer แบบ `Transferable` เนื่องจากไม่มีแนวคิด ownership ในระดับ type ส่วนใน Rust ตัว type system เป็นคนบังคับการ handoff ให้เอง
 
 </RsOnly>
 

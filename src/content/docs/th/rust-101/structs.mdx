@@ -1,6 +1,6 @@
 ---
 title: 'Structs'
-description: 'การนิยาม struct, impl block, เมธอด และ associated function ใน Rust เทียบกับ class ของ TypeScript'
+description: 'การนิยาม struct, impl block, method และ associated function ใน Rust เทียบกับ class ของ TypeScript'
 ---
 
 import TsGo from '../../../../components/TsGo.astro';
@@ -10,7 +10,7 @@ import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
 ## Structs ใน TypeScript เทียบกับ Rust
 
-TypeScript ใช้ `class` เพื่อรวมข้อมูลและพฤติกรรมเข้าด้วยกัน และใช้ `interface` หรือ object literal สำหรับรูปทรงของข้อมูลล้วน ๆ ส่วน Rust แยกข้อมูลออกจากพฤติกรรม: `struct` เก็บข้อมูล และ `impl` block ผูกเมธอดเข้ากับมัน ไม่มี inheritance — การทำ composition คือวิถีแบบ Rust
+TypeScript ใช้ `class` เพื่อรวมข้อมูลและพฤติกรรมเข้าด้วยกัน และใช้ `interface` หรือ object literal สำหรับรูปทรงของข้อมูลล้วน ๆ ส่วน Rust แยกข้อมูลออกจากพฤติกรรม: `struct` เก็บข้อมูล ส่วน `impl` block ผูก method เข้ากับ struct นั้น ไม่มี inheritance — composition คือวิถีของ Rust
 
 ## การนิยาม struct
 
@@ -24,9 +24,9 @@ interface Point { x: number; y: number; }
 struct Point { x: f64, y: f64 }
 ```
 
-## การเพิ่มเมธอดด้วย impl
+## เพิ่ม method ด้วย impl
 
-เมธอดอยู่ใน `impl` block แยกต่างหาก เมธอดที่อ่านข้อมูลรับ `&self` (immutable reference) เมธอดที่ mutate รับ `&mut self` ส่วน function ใน `impl` ที่ไม่มีพารามิเตอร์ `self` เป็น **associated function** — เรียกด้วยไวยากรณ์ `::` มักใช้เป็น constructor
+method อยู่ใน `impl` block แยกต่างหาก ตัวที่แค่อ่านข้อมูลรับ `&self` (immutable reference) ส่วนตัวที่ mutate รับ `&mut self` และ function ใน `impl` ที่ไม่มี parameter `self` ถือเป็น **associated function** — เรียกด้วยไวยากรณ์ `::` มักใช้เป็น constructor
 
 export const structsTs = `class Point {
   constructor(public x: number, public y: number) {}
@@ -93,7 +93,7 @@ fn main() {
 
 export const quizStructs = [
   {
-    q: "ใน Rust คุณนิยามเมธอดบน struct ไว้ที่ไหน?",
+    q: "ใน Rust คุณนิยาม method ของ struct ไว้ที่ไหน?",
     options: [
       "ภายใน body ของ struct โดยใช้ `fn`",
       "ใน `impl` block แยกต่างหาก",
@@ -103,12 +103,12 @@ export const quizStructs = [
     answer: 1
   },
   {
-    q: "`&self` หมายความว่าอะไรใน signature ของเมธอดใน Rust?",
+    q: "`&self` ใน signature ของ method ใน Rust หมายความว่าอะไร?",
     options: [
-      "เมธอดรับ ownership ของ struct ไป",
-      "เมธอดสามารถ mutate struct ได้",
-      "เมธอด borrow struct แบบ immutable",
-      "เมธอดเป็น static"
+      "method รับ ownership ของ struct ไปเลย",
+      "method mutate struct ได้",
+      "method borrow struct แบบ immutable",
+      "method นี้เป็น static"
     ],
     answer: 2
   },

@@ -69,7 +69,7 @@ async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
 
 ## Operator `?`
 
-`?` operator คือ shorthand สำหรับ early-return ของ `Result` ใน Rust มันแทนที่ try/catch สำหรับ recoverable errors:
+`?` operator คือ shorthand สำหรับ early-return ของ `Result` ใน Rust ใช้แทน try/catch สำหรับ error ที่กู้คืนได้:
 
 ```rust
 async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
@@ -131,7 +131,7 @@ impl IntoResponse for AppError {
 
 Express มี global 4-arg error handler เพราะ JavaScript exceptions unwind ผ่าน middleware stack และต้องถูก catch ที่ไหนสักแห่ง Axum handlers ไม่สามารถ panic ได้ (หรือพูดได้ว่า panics ถูกแปลงเป็น 500) และ errors เป็นแค่ค่า `Result::Err` — เป็นข้อมูลที่ type-safe ไม่ใช่ exceptions
 
-นั่นหมายความว่า error ที่เป็นไปได้ทุกอย่างที่ handler สามารถสร้างได้นั้น **มองเห็นอยู่ใน return type** ไม่มี implicit error paths ไม่มี uncaught async rejections และไม่มี bug "ลืมเรียก `next(err)`" Compiler ตรวจสอบว่าทุก error variant ถูกจัดการ — ไม่ว่าจะผ่าน `?` propagating ไปยัง handler's `Result` หรือโดยการ mapping ไปยัง variant อื่น
+แปลว่า error ทุกแบบที่ handler สร้างได้ **มองเห็นได้จาก return type** ไม่มี implicit error path ไม่มี uncaught async rejection และไม่มีบั๊ก "ลืมเรียก `next(err)`" ตัว compiler จะเช็กให้ว่าทุก error variant ถูกจัดการครบ — ไม่ว่าจะปล่อยให้ `?` propagate ขึ้นไปที่ `Result` ของ handler หรือ map ไปเป็น variant อื่น
 
 </RsOnly>
 

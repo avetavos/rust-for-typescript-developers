@@ -10,7 +10,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## supertest/jest vs `tower::ServiceExt::oneshot`
 
-ใน Node.js คุณใช้ `supertest` เพื่อส่ง HTTP requests ไปยัง Express/Nest app ของคุณแบบ in-process โดยไม่ต้องเริ่ม server จริง สิ่งเทียบเท่าของ Axum คือ `tower::ServiceExt::oneshot` — มัน drive router เป็น Tower service โดยส่ง `Request` เดียวและรอ `Response` ทั้งหมด in-process โดยไม่มี socket
+ใน Node.js คุณใช้ `supertest` ยิง HTTP request เข้า Express/Nest app แบบ in-process โดยไม่ต้องเปิด server จริง ฝั่ง Axum ของเทียบเท่าคือ `tower::ServiceExt::oneshot` — ขับ router ในฐานะ Tower service ส่ง `Request` เข้าไปหนึ่งใบแล้วรอ `Response` จบใน process เดียว ไม่มี socket
 
 export const tsSuper = `// Jest + supertest (NestJS)
 import * as request from 'supertest';
@@ -160,7 +160,7 @@ fn build_app_with_state(state: Arc<AppState>) -> Router {
 
 <RsOnly title="ไม่ต้องมี running server">
 
-`tower::ServiceExt::oneshot` consume `Router` (เป็น `Service`) และ drive มัน in-process ไม่มี TCP socket ไม่มีการผูก port และไม่มีการเริ่ม process นี่ทำให้ handler tests:
+`tower::ServiceExt::oneshot` จะ consume `Router` (ที่เป็น `Service`) แล้ว drive แบบ in-process ไม่มี TCP socket ไม่ต้องผูก port ไม่ต้องเปิด process ใหม่ ผลคือ handler test:
 
 - **เร็ว** — ไม่มี OS round-trip ไม่มี network stack
 - **Deterministic** — ไม่มี port conflicts ไม่มี `EADDRINUSE`

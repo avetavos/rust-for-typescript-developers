@@ -22,11 +22,11 @@ array ขนาดคงที่ `[T; N]` อยู่บน stack ส่วน
 
 ## HashMap — ที่เก็บแบบ key/value
 
-`HashMap<K, V>` คือตัวเทียบเท่ากับ `Map` ของ JS หรือ `Record<string, V>` ของ TS ใน Rust มันอยู่ใน `std::collections`
+`HashMap<K, V>` คือของเทียบเท่า `Map` ของ JS หรือ `Record<string, V>` ของ TS โดยใน Rust จะอยู่ใน `std::collections`
 
 ## การ iterate
 
-iterator ของ Rust เป็นแบบ lazy และประกอบกันได้ — `filter`, `map`, `collect` ทำงานเหมือนเมธอด array ของ JS แต่จะถูกประเมินผลก็ต่อเมื่อถูก consume เท่านั้น
+iterator ของ Rust เป็นแบบ lazy และต่อกันได้ — `filter`, `map`, `collect` ใช้งานเหมือน array method ของ JS แต่จะประเมินผลก็ต่อเมื่อถูก consume เท่านั้น
 
 export const collectionsTs = `// Array
 const numbers = [1, 2, 3, 4, 5];

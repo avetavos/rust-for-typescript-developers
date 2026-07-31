@@ -117,7 +117,7 @@ export const iterRs = `fn main() {
 
 <RsOnly title="move closures">
 
-โดย default closure จะ borrow ค่าที่จับไว้ ถ้าต้องการบังคับให้มัน *own* ค่าเหล่านั้น (จำเป็นเมื่อ closure ต้องมีชีวิตอยู่นานกว่า scope ปัจจุบัน เช่น ส่งไปยัง `std::thread::spawn`) ให้ใช้ prefix `move`:
+โดย default closure จะ borrow ค่าที่จับไว้ ถ้าอยากบังคับให้ closure *own* ค่าเหล่านั้น (จำเป็นเมื่อ closure ต้องอยู่นานกว่า scope ปัจจุบัน เช่น ส่งเข้า `std::thread::spawn`) ให้ใส่ prefix `move`:
 
 ```
 let name = String::from("Alice");
@@ -169,7 +169,7 @@ export const quizClosures = [
     answer: 2
   },
   {
-    q: "Iterator chain ของ Rust ทำการคำนวณจริงเมื่อใด?",
+    q: "Iterator chain ของ Rust คำนวณจริงเมื่อใด?",
     options: [
       "เมื่อเรียก adapter แรกเช่น `.map()`",
       "ทันที เหมือนกับ Array methods ของ TypeScript",

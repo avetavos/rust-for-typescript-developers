@@ -26,7 +26,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## async fn และ .await
 
-`async fn` คืน `Future` — การคำนวณแบบ lazy ที่ไม่ทำอะไรจนกว่าจะถูก poll โดย runtime คุณ `.await` Future เพื่อรันมันและรับผลลัพธ์ นี่มี syntax เหมือนกันกับ `await` ของ JavaScript ทุกประการ
+`async fn` คืน `Future` — การคำนวณแบบ lazy ที่ยังไม่ทำอะไรจนกว่า runtime จะเข้ามา poll คุณใช้ `.await` เพื่อสั่งให้ Future ทำงานแล้วรับผลลัพธ์ ตรงนี้ syntax เหมือน `await` ของ JavaScript ทุกประการ
 
 export const asyncTs = `// TypeScript async/await
 async function fetchUser(id: number): Promise<string> {
@@ -66,9 +66,9 @@ async fn main() {
 
 <TsGo ts={asyncTs} go={asyncRs} />
 
-## Spawn async tasks (tokio::spawn)
+## สร้าง async task ด้วย tokio::spawn
 
-`tokio::spawn` คือ async เทียบเท่าของ `thread::spawn` มัน schedule future บน Tokio thread pool และคืน `JoinHandle<T>` ต่างจาก `thread::spawn` task รันบน thread pool ที่จัดการโดย Tokio — โดยทั่วไปหนึ่ง thread ต่อ CPU core
+`tokio::spawn` คือ async เทียบเท่าของ `thread::spawn` โดยจะ schedule future ลงบน Tokio thread pool แล้วคืน `JoinHandle<T>` ต่างจาก `thread::spawn` ตรงที่ task ทุกตัวรันบน thread pool ที่ Tokio จัดการให้ — โดยทั่วไปหนึ่ง thread ต่อหนึ่ง CPU core
 
 export const asyncSpawnTs = `// TypeScript: fire-and-forget ด้วย Promise (หรือ await เพื่อรวบรวมผล)
 async function work(id: number): Promise<number> {
@@ -130,13 +130,13 @@ async fn main() {
 
 ### Futures เป็น lazy
 
-ใน JavaScript การสร้าง Promise จะเริ่มทำงานทันที — executor function รันทันที ใน Rust `async fn` คืน `Future` ที่ **ไม่ทำอะไร** จนกว่าใครบางคนจะ drive มัน (poll มัน) การเขียน:
+ใน JavaScript การสร้าง Promise จะเริ่มทำงานทันที — executor function รันเลย ส่วนใน Rust `async fn` คืน `Future` ที่ **ไม่ทำอะไรเลย** จนกว่าจะมีใครมา drive (poll) การเขียนแบบนี้:
 
 ```rust
 let f = fetch_user(1); // ไม่เริ่มการคำนวณ
 ```
 
-...ไม่ทำอะไรเลย คุณต้อง `.await` มัน หรือส่งให้ `tokio::spawn` (หรือ executor อื่น) เพื่อให้มันรัน ถ้าคุณสร้าง Future แล้วไม่เคย await มัน body ของ async function จะไม่ถูกรันเลย
+...ไม่ทำอะไรเลย คุณต้อง `.await` หรือโยนให้ `tokio::spawn` (หรือ executor อื่น) Future ถึงจะเริ่มทำงาน ถ้าสร้าง Future ทิ้งไว้เฉย ๆ โดยไม่เคย await body ของ async function จะไม่ถูกรันเลย
 
 ### คุณต้องเลือก runtime
 
@@ -205,12 +205,12 @@ export const quizAsyncTokio = [
     answer: 1
   },
   {
-    q: "เกิดอะไรขึ้นถ้าคุณสร้าง Rust Future แต่ไม่เคย .await มัน?",
+    q: "เกิดอะไรขึ้นถ้าคุณสร้าง Rust Future แล้วไม่เคย .await เลย?",
     options: [
-      "มันรันใน background อัตโนมัติ",
-      "Compiler ออก warning แต่รันมันอยู่ดี",
+      "Future รันใน background ให้อัตโนมัติ",
+      "Compiler เตือน แต่ก็ยังรันให้อยู่ดี",
       "Body ของ Future จะไม่ถูกรันเลย",
-      "มัน panic ณ runtime"
+      "เกิด panic ตอน runtime"
     ],
     answer: 2
   }

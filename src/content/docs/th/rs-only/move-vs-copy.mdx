@@ -13,13 +13,13 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ใน JavaScript, primitive (`number`, `boolean`, `string`) ถูกส่ง by value — การ copy ราคาถูกและอัตโนมัติ Object และ array ถูกส่ง by reference — ทั้งสองตัวแปรชี้ไปที่ heap data เดียวกัน
 
-TypeScript แสดงสิ่งนี้ผ่าน type system แต่ไม่ได้ให้คุณควบคุมมัน คุณไม่สามารถทำให้ type ของตัวเองทำงานเหมือน primitive ได้
+TypeScript สะท้อนเรื่องนี้ผ่าน type system แต่ไม่เปิดให้คุณควบคุม คุณทำให้ type ของตัวเองทำงานเหมือน primitive ไม่ได้
 
 Rust ชัดเจน: type ไม่ implement `Copy` trait (และถูก duplicate อัตโนมัติเมื่อ assign) ก็จะ follow **move semantics** (ownership โอน) คุณสามารถ derive `Clone` สำหรับ explicit deep copy ได้ด้วย
 
 ## Copy type — stack value ที่ duplicate อัตโนมัติ
 
-`Copy` type เป็น stack-allocated และ duplicate ราคาถูก การ assign หรือส่งมันสร้าง copy อิสระอย่างสมบูรณ์โดยไม่ต้องใช้ syntax พิเศษ
+`Copy` type อยู่บน stack และ duplicate ได้ถูกมาก การ assign หรือส่งเข้า function จะได้ copy ที่เป็นอิสระเต็มตัว โดยไม่ต้องเขียน syntax พิเศษ
 
 export const copyTs = `// TypeScript — primitive copy อัตโนมัติ (เหมือน Rust Copy)
 let a = 42;
@@ -64,7 +64,7 @@ Type ที่ไม่ implement `Copy` ได้แก่ `String`, `Vec<T>`, 
 
 ## Move type — heap value ที่โอน ownership
 
-Type อย่าง `String` และ `Vec<T>` เป็น owner ของ heap-allocated data การ assign พวกมัน move ownership ถ้าต้องการสอง copy อิสระ คุณต้องเรียก `.clone()` ชัดๆ
+Type อย่าง `String` และ `Vec<T>` เป็น owner ของ heap-allocated data การ assign จึงเป็นการ move ownership ถ้าอยากได้ copy อิสระสองชุด ต้องเรียก `.clone()` เอง
 
 export const moveTs = `// TypeScript — string เป็น primitive copy อัตโนมัติ
 let s1 = "hello";

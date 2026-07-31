@@ -13,7 +13,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 JavaScript หลีกเลี่ยงปัญหา thread-safety โดยสิ้นเชิง — มีแค่ thread เดียว (ต่อ Worker) ดังนั้นคำถามที่ว่า "สอง thread สามารถเข้าถึงค่านี้พร้อมกันได้ไหม?" จึงไม่เกิดขึ้นเลย ไม่มีแนวคิด thread safety ระดับ type ใน TypeScript
 
-Rust รองรับ parallelism จริง ซึ่งหมายความว่าสอง thread อาจเข้าถึง memory เดียวกันพร้อมกันจริงๆ เพื่อให้ปลอดภัยโดยไม่ต้องใช้ garbage collector หรือ lock แบบ runtime Rust ใช้ **marker traits**: `Send` และ `Sync`
+Rust รองรับ parallelism จริง แปลว่าสอง thread เข้าถึง memory ก้อนเดียวกันพร้อมกันได้จริง ๆ เพื่อให้ปลอดภัยโดยไม่ต้องพึ่ง garbage collector หรือ lock ตอน runtime ทาง Rust เลยใช้ **marker trait** สองตัว: `Send` และ `Sync`
 
 ## นิยามของ Send และ Sync
 
@@ -24,7 +24,7 @@ Rust รองรับ parallelism จริง ซึ่งหมายคว�
 | ไม่ใช่ `Send` | ไม่สามารถย้ายไปยัง thread อื่นได้ | `Rc<T>` (non-atomic reference count) |
 | ไม่ใช่ `Sync` | ไม่สามารถแชร์ reference ข้าม threads ได้ | `Cell<T>`, `RefCell<T>` |
 
-traits เหล่านี้ **ถูก implement อัตโนมัติ** โดย compiler ตาม types ภายใน struct ของคุณ คุณแทบไม่เคย implement มันด้วยตนเอง กฎจะ propagate: ถ้า struct ของคุณมี field ที่ไม่ใช่ `Send` struct ของคุณก็จะไม่ใช่ `Send` เช่นกัน
+trait สองตัวนี้ compiler **implement ให้อัตโนมัติ** โดยดูจาก type ที่อยู่ภายใน struct ของคุณ แทบไม่มีเคสที่ต้อง implement เอง และกฎจะ propagate ต่อ: ถ้า struct มี field ตัวใดไม่ใช่ `Send` ตัว struct เองก็ไม่ใช่ `Send` ด้วย
 
 export const sendSyncTs = `// TypeScript ไม่มี type สำหรับ thread-safety
 // ภาษารับประกันความปลอดภัยโดยมีแค่ thread เดียวต่อ Worker
@@ -71,7 +71,7 @@ fn main() {
 
 <RsOnly title="การป้องกัน data race ณ compile time (ไม่มีใน JS)">
 
-สิ่งที่สำคัญที่สุดเกี่ยวกับ `Send` และ `Sync` คือมันเป็น **zero-cost abstractions** ไม่มี overhead ระหว่าง runtime — ไม่มีการ lock ไม่มีการเพิ่ม reference count เพียงเพื่อตรวจสอบ thread safety การรับประกันทั้งหมดถูก enforce ณ compile time
+จุดสำคัญที่สุดของ `Send` และ `Sync` คือเป็น **zero-cost abstraction** ไม่มี overhead ตอน runtime — ไม่ต้อง lock ไม่ต้องเพิ่ม reference count เพียงเพื่อเช็ก thread safety การรับประกันทั้งหมดเกิดขึ้นตั้งแต่ compile time
 
 ### สิ่งที่เกิดขึ้นเมื่อคุณละเมิดกฎ
 
@@ -106,7 +106,7 @@ error[E0277]: `Rc<i32>` cannot be sent between threads safely
 
 `thread::spawn` ต้องการให้ closure และทุกอย่างที่ capture มาเป็น `Send` ซึ่งตรวจสอบ ณ call site — ไม่ใช่ runtime ไม่ใช่ตอนรับค่า แต่ตอนที่คุณเขียน `thread::spawn(...)` นั่นเอง
 
-นี่คือหัวใจของ fearless concurrency: type system รู้ว่า type ไหนปลอดภัยที่จะข้ามขอบเขต thread และมัน enforce ความรู้นั้นแบบ static
+นี่คือหัวใจของ fearless concurrency: type system รู้ว่า type ไหนข้ามขอบเขต thread ได้อย่างปลอดภัย และบังคับใช้ความรู้นั้นแบบ static
 
 </RsOnly>
 

@@ -34,7 +34,7 @@ export const rsLayoutDiagram = `flowchart TD
 
 ## จาก `package.json` ถึง `Cargo.toml`
 
-ทุกโปรเจกต์ Node.js เริ่มต้นด้วย `package.json` ใน Rust สิ่งเทียบเท่าคือ `Cargo.toml` มันประกาศชื่อ crate, version และ dependencies Cargo เป็นทั้ง package manager และ build tool — ไม่ต้องแยก `npm` กับ `tsc` กับ `ts-node`
+ทุกโปรเจกต์ Node.js เริ่มด้วย `package.json` ส่วนของเทียบเท่าใน Rust คือ `Cargo.toml` ซึ่งประกาศชื่อ crate, version และ dependency ตัว Cargo เองเป็นทั้ง package manager และ build tool — ไม่ต้องแยก `npm` กับ `tsc` กับ `ts-node`
 
 <Mermaid code={tsLayoutDiagram} title="Express/NestJS project layout" />
 

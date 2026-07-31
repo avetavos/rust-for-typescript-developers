@@ -11,11 +11,11 @@ import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
 ถ้าคุณมาจาก Node.js คุณคงรู้จัก Express หรือ NestJS แล้ว Axum คือคำตอบของ Rust สำหรับพื้นที่นั้น — เป็น web framework ระดับสูงที่ให้คุณเขียน `async fn` route handlers, วิเคราะห์ข้อมูล request ด้วย type-safe extractors และแชร์ state ข้ามหลาย routes
 
-แต่ต่างจาก Express ตรงที่ Axum ไม่ได้รวมทุกอย่างในตัวเอง มันออกแบบมาให้บางและมอบหน้าที่ middleware ให้กับ **Tower** ซึ่งเป็น middleware library ระดับ production ที่ composable ได้สูง ผลลัพธ์ที่ได้คือ:
+แต่ต่างจาก Express ตรงที่ Axum ไม่ได้รวมทุกอย่างมาในตัว ออกแบบมาให้บางแล้วโยนหน้าที่ middleware ให้ **Tower** ที่เป็น middleware library ระดับ production ที่ compose ได้ยืดหยุ่นมาก ผลที่ได้คือ:
 
 - Type safety ตั้งแต่ compile-time ตลอดทั้ง request/response cycle
 - Zero-cost abstractions — ไม่มี garbage collector ไม่มีการ allocation ที่ซ่อนอยู่
-- Async แบบ first-class สร้างบน **Tokio** ซึ่งเป็น async runtime มาตรฐานของ Rust
+- Async แบบ first-class สร้างบน **Tokio** ที่เป็น async runtime มาตรฐานของ Rust
 
 ## เปรียบเทียบ Axum กับ Express และ NestJS
 

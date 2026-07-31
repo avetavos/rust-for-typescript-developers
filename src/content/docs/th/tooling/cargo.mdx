@@ -17,7 +17,7 @@ export const cargoNewTree = `flowchart TD
 
 ## Cargo คือ npm + tsc + jest ในเครื่องเดียว
 
-ถ้าคุณเคยใช้ `npm` (หรือ `yarn`/`pnpm`) Cargo จะรู้สึกคุ้นเคยทันที มันจัดการ dependencies, build project, รัน code และรัน test — ทั้งหมดอยู่ในที่เดียว
+ถ้าเคยใช้ `npm` (หรือ `yarn`/`pnpm`) มาก่อน Cargo จะคุ้นมือทันที เพราะจัดการ dependency, build project, รันโค้ดและรัน test ได้ครบในตัวเดียว
 
 ## สร้าง project ใหม่
 
@@ -134,8 +134,8 @@ export const quizCargo = [
   {
     q: "ควร commit Cargo.lock สำหรับ binary application หรือไม่?",
     options: [
-      "ไม่ — มันถูกสร้างอัตโนมัติและควร ignore",
-      "ใช่ — มันรับประกัน reproducible build ข้ามเครื่อง",
+      "ไม่ — ไฟล์นี้ generate อัตโนมัติ ควร ignore ทิ้ง",
+      "ใช่ — ช่วยการันตี reproducible build ข้ามเครื่อง",
       "เฉพาะบน CI เท่านั้น ไม่ใช่ local",
       "เฉพาะเมื่อใช้ workspace"
     ],

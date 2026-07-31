@@ -11,7 +11,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## TypeScript interface เป็น structural — Rust trait เป็น nominal
 
-ใน TypeScript, interface ใช้ **structural typing**: ถ้า object มี shape ที่ถูกต้อง (property และ method ที่ถูกต้อง) มันก็ satisfy interface — ไม่ต้องประกาศ explicit
+ใน TypeScript interface ใช้ **structural typing**: ถ้า object มี shape ตรงตามที่กำหนด (property และ method ครบ) ก็ถือว่า satisfy interface ทันที — ไม่ต้องประกาศอะไรเพิ่ม
 
 Rust trait ใช้ **nominal typing**: type จะ implement trait ก็ต่อเมื่อคุณเขียน `impl Trait for Type` ชัดๆ การ match shape ไม่เพียงพอ ความแตกต่างนี้มีผลสำคัญต่อการออกแบบ library และความถูกต้องของโค้ด
 

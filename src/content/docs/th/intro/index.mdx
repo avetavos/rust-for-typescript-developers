@@ -15,7 +15,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## ทำไมต้องเรียน Rust?
 
-TypeScript แก้ปัญหาจริง: มันเพิ่ม types ให้ JavaScript เพื่อให้ข้อบกพร่องปรากฏตั้งแต่ขั้น compile แทนที่จะปรากฏใน production Rust นำแนวคิดนั้นไปสู่ระดับสุดขีด — มันทำให้บัก **ทั้งหมวด** (การเสียหายของหน่วยความจำ, data races, null dereferences) **เป็นไปไม่ได้โดยโครงสร้าง** โดยไม่มี garbage collector
+TypeScript แก้ปัญหาจริง: เพิ่ม type ให้ JavaScript เพื่อให้บักโผล่ตั้งแต่ขั้น compile แทนที่จะไปโผล่บน production ส่วน Rust ดันแนวคิดนี้ไปสุดทาง — ทำให้บัก **ทั้งหมวด** (memory corruption, data race, null dereference) **เป็นไปไม่ได้ตั้งแต่โครงสร้าง** โดยไม่ต้องมี garbage collector
 
 นี่คือคุณค่าหลักที่ได้รับ:
 
@@ -23,7 +23,7 @@ TypeScript แก้ปัญหาจริง: มันเพิ่ม types 
 - **Fearless concurrency** กฎ ownership เดียวกันที่ป้องกันบักด้านหน่วยความจำยังป้องกัน data races ด้วย ถ้าโค้ดของคุณ compile ได้ การเข้าถึงแบบ concurrent ก็ปลอดภัย — compiler บอกเราเอง
 - **Latency ที่คาดเดาได้และใกล้ศูนย์** ไม่มีการหยุดของ GC, ไม่มีการ warm-up ของ JIT, ไม่มีค่าใช้จ่ายของ VM โปรแกรม Rust เริ่มเร็วและเร็วต่อเนื่อง
 - **เครื่องมือที่ยอดเยี่ยมตั้งแต่วันแรก** `cargo` คือ package manager และ build tool ที่ดีที่สุดในบรรดา systems language `rustfmt` จัดรูปแบบโค้ดของคุณ `clippy` จับข้อผิดพลาดทั่วไป ecosystem จะรู้สึกคุ้นเคย
-- **Compiler ในฐานะครูผู้เป็นประโยชน์** ข้อความแสดงข้อผิดพลาดของ Rust นั้นโด่งดัง เมื่อคุณทำผิด compiler จะอธิบายว่าผิดอะไรและมักเสนอวิธีแก้ที่ชัดเจน มันเข้มงวด แต่ยุติธรรม
+- **Compiler คือครูที่คอยสอน** error message ของ Rust ขึ้นชื่อเรื่องความละเอียด เวลาคุณเขียนผิด compiler จะบอกว่าผิดตรงไหน และมักเสนอวิธีแก้มาให้ตรง ๆ เข้มงวดก็จริง แต่ยุติธรรม
 
 ## Rust อยู่ตรงไหนเมื่อเทียบกับ TypeScript
 
@@ -122,7 +122,7 @@ let name: Option<&str> = Some("Alice");
 let missing: Option<&str> = None;
 ```
 
-compiler บังคับให้คุณจัดการทั้งสองกรณีก่อนที่จะสามารถใช้ค่าได้ ไม่มีทางที่จะ dereference `None` โดยบังเอิญ — มันเป็น compile error ไม่ใช่ runtime crash
+compiler บังคับให้คุณจัดการทั้งสองกรณีก่อนถึงจะใช้ค่าได้ จึงไม่มีทาง dereference `None` โดยบังเอิญ — เป็น compile error ไม่ใช่ runtime crash
 
 </RsOnly>
 

@@ -10,7 +10,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## จาก `req.params` ถึง `Path<T>`
 
-ใน Express คุณเข้าถึง route parameters ผ่าน object `req.params` ที่ไม่มี type Axum แทนที่ด้วย `Path<T>` extractor — มัน deserialize URL segment โดยตรงไปยัง Rust type และจะล้มเหลวที่ type level หากค่าไม่ตรงกัน
+ใน Express คุณเข้าถึง route parameter ผ่าน object `req.params` ที่ไม่มี type ส่วน Axum เปลี่ยนมาใช้ `Path<T>` extractor แทน — deserialize URL segment ตรงเข้า Rust type และถ้าค่าไม่ตรงก็ล้มเหลวตั้งแต่ระดับ type
 
 export const tsPath = `// Express
 app.get('/users/:id', async (req, res) => {
@@ -133,7 +133,7 @@ async fn get_user_posts(
 
 <RsOnly title="Type safety ที่ boundary">
 
-TypeScript กับ zod ให้ runtime validation แก่คุณ Extractors ของ Axum ให้ **การรับประกัน compile-time** เกี่ยวกับ handler shapes บวกกับ **automatic runtime deserialization** ถ้า `Path<Uuid>` ไม่สามารถ parse URL segment ได้ Axum จะ return `400 Bad Request` ก่อนที่ handler function ของคุณจะถูกเรียกด้วยซ้ำ คุณไม่เคยเห็นค่าที่ไม่ถูกต้อง — มันไม่เคยถึง code ของคุณ
+TypeScript กับ zod ให้แค่ runtime validation ส่วน extractor ของ Axum ให้ **การรับประกันตั้งแต่ compile-time** เรื่องรูปร่างของ handler บวกกับ **runtime deserialization อัตโนมัติ** ถ้า `Path<Uuid>` parse URL segment ไม่ได้ Axum จะ return `400 Bad Request` ตั้งแต่ก่อนเรียก handler ของคุณด้วยซ้ำ คุณจึงไม่มีวันเจอค่าที่ไม่ถูกต้อง เพราะค่าพวกนั้นไปไม่ถึงโค้ดของคุณเลย
 
 นี่คือการรวมกันของ:
 1. **serde** — deserialization แบบ derived ที่ compile-time

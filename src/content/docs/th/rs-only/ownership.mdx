@@ -11,7 +11,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## JavaScript จัดการ memory ให้คุณ — Rust ไม่ทำแบบนั้น
 
-ใน JavaScript และ TypeScript ทุก heap value (string, array, object) จะถูก track โดย garbage collector คุณสร้าง value อย่างอิสระ แล้ว GC จะหาว่าเมื่อไหร่ไม่มีใครใช้แล้วและคืน memory คุณไม่เคยต้องเรียก `free()` ไม่เคยต้องกังวลเรื่อง use-after-free
+ใน JavaScript และ TypeScript garbage collector คอย track ทุก heap value (string, array, object) ให้เอง คุณสร้าง value ได้อย่างอิสระ แล้ว GC จะดูให้ว่าเมื่อไหร่ไม่มีใครใช้แล้วค่อยคืน memory ไม่ต้องเรียก `free()` เอง และไม่ต้องกังวลเรื่อง use-after-free
 
 Rust ไม่มี garbage collector แต่มี **ownership**: ระบบกฎ compile-time ที่ให้ทุก value มี owner แค่คนเดียว เมื่อ owner หลุด scope value จะถูกคืน memory อัตโนมัติ — ไม่ต้องการ GC
 
@@ -74,7 +74,7 @@ fn main() {
 
 ## Ownership ผ่าน function
 
-การส่ง heap value ไปยัง function จะ **move** มันเข้าไปใน function นั้น caller ไม่สามารถใช้มันอีกได้ เว้นแต่ function จะ return มันกลับมา
+การส่ง heap value เข้า function จะ **move** ค่านั้นเข้าไปด้วย ฝั่ง caller จึงใช้ค่าเดิมต่อไม่ได้ เว้นแต่ function จะ return กลับมาให้
 
 export const ownerFnTs = `// TypeScript — ส่ง object ไม่ได้ move ownership
 function greet(name: string) {
@@ -156,7 +156,7 @@ export const quizOwnership = [
     answer: 2
   },
   {
-    q: "คุณต้องทำอะไรเพื่อใช้ `String` ใน function แล้วยังใช้มันต่อใน caller ได้?",
+    q: "ต้องทำอย่างไรถึงจะใช้ `String` ใน function แล้วยังใช้ค่าเดิมต่อใน caller ได้?",
     options: [
       "ส่งแบบ by value — Rust จะ clone อัตโนมัติ",
       "ใช้ borrowing (&String) เพื่อให้ function ยืมโดยไม่รับ ownership",

@@ -10,7 +10,7 @@ import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
 ## TypeScript types vs Rust structs
 
-ใน TypeScript คุณกำหนด type หรือ interface สำหรับ API payload และใช้ zod (หรือ library ที่คล้ายกัน) สำหรับ runtime validation ใน Rust **struct คือทั้ง type และ validator** — `serde` derives serialization และ deserialization ที่ compile time และ fields ที่หายไปหรือผิด type จะถูกปฏิเสธที่ขั้นตอน deserialization โดยอัตโนมัติ
+ใน TypeScript คุณกำหนด type หรือ interface สำหรับ API payload แล้วใช้ zod (หรือ library คล้าย ๆ กัน) ทำ runtime validation ส่วนใน Rust **struct เป็นทั้ง type และ validator ในตัว** — `serde` derive ทั้ง serialization และ deserialization ให้ตั้งแต่ compile time และ field ที่หายไปหรือผิด type จะโดนปฏิเสธตั้งแต่ขั้น deserialization โดยอัตโนมัติ
 
 export const tsZod = `import { z } from 'zod';
 
@@ -43,7 +43,7 @@ let user: User = serde_json::from_str(raw_json)?; // returns Err if invalid`;
 
 ## `Json<T>` ใน Axum — request และ response
 
-`Json<T>` extractor/responder ของ Axum คือสะพานเชื่อมระหว่าง HTTP bodies กับ Rust types เมื่อใช้เป็น **parameter** มัน deserialize request body เมื่อใช้เป็น **return value** มัน serialize response
+`Json<T>` ของ Axum ทำหน้าที่ทั้ง extractor และ responder เป็นสะพานเชื่อมระหว่าง HTTP body กับ Rust type เมื่อวางเป็น **parameter** จะ deserialize request body ให้ และเมื่อใช้เป็น **return value** จะ serialize response ให้
 
 export const tsExpressJson = `// Express — parse body + respond with JSON
 app.post('/users', express.json(), async (req, res) => {
@@ -137,7 +137,7 @@ export const quizSerde = [
     answer: 1
   },
   {
-    q: "เมื่อ `Json<T>` ใช้เป็น **parameter** ของ Axum handler มันทำอะไร?",
+    q: "เมื่อ `Json<T>` ใช้เป็น **parameter** ของ Axum handler จะทำอะไร?",
     options: [
       "Serialize response body ไปเป็น JSON",
       "Deserialize request body ไปยัง type T คืน 422 ถ้าล้มเหลว",
@@ -147,7 +147,7 @@ export const quizSerde = [
     answer: 1
   },
   {
-    q: "attribute ของ serde ใดซ่อน field จาก JSON output เมื่อมันเป็น `None`?",
+    q: "attribute ของ serde ตัวใดซ่อน field จาก JSON output เมื่อค่าเป็น `None`?",
     options: [
       "`#[serde(skip)]`",
       "`#[serde(optional)]`",

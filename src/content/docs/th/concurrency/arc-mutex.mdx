@@ -11,7 +11,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## Shared mutable state: TypeScript vs Rust
 
-ใน JavaScript Workers ไม่แชร์ memory โดยปริยาย แต่ละ Worker มี heap ของตัวเอง วิธีเดียวที่จะแชร์ mutable state คือผ่าน `SharedArrayBuffer` ร่วมกับ `Atomics` ซึ่งเป็น low-level มีโอกาสเกิด error ง่าย และแทบไม่ถูกใช้ใน application code
+ใน JavaScript Workers ไม่แชร์ memory โดยปริยาย แต่ละ Worker มี heap ของตัวเอง วิธีเดียวที่จะแชร์ mutable state คือผ่าน `SharedArrayBuffer` ร่วมกับ `Atomics` ที่เป็น low-level มีโอกาสเกิด error ง่าย และแทบไม่ถูกใช้ใน application code
 
 Rust รองรับ shared mutable state ข้าม threads ผ่านสอง type ที่ใช้ร่วมกัน:
 
@@ -22,7 +22,7 @@ Rust รองรับ shared mutable state ข้าม threads ผ่าน�
 
 ## Arc — thread-safe reference counting
 
-`Arc` คือคำตอบของ Rust สำหรับ "ฉันต้องการ owner หลายรายข้าม threads" มันคล้ายกับ `Rc<T>` (reference counter แบบ single-thread) แต่ใช้ **atomic operations** สำหรับ reference count — ปลอดภัยที่จะอัปเดตจากหลาย thread พร้อมกัน
+`Arc` คือคำตอบของ Rust ต่อโจทย์ "อยากมี owner หลายรายข้าม thread" หน้าตาคล้าย `Rc<T>` (reference counter แบบ single-thread) แต่ใช้ **atomic operation** กับ reference count จึงอัปเดตจากหลาย thread พร้อมกันได้อย่างปลอดภัย
 
 คุณ clone `Arc` เพื่อให้ thread อื่นมี handle ไปยัง allocation เดียวกัน การ clone มีต้นทุนต่ำมาก: แค่ increment atomic integer
 
@@ -146,7 +146,7 @@ fn main() {
 
 ### RAII locking — unlock อัตโนมัติ
 
-`MutexGuard<T>` implements `Drop` เมื่อ guard ออกจาก scope — ไม่ว่าจะออกแบบปกติหรือผ่าน panic — lock จะถูก release คุณไม่สามารถลืม unlock Mutex ใน Rust ได้โดยบังเอิญ
+`MutexGuard<T>` implements `Drop` พอ guard ออกจาก scope — ไม่ว่าจะจบปกติหรือเพราะ panic — lock จะถูก release ให้เอง จึงไม่มีทางลืม unlock Mutex ใน Rust โดยบังเอิญ
 
 นี่เหมือนกับ RAII memory pattern: เช่นเดียวกับที่ `Box<T>` free memory เมื่อออกจาก scope `MutexGuard<T>` จะ release lock
 

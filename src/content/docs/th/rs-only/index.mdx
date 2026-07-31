@@ -11,9 +11,9 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## สิ่งที่ TypeScript ไม่มีสอน
 
-TypeScript เป็นภาษาที่ดีมาก แต่มันทำงานบน JavaScript runtime ที่มี garbage collector (GC) ซึ่ง runtime นั้นทำการตัดสินใจหลายอย่างแทนเรา: memory จะถูกคืนเมื่อไหร่? ใครเป็นเจ้าของ value นั้น? thread สองตัวอ่าน object เดียวกันพร้อมกันได้ไหม?
+TypeScript เป็นภาษาที่ดีมาก แต่ทำงานบน JavaScript runtime ที่มี garbage collector (GC) และ runtime ตัวนั้นตัดสินใจหลายอย่างแทนเรา: memory จะถูกคืนเมื่อไหร่? ใครเป็นเจ้าของ value นั้น? thread สองตัวอ่าน object เดียวกันพร้อมกันได้ไหม?
 
-Rust ทำให้การตัดสินใจเหล่านี้ explicit — ณ **compile time** โดยไม่มีต้นทุน runtime เลย นั่นหมายความว่า Rust มี concept บางอย่างที่ **ไม่มีใน TypeScript** เลย module นี้จะพาไปดูทั้งหมด
+Rust ทำให้การตัดสินใจเหล่านี้ explicit — ตั้งแต่ **compile time** และไม่มีต้นทุน runtime เลย ผลคือ Rust มี concept บางอย่างที่ **ไม่มีใน TypeScript** เลย และ module นี้จะพาไปดูให้ครบ
 
 <RsOnly title="Concept ของ Rust ที่ไม่มีใน TS">
 

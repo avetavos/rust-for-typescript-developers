@@ -66,7 +66,7 @@ async fn main() {
 
 ## NestJS providers vs Axum State
 
-ใน NestJS services คือ singletons ที่สร้างโดย IoC container และ inject เข้าไปใน controllers ผ่าน constructor ใน Axum คุณสร้าง state หนึ่งครั้งใน `main`, wrap ด้วย `Arc` และแนบกับ `Router` ทุก handler ที่ต้องการมันประกาศ `State(state): State<Arc<AppState>>`
+ใน NestJS service คือ singleton ที่ IoC container สร้างให้ แล้ว inject เข้า controller ผ่าน constructor ส่วนใน Axum คุณสร้าง state ครั้งเดียวใน `main`, wrap ด้วย `Arc` แล้วแนบเข้ากับ `Router` จากนั้น handler ตัวไหนต้องใช้ก็ประกาศ `State(state): State<Arc<AppState>>` เอง
 
 export const tsNestDI = `// NestJS
 @Injectable()
@@ -138,7 +138,7 @@ struct AppState {
 - `Arc<Mutex<T>>` — shared ownership, exclusive (write) access ทีละ task เดียวถือ lock ใช้สำหรับการ write ที่เกิดขึ้นน้อย
 - `Arc<RwLock<T>>` — shared ownership, concurrent reads **หรือ** one exclusive write ใช้เมื่อ reads บ่อยและ writes น้อย
 
-สำหรับ Axum applications ส่วนใหญ่ database pool (`PgPool`, `MongoClient`) thread-safe และ `Clone` อยู่แล้ว คุณสามารถวางมันใน `AppState` โดยตรงโดยไม่ต้องมี wrapping เพิ่มเติม
+ใน Axum application ส่วนใหญ่ database pool (`PgPool`, `MongoClient`) เป็น thread-safe และ `Clone` ได้อยู่แล้ว จึงวางลงใน `AppState` ตรง ๆ ได้เลยโดยไม่ต้อง wrap เพิ่ม
 
 </RsOnly>
 

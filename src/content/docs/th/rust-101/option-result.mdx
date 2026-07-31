@@ -50,7 +50,7 @@ fn divide(a: f64, b: f64) -> Result<f64, String> {
 }
 ```
 
-## เมธอดอำนวยความสะดวก
+## Method อำนวยความสะดวก
 
 | TypeScript | Rust |
 |---|---|
@@ -60,7 +60,7 @@ fn divide(a: f64, b: f64) -> Result<f64, String> {
 
 ## operator ?
 
-ใน function ที่ return `Result` นั้น `?` บนค่า `Result` จะทำการ unwrap `Ok` หรือไม่ก็ return `Err` ออกไปก่อนกำหนด — ช่วยกำจัดการซ้อน `match` หลายชั้น:
+ใน function ที่ return `Result` นั้น `?` บนค่า `Result` จะ unwrap `Ok` ให้ หรือไม่ก็ return `Err` ออกไปก่อนกำหนด — ช่วยตัดการซ้อน `match` หลายชั้นออกไป:
 
 ```
 fn read_number(s: &str) -> Result<i32, std::num::ParseIntError> {
@@ -135,9 +135,9 @@ fn main() {
 
 Rust **ไม่มี null และไม่มี undefined** ไม่มีทางที่จะมีค่าของ type `String` ที่จริง ๆ แล้วไม่มีค่าอยู่อย่างลับ ๆ — type `String` เก็บ string จริงเสมอ การไม่มีค่าถูกเข้ารหัสเป็น `Option<String>` และ compiler บังคับให้คุณตรวจสอบก่อนใช้
 
-ในทำนองเดียวกัน Rust **ไม่มี exception** function ที่อาจล้มเหลวจะ return `Result<T, E>` error เป็นค่าในระบบ type ไม่ใช่ control flow ที่มองไม่เห็นซึ่งสามารถ propagate ขึ้นไปตาม call stack อย่างเงียบ ๆ คุณรู้เสมอว่า function ใดอาจล้มเหลวได้ เพราะ signature ของมันบอกว่าเป็น `Result`
+ในทำนองเดียวกัน Rust **ไม่มี exception** function ที่อาจล้มเหลวจะ return `Result<T, E>` error เป็นค่าในระบบ type ไม่ใช่ control flow ที่มองไม่เห็นซึ่งสามารถ propagate ขึ้นไปตาม call stack อย่างเงียบ ๆ คุณรู้เสมอว่า function ใดอาจล้มเหลวได้ เพราะ signature บอกไว้ชัดว่าเป็น `Result`
 
-สิ่งนี้กำจัดบั๊กบน production ทั้งสองกลุ่มออกไป:
+วิธีนี้กำจัดบั๊กบน production ทั้งสองกลุ่มออกไป:
 - การ crash จาก null pointer / การ dereference undefined
 - exception ที่ไม่ถูกจับ ทำให้เกิดพฤติกรรมไม่คาดคิดตอน runtime
 
@@ -167,7 +167,7 @@ export const quizOptionResult = [
     answer: 2
   },
   {
-    q: "เมธอดใดที่ return ค่า default หาก Option เป็น None?",
+    q: "method ตัวไหนคืนค่า default เมื่อ Option เป็น None?",
     options: [
       "option.default()",
       "option.or_else()",

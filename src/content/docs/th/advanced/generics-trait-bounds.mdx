@@ -11,11 +11,11 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## TypeScript generics vs Rust generics
 
-ใน TypeScript คุณเขียน `function identity<T>(x: T): T` เพื่อทำให้ฟังก์ชันทำงานกับทุก type Rust ใช้ syntax วงเล็บมุมเหมือนกัน: `fn identity<T>(x: T) -> T` ความแตกต่างหลักคือ TypeScript generics ถูก erase บางส่วนตอน compile time และพึ่งพา structural typing ในขณะที่ Rust ทำ **monomorphisation** — compiler สร้างฟังก์ชัน concrete แยกต่างหากสำหรับทุก type ที่ใช้ ไม่มี overhead ขณะ runtime
+ใน TypeScript คุณเขียน `function identity<T>(x: T): T` เพื่อให้ function ทำงานได้กับทุก type ส่วน Rust ใช้ syntax วงเล็บมุมแบบเดียวกัน: `fn identity<T>(x: T) -> T` ความต่างหลักคือ generic ของ TypeScript ถูก erase บางส่วนตอน compile time แล้วไปพึ่ง structural typing ส่วน Rust ทำ **monomorphisation** — compiler สร้าง function แบบ concrete แยกให้ทุก type ที่ใช้จริง ไม่มี overhead ตอน runtime
 
 ## Trait bounds: การจำกัด `T`
 
-TypeScript จำกัด generics ด้วย `extends`: `<T extends Printable>` Rust จำกัดด้วย **trait bounds**: `<T: Display>` (inline syntax) หรือ `where` clause (แยกบรรทัด ใช้เมื่อ bounds ยาว)
+TypeScript จำกัด generic ด้วย `extends`: `<T extends Printable>` ส่วน Rust จำกัดด้วย **trait bound**: `<T: Display>` (inline syntax) หรือ `where` clause (แยกบรรทัด ใช้เมื่อ bound ยาว)
 
 export const genericTs = `// TypeScript — constraint with extends
 interface Printable {

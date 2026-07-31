@@ -67,7 +67,7 @@ fn main() {
 
 ## `?` operator
 
-`?` ที่ท้าย expression ที่ return `Result` คือ syntactic sugar สำหรับ "ถ้านี่เป็น `Err` ให้แปลง error และ return ก่อนกำหนด; ไม่เช่นนั้นให้ unwrap ค่า `Ok`" มันแทนที่ `match` branches ที่ชัดเจนจำนวนมาก
+`?` ที่ท้าย expression ที่ return `Result` คือ syntactic sugar ของ "ถ้าเป็น `Err` ให้แปลง error แล้ว return ออกไปเลย ไม่เช่นนั้นก็ unwrap ค่า `Ok`" เขียนตัวเดียวแทน `match` แบบเต็ม ๆ ได้หลายบล็อก
 
 ```
 // ไม่มี ?
@@ -244,7 +244,7 @@ export const quizErrors = [
     q: "ความแตกต่างหลักระหว่าง `Result`-based error handling ของ Rust กับ try/catch ของ TypeScript คืออะไร?",
     options: [
       "Rust errors ช้ากว่าขณะ runtime",
-      "TypeScript catch blocks type-safe",
+      "catch block ของ TypeScript เป็น type-safe",
       "Rust เข้ารหัสความล้มเหลวใน return type บังคับให้ compiler ตรวจสอบทุก error path",
       "try/catch จับได้เฉพาะ synchronous errors"
     ],

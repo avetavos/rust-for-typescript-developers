@@ -11,9 +11,11 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## Concurrency ใน TypeScript vs Rust
 
-JavaScript ทำงานบน **single thread** เพียง thread เดียว Event loop จะประมวลผลทีละ task และมอบหมายงาน I/O ให้ระบบปฏิบัติการจัดการ Concurrency ใน JS เป็นแบบ *cooperative*: โค้ดของคุณยอมคืน control เมื่อถึง `await` และ event loop จะหยิบ callback ตัวถัดไปมาทำงาน ไม่มีอะไรทำงานแบบ parallel อย่างแท้จริงภายใน JS process เดียว เว้นแต่จะเปิด Web Worker ซึ่งเป็นกระบวนการแยกต่างหากที่สื่อสารผ่าน `postMessage` เท่านั้น
+JavaScript ทำงานบน **single thread** เพียง thread เดียว Event loop ประมวลผลทีละ task แล้วมอบงาน I/O ให้ระบบปฏิบัติการจัดการต่อ
 
-Rust ใช้แนวทางที่แตกต่างออกไปอย่างสิ้นเชิง คุณได้ **OS threads จริง** ตั้งแต่เริ่มต้น ระบบ `async`/`await` ที่ทำงานบน user-space runtime (Tokio คือตัวเลือกมาตรฐาน) และ compiler ที่ **ป้องกัน data race แบบ static** ณ compile time Rust เรียกสิ่งนี้ว่า *fearless concurrency* — คุณเขียนโค้ด concurrent ได้ และ compiler จะปฏิเสธการ compile โปรแกรมที่มี data-race bug
+Concurrency ใน JS เป็นแบบ *cooperative*: โค้ดของคุณยอมคืน control เมื่อถึง `await` แล้ว event loop จึงหยิบ callback ตัวถัดไปมาทำงาน ผลคือไม่มีอะไรรันแบบ parallel จริง ๆ ภายใน JS process เดียว ยกเว้นจะเปิด Web Worker ที่เป็นกระบวนการแยกที่คุยกันผ่าน `postMessage` เท่านั้น
+
+Rust ใช้แนวทางที่ต่างออกไปสิ้นเชิง คุณได้ **OS thread จริง** ตั้งแต่ต้น ได้ระบบ `async`/`await` ที่รันบน user-space runtime (Tokio คือตัวเลือกมาตรฐาน) และได้ compiler ที่ **กัน data race แบบ static** ตั้งแต่ compile time ทาง Rust เรียกสิ่งนี้ว่า *fearless concurrency* — คุณเขียนโค้ด concurrent ได้เต็มที่ แล้ว compiler จะปฏิเสธการ compile โปรแกรมที่มี data-race bug
 
 ## สองโมเดล concurrency ใน Rust
 
@@ -78,7 +80,7 @@ fn main() {
 
 โมเดล concurrency ของ JavaScript ป้องกัน data race โดยธรรมชาติ — มี thread เดียว ดังนั้นสองส่วนของโค้ดจึงไม่มีทางทำงานพร้อมกันและ corrupt shared state ได้จริง
 
-Rust ก้าวไปไกลกว่านั้น: รองรับ *parallelism จริง* (CPU หลายคอร์ทำงานพร้อมกัน) ในขณะที่ยังป้องกัน data race — ไม่ใช่ผ่านการจำกัดให้มี thread เดียว แต่ผ่าน **type system** Marker traits `Send` และ `Sync` ถูกตรวจสอบ ณ compile time ถ้า type ของคุณไม่ใช่ `Send` compiler จะปฏิเสธการย้ายมันไปยัง thread อื่น ถ้าไม่ใช่ `Sync` คุณจะไม่สามารถแชร์ reference ข้าม threads ได้
+Rust ก้าวไปไกลกว่านั้น: รองรับ *parallelism จริง* (CPU หลายคอร์ทำงานพร้อมกัน) พร้อมกับยังกัน data race ได้ — ไม่ใช่ด้วยการจำกัดให้เหลือ thread เดียว แต่ด้วย **type system** ตัว marker trait `Send` และ `Sync` จะถูกตรวจตั้งแต่ compile time ถ้า type ของคุณไม่ใช่ `Send` compiler จะไม่ยอมให้ย้ายข้ามไป thread อื่น และถ้าไม่ใช่ `Sync` ก็แชร์ reference ข้าม thread ไม่ได้
 
 ผลคือคุณได้ประสิทธิภาพของ parallelism จริงพร้อมความปลอดภัยที่ปกติทำได้เฉพาะในโมเดล single-threaded
 

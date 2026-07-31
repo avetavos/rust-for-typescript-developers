@@ -82,7 +82,7 @@ fn describe(d: Direction) -> &'static str {
 //  --> src/main.rs:4:11
 ```
 
-หมายความว่า: เมื่อคุณเพิ่ม enum variant ใหม่ compiler จะบอกทุกที่ในโค้ดที่ต้อง handle มัน TypeScript switch statement ไม่ exhaustive โดย default — ต้องใช้ `never` check อย่าง explicit เพื่อได้ guarantee เดียวกัน และต้องเป็น convention ที่ทีมบังคับใช้
+แปลว่า: พอคุณเพิ่ม enum variant ใหม่ compiler จะไล่ชี้ทุกจุดในโค้ดที่ต้อง handle เพิ่ม ส่วน switch statement ของ TypeScript ไม่ exhaustive โดย default — ต้องเขียน `never` check เองถึงจะได้ guarantee เดียวกัน และยังต้องอาศัย convention ที่ทีมช่วยกันบังคับ
 
 คุณใช้ `_` เป็น catch-all ถ้าตั้งใจจะ ignore variant ที่เหลือ:
 

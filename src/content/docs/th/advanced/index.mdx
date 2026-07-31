@@ -25,7 +25,7 @@ import ProgressTracker from '../../../../components/ProgressTracker.tsx';
 
 ## ทำไมถึงสำคัญสำหรับนักพัฒนา TypeScript
 
-TypeScript มี generics, interfaces, และ union error types Rust นำแนวคิดทั้งสามไปอีกขั้น:
+TypeScript มี generic, interface และ union error type อยู่แล้ว ส่วน Rust ดันทั้งสามเรื่องนี้ไปอีกขั้น:
 
 - **Generics** ถูก monomorphise — compiler สร้างสำเนาเฉพาะสำหรับแต่ละ concrete type ไม่มี overhead จาก virtual dispatch
 - **Trait objects** (`dyn Trait`) ให้ runtime polymorphism ที่คุณคุ้นเคยจาก TypeScript interfaces แต่คุณต้องเลือกใช้อย่างชัดเจน

@@ -10,7 +10,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 ## Prisma/TypeORM vs SQLx
 
-ใน Node.js คุณอาจใช้ Prisma หรือ TypeORM — ORM ที่ generate queries จาก schema หรือ model decorators SQLx ใช้แนวทางที่แตกต่าง: คุณเขียน **raw SQL** แต่ compiler ตรวจสอบ queries กับ database จริง ที่ **compile time** โดยใช้ macro family `sqlx::query!` ไม่มี ORM ไม่มี query builder — แค่ SQL ที่ type-checked
+ใน Node.js คุณอาจใช้ Prisma หรือ TypeORM — ORM ที่ generate query จาก schema หรือ model decorator ส่วน SQLx ใช้แนวทางที่ต่างออกไป: คุณเขียน **raw SQL** เอง แต่ compiler จะตรวจ query กับ database จริงตั้งแต่ **compile time** ผ่าน macro ตระกูล `sqlx::query!` ไม่มี ORM ไม่มี query builder — มีแค่ SQL ที่ type-checked
 
 | ฟีเจอร์ | Prisma/TypeORM | SQLx |
 |---|---|---|
@@ -203,10 +203,10 @@ export const quizDatabase = [
   {
     q: "`RETURNING id, name, email` ใน `INSERT` statement เปิดใช้อะไรใน SQLx?",
     options: [
-      "มัน print inserted row ไปยัง stdout",
-      "มันอนุญาตให้ `fetch_one` return inserted struct แทน row count",
-      "มันเปิดใช้ compile-time verification เท่านั้น",
-      "มันจำเป็นสำหรับ INSERT statements ทั้งหมดใน SQLx"
+      "print row ที่เพิ่ง insert ออกไปยัง stdout",
+      "ทำให้ `fetch_one` คืน struct ของ row ที่เพิ่ง insert แทน row count",
+      "เปิด compile-time verification เท่านั้น",
+      "จำเป็นสำหรับ INSERT statement ทุกตัวใน SQLx"
     ],
     answer: 1
   }

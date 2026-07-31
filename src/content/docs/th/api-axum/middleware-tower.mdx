@@ -77,7 +77,7 @@ let app = Router::new()
 
 ## Route-scoped vs global layers
 
-Tower layers wrap service **ที่อยู่ด้านล่าง** ของมัน คุณสามารถแนบ layers กับ router ทั้งหมดหรือกับ route group เฉพาะ:
+Tower layer จะ wrap service **ที่อยู่ชั้นล่างถัดไป** คุณแนบ layer กับทั้ง router หรือเจาะจงเฉพาะ route group ก็ได้:
 
 export const tsScoped = `// Express — scoped middleware
 import authMiddleware from './auth';
@@ -148,7 +148,7 @@ export const quizMiddleware = [
     q: "คุณ apply Tower layer กับเฉพาะกลุ่ม routes อย่างไร?",
     options: [
       "ส่ง layer เป็น handler argument",
-      "ใช้ `.layer()` บน nested sub-router ก่อน `.nest()` มัน",
+      "เรียก `.layer()` บน sub-router ก่อน แล้วค่อย `.nest()` เข้าไป",
       "ลงทะเบียนด้วย `app.use_scoped()`",
       "Apply ผ่าน `#[layer]` macro"
     ],

@@ -13,11 +13,11 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 Rust macros ไม่มีคู่เทียบเดียวใน TypeScript คู่เทียบที่ใกล้เคียงที่สุด:
 
-- **TypeScript decorators** (`@Injectable()`, `@Column()`) — เหมือนกับ `#[derive(...)]` มัน annotate code และ trigger behaviour ที่ถูกสร้างขึ้น
+- **TypeScript decorators** (`@Injectable()`, `@Column()`) — คล้าย `#[derive(...)]` ตรงที่ใช้ annotate code แล้ว trigger behaviour ที่ generate ขึ้นมา
 - **Template literal types / type-level metaprogramming** — เหมือนกับ `macro_rules!` ทำงานบน syntax ก่อน runtime
 - **Babel / esbuild plugins** — transformations ที่ apply ตอน build time
 
-ความแตกต่างหลัก: Rust macros มีความ **hygienic** และทำงานบน **AST** พวกมันเป็นส่วนหนึ่งของภาษา ไม่ใช่ระบบ annotation ที่แปะเพิ่มทีหลัง และทำงานตอน compile time พร้อม access เต็มที่ไปยัง token tree ของ compiler
+ความแตกต่างหลัก: Rust macro เป็น **hygienic** และทำงานบน **AST** เป็นส่วนหนึ่งของตัวภาษาเอง ไม่ใช่ระบบ annotation ที่แปะเพิ่มทีหลัง แถมทำงานตอน compile time โดยเข้าถึง token tree ของ compiler ได้เต็มที่
 
 ## Macros สองประเภท
 
@@ -76,7 +76,7 @@ fn main() {
 
 ## `vec![]` — macro ที่คุณใช้ทุกวัน
 
-`vec![1, 2, 3]` เป็น `macro_rules!` macro จาก standard library มัน expand เป็น code ที่สร้าง `Vec`, เรียก `push` สำหรับแต่ละ element และ return vector ถ้าไม่มีมันคุณต้องเขียน:
+`vec![1, 2, 3]` เป็น `macro_rules!` macro จาก standard library ตอน compile จะ expand เป็นโค้ดที่สร้าง `Vec`, เรียก `push` ทีละ element แล้ว return vector ออกมา ถ้าไม่มี macro ตัวนี้คุณต้องเขียนแบบนี้:
 
 ```
 let mut v = Vec::new();
@@ -85,7 +85,7 @@ v.push(2);
 v.push(3);
 ```
 
-`println!` และ `format!` macros ก็เป็น declarative macros เช่นกัน — พวกมัน parse format string ตอน compile time และ generate type-safe formatting code
+`println!` และ `format!` ก็เป็น declarative macro เช่นกัน — parse format string ตอน compile time แล้ว generate โค้ด formatting ที่ type-safe ออกมา
 
 ## Derive macros — ที่คุณใช้บ่อยที่สุด
 
@@ -102,7 +102,7 @@ v.push(3);
 
 <RsOnly title="Macro hygiene">
 
-Rust macros มีความ **hygienic**: ตัวแปรที่ถูก introduce ภายใน macro ไม่ clash กับตัวแปรใน calling scope โดยบังเอิญ ถ้า macro introduce ตัวแปรชื่อ `x` มันไม่สามารถ shadow `x` ของผู้เรียกได้ เว้นแต่ผู้เรียกจะส่ง identifier นั้นมาอย่างชัดเจน นี่เป็นการปรับปรุงสำคัญจาก C preprocessor macros ซึ่งเป็น textual substitution และขึ้นชื่อเรื่อง name-clash bugs
+Rust macro เป็น **hygienic**: ตัวแปรที่ประกาศภายใน macro จะไม่ไปชนกับตัวแปรใน calling scope โดยบังเอิญ ถ้า macro ประกาศตัวแปรชื่อ `x` ก็ shadow `x` ของผู้เรียกไม่ได้ เว้นแต่ผู้เรียกจะส่ง identifier นั้นเข้ามาเอง จุดนี้ดีขึ้นมากจาก C preprocessor macro ที่ทำแค่ textual substitution จนขึ้นชื่อเรื่อง name-clash bug
 
 </RsOnly>
 

@@ -80,7 +80,7 @@ fn main() {
 
 ## `Box<dyn Trait>` — heap-allocated trait objects
 
-เมื่อคุณต้องการเก็บ trait objects ในคอลเลกชัน (เช่น `Vec`) หรือ return จากฟังก์ชัน คุณต้อง box มัน `Box<dyn Trait>` คือ fat pointer: เก็บ address ของข้อมูลบน heap และ pointer ไปยัง vtable
+เมื่อต้องการเก็บ trait object ไว้ใน collection (เช่น `Vec`) หรือ return ออกจาก function คุณต้อง box ก่อน ตัว `Box<dyn Trait>` เป็น fat pointer: เก็บทั้ง address ของข้อมูลบน heap และ pointer ไปยัง vtable
 
 ```
 // ส่งคืน trait object จากฟังก์ชัน
@@ -105,11 +105,11 @@ fn new_animal(kind: &str) -> Box<dyn Animal> {
 
 <RsOnly title="Static vs dynamic dispatch — เลือกใช้ให้ถูก">
 
-**Static dispatch** (`impl Trait` หรือ `<T: Trait>`) คือ default Compiler สร้าง machine code เฉพาะต่อ type — ไม่มี vtable ไม่มี indirection สามารถ inline ได้เต็มที่ เลือกใช้เมื่อรู้ทุก type ตอน compile time และ performance สำคัญ
+**Static dispatch** (`impl Trait` หรือ `<T: Trait>`) คือค่า default ตัว compiler จะสร้าง machine code เฉพาะสำหรับแต่ละ type — ไม่มี vtable ไม่มี indirection และ inline ได้เต็มที่ เลือกใช้เมื่อรู้ทุก type ตั้งแต่ compile time และต้องการ performance สูงสุด
 
-**Dynamic dispatch** (`dyn Trait`) เพิ่ม pointer indirection หนึ่งชั้นผ่าน vtable ต่อการเรียก method Trade-off: binary size เล็กลง (ฟังก์ชันเดียวแทนที่จะเป็น N) และคุณสามารถใส่ heterogeneous types ในคอลเลกชันเดียวกันได้ เลือกใช้เมื่อ:
+**Dynamic dispatch** (`dyn Trait`) เพิ่ม pointer indirection หนึ่งชั้นผ่าน vtable ในทุกครั้งที่เรียก method แลกมากับ binary size ที่เล็กลง (มี function เดียวแทนที่จะเป็น N ตัว) และใส่ type ต่างชนิดกันไว้ใน collection เดียวได้ เลือกใช้เมื่อ:
 
-- ต้องการ `Vec` (หรือคอลเลกชันอื่น) ของ mixed concrete types ภายใต้ interface เดียวกัน
+- ต้องการ `Vec` (หรือ collection อื่น) ที่เก็บ concrete type ผสมกันภายใต้ interface เดียว
 - Return trait object จากฟังก์ชันและ concrete type ขึ้นอยู่กับ input ขณะ runtime
 - สร้าง plugin system หรือ dependency-injection pattern
 
@@ -181,7 +181,7 @@ export const quizDyn = [
     options: [
       "เสมอ เพราะ dynamic dispatch เป็น idiomatic มากกว่า",
       "เมื่อรู้ทุก type ตอน compile time",
-      "เมื่อต้องการคอลเลกชันของ mixed concrete types หรือ type ถูกกำหนดขณะ runtime",
+      "เมื่อต้องการ collection ที่เก็บ concrete type ผสมกัน หรือ type ถูกกำหนดตอน runtime",
       "เฉพาะเมื่อ trait ไม่ object-safe"
     ],
     answer: 2

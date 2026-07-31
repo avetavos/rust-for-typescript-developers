@@ -73,7 +73,7 @@ tokio = { workspace = true }
 serde = { workspace = true }
 ```
 
-สิ่งนี้ป้องกัน version drift ข้าม workspace member ซึ่งเป็นปัญหาที่พบบ่อยใน Node monorepo ที่ package ต่างกันดึง patch version ที่ต่างกันโดยไม่รู้ตัว
+วิธีนี้กัน version drift ข้าม workspace member ที่เป็นปัญหาที่พบบ่อยใน Node monorepo ที่ package ต่างตัวดึง patch version ไม่ตรงกันโดยไม่รู้ตัว
 
 ## Feature flag — conditional compilation
 

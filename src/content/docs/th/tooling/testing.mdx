@@ -18,7 +18,7 @@ export const integrationTestTree = `flowchart TD
 
 ## Jest → cargo test
 
-ใน TypeScript คุณใช้ Jest (หรือ Vitest) และเขียน `describe`/`it`/`expect` block ใน `.test.ts` file แยกต่างหาก test runner ของ Rust ถูกสร้างไว้ใน compiler แล้ว: ใส่ `#[test]` บน function ใดก็ได้ แล้ว `cargo test` จะค้นหาและรันมันอัตโนมัติ — ไม่ต้องใช้ crate บุคคลที่สาม
+ใน TypeScript คุณใช้ Jest (หรือ Vitest) เขียน `describe`/`it`/`expect` ไว้ใน `.test.ts` แยกไฟล์ ส่วน Rust มี test runner ติดมากับ compiler อยู่แล้ว: แปะ `#[test]` บน function ไหนก็ได้ แล้ว `cargo test` จะไล่หาและรันให้เองทั้งหมด — ไม่ต้องพึ่ง crate ภายนอก
 
 ## Unit test อยู่ใกล้ code
 
@@ -55,7 +55,7 @@ mod tests {
 
 <TsGo ts={testingTs} go={testingRs} />
 
-attribute `#[cfg(test)]` หมายความว่า test module จะถูก compile เฉพาะเมื่อรัน `cargo test` เท่านั้น — มันจะถูกตัดออกจาก release build อัตโนมัติ
+attribute `#[cfg(test)]` หมายความว่า test module จะ compile เฉพาะตอนรัน `cargo test` เท่านั้น — release build จะตัดทิ้งให้อัตโนมัติ
 
 ## การรัน test
 
@@ -87,7 +87,7 @@ fn test_divide_by_zero() {
 
 ## Doctest — test ใน doc comment
 
-Rust สามารถรัน code example ที่เขียนใน `///` doc comment ได้ มันทำหน้าที่เป็นทั้ง documentation และ test
+Rust รัน code example ที่เขียนใน `///` doc comment ได้จริง ตัวอย่างชุดเดียวจึงทำหน้าที่เป็นทั้ง documentation และ test
 
 ```rust
 /// บวกเลขจำนวนเต็มสองตัวเข้าด้วยกัน
