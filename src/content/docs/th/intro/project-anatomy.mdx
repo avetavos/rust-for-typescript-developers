@@ -76,7 +76,7 @@ export const cargoTomlRs = `# Cargo.toml
 [package]
 name = "my-app"
 version = "0.1.0"
-edition = "2021"     # Rust edition (like target in tsconfig)
+edition = "2024"     # Rust edition (like target in tsconfig)
 
 # No separate devDependencies:
 # [dependencies] = runtime deps
@@ -93,7 +93,7 @@ pretty_assertions = "1"`;
 
 ความแตกต่างหลัก:
 - ไม่มี Section `scripts` คุณรัน `cargo run`, `cargo test` ฯลฯ โดยตรง
-- `edition` สอดคล้องกับ Rust language edition (2015, 2018, 2021) ใช้ `2021` เสมอสำหรับโปรเจกต์ใหม่
+- `edition` สอดคล้องกับ Rust language edition (2015, 2018, 2021, 2024) ใช้ `2024` เสมอสำหรับโปรเจกต์ใหม่
 - Dependencies ไม่ต้องมี Package `@types/` Rust types เป็นส่วนหนึ่งของ Crate เสมอ
 - **Feature flags** (`features = ["derive"]`) คือของเทียบเท่า Optional peer dependency หรือ Configuration flag ในฝั่ง Rust ช่วยให้ Crate เปิด API เพิ่มเติมที่ Compile ต่อเมื่อมีการร้องขอเท่านั้น
 
@@ -155,9 +155,9 @@ Global cache หมายความว่า:
 
 Rust ใช้ **Editions** เพื่อนำ Breaking changes เข้ามาในภาษาโดยยังรักษา Backward compatibility ไว้ได้ Edition กำหนดแยกต่อโปรเจกต์ใน `Cargo.toml` และไม่ส่งผลต่อ ABI — Crate ที่อยู่คนละ Edition ทำงานร่วมกันได้อย่างอิสระ
 
-Edition ปัจจุบัน: 2015, 2018, 2021 เสมอเริ่มโปรเจกต์ใหม่ด้วย `edition = "2021"`
+Edition ปัจจุบัน: 2015, 2018, 2021, 2024 เริ่มโปรเจกต์ใหม่ด้วย `edition = "2024"` เสมอ — `cargo new` เลือกให้อยู่แล้ว
 
-คล้ายกับ setting `target` และ `lib` ของ TypeScript ใน `tsconfig.json` แต่ง่ายกว่า: ตั้งค่าครั้งเดียวแล้ว Compiler จัดการที่เหลือให้หมด
+คล้ายกับ setting `target` และ `lib` ของ TypeScript ใน `tsconfig.json` แต่ง่ายกว่า: ตั้งค่าครั้งเดียวแล้ว Compiler จัดการที่เหลือให้หมด และต่างจากการ bump `tsconfig` ตรงที่การย้ายโปรเจกต์เก่าไป edition ใหม่แทบเป็นงานอัตโนมัติ — `cargo fix --edition` แก้ code ให้เอง
 
 </RsOnly>
 

@@ -158,7 +158,55 @@ This is identical to the RAII memory pattern: just as `Box<T>` frees memory when
 
 `Rc<T>` uses plain (non-atomic) integer operations for reference counting — cheaper than `Arc`, but **not `Send`**. The compiler will reject any attempt to move an `Rc` into a thread. Use `Rc` within a single thread (or a `!Send` async context) and `Arc` whenever you need to cross thread boundaries.
 
+### `if let` holds the lock for less time in 2024
+
+Because a `MutexGuard` unlocks when it is dropped, *when* it drops decides whether you deadlock. This is one of the sharper edges the 2024 edition filed down.
+
+Write `if let Some(x) = lock.read().unwrap().clone()` and the guard produced by `lock.read()` is a **temporary of the condition**. Before the 2024 edition that temporary lived until the end of the whole `if`/`else` — so an `else` branch that tried to take the write lock would block forever against a read lock that was still held. In the 2024 edition the temporary is dropped as soon as the condition fails, before the `else` body runs.
+
+The same change is *not* made for `match`: a `match` scrutinee's temporaries still live to the end of the whole `match`. So if you migrate an old `if let` to `match` to keep the old timing, you keep the old deadlock too.
+
 </RsOnly>
+
+export const ifLetScopeCode = `struct Guard;
+
+impl Guard {
+    fn value(&self) -> Option<i32> {
+        None // pretend the shared state was empty
+    }
+}
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        println!("  lock released");
+    }
+}
+
+struct Lock;
+
+impl Lock {
+    fn read(&self) -> Guard {
+        println!("  lock acquired");
+        Guard
+    }
+}
+
+fn main() {
+    let lock = Lock;
+
+    // \`lock.read()\` is a temporary inside the condition.
+    if let Some(v) = lock.read().value() {
+        println!("  got {v}");
+    } else {
+        // In edition 2024 the guard is already released here,
+        // so taking a write lock in this branch would NOT deadlock.
+        println!("  else branch: safe to take the write lock");
+    }
+
+    println!("after the if let");
+}`;
+
+<Playground code={ifLetScopeCode} />
 
 export const quizArcMutex = [
   {

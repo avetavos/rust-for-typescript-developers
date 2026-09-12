@@ -64,8 +64,8 @@ async fn main() {
 
 - `GET /users` — ดึงรายการ users (pagination ด้วย `Query`)
 - `POST /users` — สร้าง user ใหม่ (`Json` body)
-- `GET /users/:id` — ดึง user เดียว (`Path`)
-- `DELETE /users/:id` — ลบ user
+- `GET /users/{id}` — ดึง user เดียว (`Path`)
+- `DELETE /users/{id}` — ลบ user
 - Shared in-memory state (`Arc<Mutex<Vec<User>>>`)
 - JSON errors แบบมีโครงสร้าง
 - Tower CORS layer
@@ -73,6 +73,21 @@ async fn main() {
 - Handler tests ด้วย `tower::ServiceExt::oneshot`
 
 แต่ละแนวคิดเชื่อมโยงโดยตรงกับสิ่งที่คุณรู้จากอยู่แล้วจาก Express หรือ NestJS
+
+## มาจาก Axum 0.7?
+
+โมดูลนี้ใช้ **Axum 0.8** ถ้าคุณกำลังย้าย codebase จาก 0.7 หรืออ่าน tutorial เก่า ๆ อยู่ นี่คือจุดที่จะทำให้ code พัง:
+
+| 0.7 | 0.8 |
+|-----|-----|
+| `.route("/users/:id", ...)` | `.route("/users/{id}", ...)` — และ `/*rest` กลายเป็น `/{*rest}` |
+| ต้องมี `#[async_trait]` บน `FromRequestParts` | ไม่ต้องแล้ว trait ใช้ `async fn` แบบ native |
+| `Option<Path<T>>` กลืน error ทุกกรณี | ตอนนี้ reject request ในกรณีส่วนใหญ่ — ถ้าต้องการพฤติกรรมเดิมให้ implement `OptionalFromRequestParts` |
+| extractor `Host` อยู่ใน `axum` | ย้ายไป crate `axum-extra` |
+| `Message::Text(String)` | `Message::Text(Utf8Bytes)` และ `Message::Binary(Bytes)` |
+| re-export `axum::body::{Empty, Full}` | ใช้ `axum::body::Body` |
+
+handler และ service ต้องเป็น `Sync` ด้วย ส่วนที่เหลือของ API — extractor, `State`, Tower layer — ไม่เปลี่ยน การย้ายจึงเกือบทั้งหมดเป็นแค่การ find-and-replace ที่ route string
 
 export const quizIndex = [
   {

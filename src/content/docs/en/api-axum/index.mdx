@@ -64,8 +64,8 @@ Throughout this module you will build a small **Users API** with:
 
 - `GET /users` — list users (pagination with `Query`)
 - `POST /users` — create a user (`Json` body)
-- `GET /users/:id` — get a single user (`Path`)
-- `DELETE /users/:id` — delete a user
+- `GET /users/{id}` — get a single user (`Path`)
+- `DELETE /users/{id}` — delete a user
 - Shared in-memory state (`Arc<Mutex<Vec<User>>>`)
 - Structured JSON errors
 - A Tower CORS layer
@@ -73,6 +73,21 @@ Throughout this module you will build a small **Users API** with:
 - Handler tests with `tower::ServiceExt::oneshot`
 
 Each concept maps directly to something you already know from Express or NestJS.
+
+## Coming from Axum 0.7?
+
+This module targets **Axum 0.8**. If you are porting a 0.7 codebase, or reading an older tutorial, these are the changes that will bite you:
+
+| 0.7 | 0.8 |
+|-----|-----|
+| `.route("/users/:id", ...)` | `.route("/users/{id}", ...)` — and `/*rest` becomes `/{*rest}` |
+| `#[async_trait]` on `FromRequestParts` | not needed; the trait uses native `async fn` |
+| `Option<Path<T>>` swallowed every error | it now rejects the request in most cases — implement `OptionalFromRequestParts` if you want the old behaviour |
+| `Host` extractor in `axum` | moved to the `axum-extra` crate |
+| `Message::Text(String)` | `Message::Text(Utf8Bytes)`, and `Message::Binary(Bytes)` |
+| `axum::body::{Empty, Full}` re-exports | use `axum::body::Body` |
+
+Handlers and services also have to be `Sync` now. The rest of the API — extractors, `State`, Tower layers — is unchanged, so a port is mostly a find-and-replace on route strings.
 
 export const quizIndex = [
   {

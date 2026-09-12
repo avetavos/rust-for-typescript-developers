@@ -148,7 +148,7 @@ export const quizExtractors = [
     q: "What does `Path(id): Path<Uuid>` do in an Axum handler?",
     options: [
       "Reads a query string parameter named `id`",
-      "Extracts and deserializes the `:id` URL segment as a `Uuid`, returning 400 if invalid",
+      "Extracts and deserializes the `{id}` URL segment as a `Uuid`, returning 400 if invalid",
       "Reads the request body as a UUID",
       "Creates a new Uuid for the request"
     ],

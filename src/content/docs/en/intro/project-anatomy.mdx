@@ -76,7 +76,7 @@ export const cargoTomlRs = `# Cargo.toml
 [package]
 name = "my-app"
 version = "0.1.0"
-edition = "2021"     # Rust edition (like target in tsconfig)
+edition = "2024"     # Rust edition (like target in tsconfig)
 
 # No separate devDependencies:
 # [dependencies] = runtime deps
@@ -93,7 +93,7 @@ pretty_assertions = "1"`;
 
 Key differences:
 - There is no `scripts` section. You run `cargo run`, `cargo test`, etc. directly.
-- `edition` corresponds to the Rust language edition (2015, 2018, 2021). Always use `2021` for new projects.
+- `edition` corresponds to the Rust language edition (2015, 2018, 2021, 2024). Always use `2024` for new projects.
 - Dependencies do not need `@types/` packages. Rust types are always part of the crate.
 - **Feature flags** (`features = ["derive"]`) are Rust's equivalent of optional peer dependencies or configuration flags. They let crates expose additional APIs that are compiled in only when requested.
 
@@ -155,9 +155,9 @@ Like `package-lock.json`, `Cargo.lock` pins the exact versions of every transiti
 
 Rust uses **editions** to introduce breaking changes to the language while maintaining backward compatibility. The edition is set per-project in `Cargo.toml` and does not affect the ABI — crates on different editions interoperate freely.
 
-Current editions: 2015, 2018, 2021. Always start new projects with `edition = "2021"`.
+Current editions: 2015, 2018, 2021, 2024. Always start new projects with `edition = "2024"` — `cargo new` already picks it for you.
 
-This is analogous to TypeScript's `target` and `lib` settings in `tsconfig.json`, but simpler: you set it once and the compiler handles everything.
+This is analogous to TypeScript's `target` and `lib` settings in `tsconfig.json`, but simpler: you set it once and the compiler handles everything. Unlike a `tsconfig` bump, moving an old project forward is mostly mechanical — `cargo fix --edition` rewrites the code for you.
 
 </RsOnly>
 

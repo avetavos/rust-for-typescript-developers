@@ -55,10 +55,10 @@ export const cargoRs = `# Cargo.toml
 [package]
 name = "my-app"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 
@@ -104,9 +104,11 @@ cargo clean          # ลบ directory target/
 
 นี่สอดคล้องกับ convention ของ npm: application commit `package-lock.json` แต่ library ที่ publish มักไม่ commit
 
-<RsOnly title="edition = 2021">
+<RsOnly title="edition = 2024">
 
-Rust ออก **edition** ใหม่ทุก 3 ปี (2015, 2018, 2021) edition อาจมี syntax change ที่ breaking แต่ compiler สามารถ migrate code ให้อัตโนมัติด้วย `cargo fix --edition` สำหรับ project ใหม่ให้ใช้ `edition = "2021"` เสมอ — รองรับ let-else, prelude ที่ปรับปรุงแล้ว และ closure capture ที่ดีขึ้น
+Rust ออก **edition** ใหม่ทุก 3 ปี (2015, 2018, 2021, 2024) edition อาจมี syntax change ที่ breaking แต่ compiler สามารถ migrate code ให้อัตโนมัติด้วย `cargo fix --edition` สำหรับ project ใหม่ให้ใช้ `edition = "2024"` — `cargo new` เลือกให้อยู่แล้ว และเป็นตัวที่ปลดล็อก let chain, การ drop temporary ของ `if let` ก่อนเข้า branch `else` และ `unsafe extern` block
+
+สิ่งที่ใกล้เคียงที่สุดฝั่ง TypeScript คือ `target`/`lib` ใน `tsconfig.json` แต่ต่างกันข้อสำคัญ: edition กำหนด **ต่อ crate** ไม่ใช่ต่อทั้งโปรแกรม crate ที่ใช้ 2024 depend crate ที่ใช้ 2015 ได้และกลับกันก็ได้ ecosystem จึงไม่แตก และคุณอัปเกรดตามจังหวะตัวเองได้
 
 </RsOnly>
 

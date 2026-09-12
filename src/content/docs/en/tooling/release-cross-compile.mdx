@@ -22,7 +22,7 @@ node_modules/      # 300+ MB of dependencies
 # ... plus you need Node installed on the server
 
 # Or use Docker:
-FROM node:20-alpine
+FROM node:24-alpine
 COPY package*.json ./
 RUN npm ci --only=production
 COPY dist/ ./dist/

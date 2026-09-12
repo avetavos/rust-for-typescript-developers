@@ -1,6 +1,6 @@
 ---
 title: 'Control Flow'
-description: 'if as an expression, match, loop, while, and for in Rust vs TypeScript.'
+description: 'if as an expression, match, loop, while, for, and 2024-edition let chains in Rust vs TypeScript.'
 ---
 
 import TsGo from '../../../../components/TsGo.astro';
@@ -73,6 +73,70 @@ export const controlFlowRs = `fn main() {
 
 <TsGo ts={controlFlowTs} go={controlFlowRs} />
 
+## let chains — one condition, several checks
+
+In TypeScript you lean on optional chaining and `&&` to test and narrow in a single `if`. Rust used to make you nest: `if let` could only appear immediately after `if`, so every extra check meant another level of indentation.
+
+Since the **2024 edition** you can chain `let` bindings with `&&`, mixed with ordinary boolean conditions. Each binding is visible to the conditions after it and to the body. The `let` parts must be at the top level of the condition — `||` is still not allowed between them.
+
+export const letChainTs = `const cfg = loadConfig();
+
+// TypeScript narrows through optional chaining and &&
+if (cfg?.retries != null && cfg.retries > 0) {
+  console.log(\`retrying \${cfg.retries} times\`);
+}`;
+
+export const letChainRs = `// Before 2024 — nested
+if let Some(c) = &cfg {
+    if let Some(n) = c.retries {
+        if n > 0 {
+            println!("retrying {n} times");
+        }
+    }
+}
+
+// 2024 edition — one condition
+if let Some(c) = &cfg
+    && let Some(n) = c.retries
+    && n > 0
+{
+    println!("retrying {n} times");
+}`;
+
+<TsGo ts={letChainTs} go={letChainRs} />
+
+Let chains are gated on the 2024 edition (they were stabilised in Rust 1.88), because they depend on the `if let` temporary-scope change that the edition introduced. On an older edition the compiler rejects them with *"let chains are only allowed in Rust 2024 or later"*.
+
+export const letChainCode = `fn sum_first_two(nums: &[u8]) -> Option<u8> {
+    let mut iter = nums.iter();
+    if let Some(first) = iter.next()
+        && let Some(second) = iter.next()
+    {
+        first.checked_add(*second)
+    } else {
+        None
+    }
+}
+
+#[derive(Debug)]
+struct Config { retries: Option<u32> }
+
+fn main() {
+    println!("{:?}", sum_first_two(&[3, 4, 5]));
+    println!("{:?}", sum_first_two(&[9]));
+
+    let cfg = Some(Config { retries: Some(3) });
+    // One condition, three checks — no nesting.
+    if let Some(c) = &cfg
+        && let Some(n) = c.retries
+        && n > 0
+    {
+        println!("retrying {n} times");
+    }
+}`;
+
+<Playground code={letChainCode} />
+
 ## Try it
 
 export const controlFlowCode = `fn classify(n: i32) -> &'static str {
@@ -114,6 +178,16 @@ export const quizControlFlow = [
       "break value; inside the loop",
       "You cannot return a value from loop",
       "yield value;"
+    ],
+    answer: 1
+  },
+  {
+    q: "Why do let chains require the 2024 edition?",
+    options: [
+      "They need a nightly compiler feature flag",
+      "They depend on the 2024 change to when `if let` temporaries are dropped",
+      "Older editions lack the `&&` operator",
+      "They are only allowed inside `while`"
     ],
     answer: 1
   },

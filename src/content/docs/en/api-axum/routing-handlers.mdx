@@ -34,7 +34,7 @@ use crate::handlers::users::{
 pub fn users_router() -> Router {
     Router::new()
         .route("/users", get(list_users).post(create_user))
-        .route("/users/:id", get(get_user).delete(delete_user))
+        .route("/users/{id}", get(get_user).delete(delete_user))
 }`;
 
 <TsGo ts={tsRoutes} go={rsRoutes} />

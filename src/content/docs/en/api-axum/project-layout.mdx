@@ -46,20 +46,20 @@ Every Node.js project starts with `package.json`. In Rust the equivalent is `Car
 [package]
 name = "my-api"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-axum        = "0.7"
+axum        = "0.8"
 tokio       = { version = "1", features = ["full"] }
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
 tower       = "0.4"
-tower-http  = { version = "0.5", features = ["cors", "trace"] }
+tower-http  = { version = "0.7", features = ["cors", "trace"] }
 tracing     = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-sqlx        = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "uuid"] }
+sqlx        = { version = "0.9", features = ["postgres", "runtime-tokio", "tls-rustls", "uuid"] }
 uuid        = { version = "1", features = ["v4", "serde"] }
-thiserror   = "1"
+thiserror   = "2"
 ```
 
 Compared to `npm install express`, you declare everything in one file and Cargo resolves the dependency graph, compiles everything, and links it — no separate build step.

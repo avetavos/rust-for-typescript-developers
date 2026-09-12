@@ -17,14 +17,14 @@ Docker image ของ Node.js ต้องมี Node runtime ~180 MB (Alpine) 
 ## เปรียบเทียบ Dockerfile
 
 export const dockerTs = `# Node / TypeScript Dockerfile (multi-stage)
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
@@ -33,7 +33,7 @@ CMD ["node", "dist/index.js"]
 # Final image: ~180 MB (Node runtime required)`;
 
 export const dockerRs = `# Rust Dockerfile (multi-stage → distroless)
-FROM rust:1.80-slim AS builder
+FROM rust:1.98-slim AS builder
 WORKDIR /app
 # Cache dependency แยกจาก source code
 COPY Cargo.toml Cargo.lock ./

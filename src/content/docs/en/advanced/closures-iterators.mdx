@@ -1,6 +1,6 @@
 ---
 title: 'Closures & Iterators'
-description: 'Rust closures (`Fn`/`FnMut`/`FnOnce`), iterator adapters (`map`/`filter`/`collect`, lazy evaluation), compared to TypeScript arrow functions and array methods.'
+description: 'Rust closures (`Fn`/`FnMut`/`FnOnce`), async closures, iterator adapters (`map`/`filter`/`collect`, lazy evaluation), compared to TypeScript arrow functions and array methods.'
 ---
 
 import TsGo from '../../../../components/TsGo.astro';
@@ -74,6 +74,74 @@ fn main() {
     println!("{}", apply_twice(double, 3)); // 12
 }
 ```
+
+## Async closures
+
+In TypeScript, `async () => { ... }` is just a function that returns a promise, and nothing about the syntax changes. In Rust the equivalent was awkward for years: a closure returning `async { ... }` produces a future that cannot borrow from the closure's captures, so anything the future touched had to be cloned or moved.
+
+Rust 1.85 added real **async closures** — `async || { ... }` — along with the `AsyncFn`, `AsyncFnMut` and `AsyncFnOnce` traits that mirror the three `Fn` traits above. The future they return is allowed to borrow from the captures, which is what makes the natural code compile.
+
+export const asyncCloTs = `// TypeScript: async arrow function
+const runTwice = async (f: (url: string) => Promise<number>) =>
+  (await f("https://a.example")) + (await f("https://bb.example"));
+
+const log: string[] = [];
+const total = await runTwice(async (url) => {
+  const n = await fetchLen(url);
+  log.push(\`\${url} -> \${n}\`);   // closes over 'log' freely
+  return n;
+});`;
+
+export const asyncCloRs = `// Rust: async closure, bound with AsyncFnMut
+async fn run_twice<F>(mut f: F) -> usize
+where
+    F: AsyncFnMut(&str) -> usize,
+{
+    f("https://a.example").await + f("https://bb.example").await
+}
+
+let mut log: Vec<String> = Vec::new();
+let total = run_twice(async |url: &str| {
+    let n = fetch_len(url).await;
+    log.push(format!("{url} -> {n}"));  // borrows 'log' across the await
+    n
+})
+.await;`;
+
+<TsGo ts={asyncCloTs} go={asyncCloRs} />
+
+Take the bound that matches how the closure is used, exactly as with `Fn`/`FnMut`/`FnOnce`: `AsyncFn` if it only reads its captures, `AsyncFnMut` if it mutates them (the example pushes to `log`), `AsyncFnOnce` if it consumes them.
+
+export const asyncCloCode = `async fn fetch_len(url: &str) -> usize {
+    url.len() // pretend this awaits the network
+}
+
+// Takes an async closure: AsyncFnMut can mutate what it captures.
+async fn run_twice<F>(mut f: F) -> usize
+where
+    F: AsyncFnMut(&str) -> usize,
+{
+    f("https://a.example").await + f("https://bb.example").await
+}
+
+#[tokio::main]
+async fn main() {
+    let mut log: Vec<String> = Vec::new();
+
+    let total = run_twice(async |url: &str| {
+        let n = fetch_len(url).await;
+        log.push(format!("{url} -> {n}"));
+        n
+    })
+    .await;
+
+    println!("total = {total}");
+    for line in &log {
+        println!("{line}");
+    }
+}`;
+
+<Playground code={asyncCloCode} />
 
 ## Iterator adapters — lazy by default
 

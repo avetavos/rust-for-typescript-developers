@@ -45,7 +45,7 @@ let app = Router::new()
 
 ## CORS layer
 
-`tower-http` มี `CorsLayer` ที่ใช้งานได้เหมือน `cors` npm package เพิ่มใน `Cargo.toml` ด้วย `tower-http = { version = "0.5", features = ["cors"] }`
+`tower-http` มี `CorsLayer` ที่ใช้งานได้เหมือน `cors` npm package เพิ่มใน `Cargo.toml` ด้วย `tower-http = { version = "0.7", features = ["cors"] }`
 
 ```rust
 use tower_http::cors::{Any, CorsLayer};
@@ -63,7 +63,7 @@ let app = Router::new()
 
 ## Request tracing / logging
 
-`TraceLayer` ของ `tower-http` รวมกับ `tracing` เพื่อ log ทุก request/response เพิ่ม `tower-http = { version = "0.5", features = ["trace"] }` ใน `Cargo.toml`
+`TraceLayer` ของ `tower-http` รวมกับ `tracing` เพื่อ log ทุก request/response เพิ่ม `tower-http = { version = "0.7", features = ["trace"] }` ใน `Cargo.toml`
 
 ```rust
 use tower_http::trace::TraceLayer;

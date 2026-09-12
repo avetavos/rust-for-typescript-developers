@@ -158,7 +158,55 @@ fn main() {
 
 `Rc<T>` ใช้ plain (non-atomic) integer operations สำหรับ reference counting — ถูกกว่า `Arc` แต่ **ไม่ใช่ `Send`** Compiler จะปฏิเสธการย้าย `Rc` เข้าไปใน thread ใช้ `Rc` ภายใน single thread (หรือ `!Send` async context) และ `Arc` เมื่อต้องการข้ามขอบเขต thread
 
+### `if let` ถือ lock สั้นลงใน edition 2024
+
+เพราะ `MutexGuard` จะปลด lock ตอนถูก drop *จังหวะที่มัน drop* จึงเป็นตัวตัดสินว่าคุณจะ deadlock หรือไม่ นี่คือมุมคมอีกจุดที่ edition 2024 เข้ามาลบออก
+
+ถ้าเขียน `if let Some(x) = lock.read().unwrap().clone()` guard ที่เกิดจาก `lock.read()` คือ **temporary ของเงื่อนไข** ก่อน edition 2024 temporary ตัวนี้อยู่ยาวจนจบทั้ง `if`/`else` — branch `else` ที่พยายามขอ write lock จึงค้างตลอดกาลเพราะ read lock ยังถูกถืออยู่ ส่วนใน edition 2024 temporary จะถูก drop ทันทีที่เงื่อนไขไม่ผ่าน ก่อนที่ body ของ `else` จะเริ่มทำงาน
+
+การเปลี่ยนนี้ *ไม่* รวมถึง `match`: temporary ของ scrutinee ใน `match` ยังอยู่จนจบทั้ง `match` ดังนั้นถ้าคุณย้าย `if let` เก่าไปเป็น `match` เพื่อรักษาจังหวะเดิม คุณก็จะได้ deadlock แบบเดิมติดมาด้วย
+
 </RsOnly>
+
+export const ifLetScopeCode = `struct Guard;
+
+impl Guard {
+    fn value(&self) -> Option<i32> {
+        None // pretend the shared state was empty
+    }
+}
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        println!("  lock released");
+    }
+}
+
+struct Lock;
+
+impl Lock {
+    fn read(&self) -> Guard {
+        println!("  lock acquired");
+        Guard
+    }
+}
+
+fn main() {
+    let lock = Lock;
+
+    // \`lock.read()\` is a temporary inside the condition.
+    if let Some(v) = lock.read().value() {
+        println!("  got {v}");
+    } else {
+        // In edition 2024 the guard is already released here,
+        // so taking a write lock in this branch would NOT deadlock.
+        println!("  else branch: safe to take the write lock");
+    }
+
+    println!("after the if let");
+}`;
+
+<Playground code={ifLetScopeCode} />
 
 export const quizArcMutex = [
   {

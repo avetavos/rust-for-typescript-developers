@@ -25,7 +25,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 ```toml
 # Cargo.toml
 [dependencies]
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "uuid", "chrono"] }
+sqlx = { version = "0.9", features = ["postgres", "runtime-tokio", "tls-rustls", "uuid", "chrono"] }
 ```
 
 export const tsPool = `// Node — Prisma client setup

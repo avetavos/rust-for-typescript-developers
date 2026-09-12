@@ -55,10 +55,10 @@ export const cargoRs = `# Cargo.toml
 [package]
 name = "my-app"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 
@@ -104,9 +104,11 @@ cargo clean          # delete target/ directory
 
 This mirrors npm's convention: applications commit `package-lock.json`; published libraries typically do not.
 
-<RsOnly title="edition = 2021">
+<RsOnly title="edition = 2024">
 
-Rust releases a new **edition** every three years (2015, 2018, 2021). An edition may introduce breaking syntax changes, but the compiler can migrate your code automatically with `cargo fix --edition`. Always use `edition = "2021"` for new projects — it enables let-else, the prelude improvements, and better closure captures.
+Rust releases a new **edition** every three years (2015, 2018, 2021, 2024). An edition may introduce breaking syntax changes, but the compiler can migrate your code automatically with `cargo fix --edition`. Use `edition = "2024"` for new projects — `cargo new` already defaults to it, and it is what unlocks let chains, `if let` temporaries that drop before the `else` branch, and `unsafe extern` blocks.
+
+The closest TypeScript analogue is `target`/`lib` in `tsconfig.json`, with one important difference: an edition is **per crate**, not per program. A 2024 crate can depend on a 2015 crate and vice versa, so the ecosystem never splits and you upgrade on your own schedule.
 
 </RsOnly>
 

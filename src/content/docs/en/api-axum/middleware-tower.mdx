@@ -45,7 +45,7 @@ let app = Router::new()
 
 ## CORS layer
 
-`tower-http` ships a `CorsLayer` that mirrors the `cors` npm package. Add it to `Cargo.toml` with `tower-http = { version = "0.5", features = ["cors"] }`.
+`tower-http` ships a `CorsLayer` that mirrors the `cors` npm package. Add it to `Cargo.toml` with `tower-http = { version = "0.7", features = ["cors"] }`.
 
 ```rust
 use tower_http::cors::{Any, CorsLayer};
@@ -63,7 +63,7 @@ let app = Router::new()
 
 ## Request tracing / logging
 
-`tower-http`'s `TraceLayer` integrates with `tracing` to log every request/response. Add `tower-http = { version = "0.5", features = ["trace"] }` to `Cargo.toml`.
+`tower-http`'s `TraceLayer` integrates with `tracing` to log every request/response. Add `tower-http = { version = "0.7", features = ["trace"] }` to `Cargo.toml`.
 
 ```rust
 use tower_http::trace::TraceLayer;

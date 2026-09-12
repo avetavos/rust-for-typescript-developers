@@ -6,7 +6,7 @@ export async function runRust(source: string, fetchImpl: typeof fetch = fetch): 
   const body = {
     channel: 'stable',
     mode: 'debug',
-    edition: '2021',
+    edition: '2024',
     crateType: 'bin',
     tests: false,
     backtrace: false,
