@@ -113,6 +113,7 @@ async fn create_user(
 A single handler can accept multiple extractors as separate parameters. Axum calls them all before the handler body runs.
 
 ```rust
+// @skip-verify crate: axum
 use axum::{
     extract::{Path, Query, State},
     Json,

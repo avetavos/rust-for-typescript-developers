@@ -78,6 +78,7 @@ async fn test_list_users_returns_200() {
 ## Testing a POST endpoint with a JSON body
 
 ```rust
+// @skip-verify crate: axum, tokio (fragment: build_app_with_state defined below)
 use axum::{
     body::Body,
     http::{header, Method, Request, StatusCode},
@@ -116,6 +117,7 @@ async fn test_create_user_returns_201() {
 ## Testing error paths
 
 ```rust
+// @skip-verify crate: axum, tokio (fragment: build_app defined above)
 #[tokio::test]
 async fn test_get_nonexistent_user_returns_404() {
     let app = build_app();
@@ -139,6 +141,7 @@ async fn test_get_nonexistent_user_returns_404() {
 For tests that need a database, inject a test pool pointing at a test database:
 
 ```rust
+// @skip-verify crate: sqlx, axum (fragment; needs a live TEST_DATABASE_URL)
 async fn test_state() -> Arc<AppState> {
     let pool = PgPool::connect(
         &std::env::var("TEST_DATABASE_URL")

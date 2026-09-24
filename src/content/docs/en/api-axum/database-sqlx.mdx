@@ -99,6 +99,7 @@ async fn find_user(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<User>> {
 ## Insert and delete
 
 ```rust
+// @skip-verify crate: sqlx (query! macros need a live DATABASE_URL at compile time)
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -135,6 +136,7 @@ async fn delete_user(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
 ## Wiring the pool into Axum State
 
 ```rust
+// @skip-verify crate: sqlx, axum
 use axum::{extract::State, routing::get, Json, Router};
 use sqlx::PgPool;
 use std::sync::Arc;

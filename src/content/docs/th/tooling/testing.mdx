@@ -60,28 +60,33 @@ attribute `#[cfg(test)]` หมายความว่า test module จะ co
 ## การรัน test
 
 ```bash
-cargo test                    # รัน test ทั้งหมดใน project
-cargo test test_add           # รัน test ที่ชื่อมี "test_add"
-cargo test -- --nocapture     # แสดง println! output ระหว่าง test
-cargo test -- --test-threads=1  # รัน test ตามลำดับ (ไม่ parallel)
+cargo test                    # run all tests in the project
+cargo test test_add           # run tests whose name contains "test_add"
+cargo test -- --nocapture     # show println! output during tests
+cargo test -- --test-threads=1  # run tests sequentially (no parallelism)
 ```
 
 ## Assertion macro ที่ใช้บ่อย
 
 ```rust
+// @skip-verify nocode: placeholder identifiers (left/right/condition), illustrating macro signatures
 assert_eq!(left, right);         // expect(a).toBe(b)
 assert_ne!(left, right);         // expect(a).not.toBe(b)
 assert!(condition);              // expect(condition).toBeTruthy()
-assert!(condition, "message {}", 42);  // พร้อม failure message กำหนดเอง
+assert!(condition, "message {}",  42);  // with a custom failure message
 ```
 
 ## การคาดหวัง panic (เหมือน Jest's toThrow)
 
 ```rust
+fn divide(a: i32, b: i32) -> i32 {
+    a / b
+}
+
 #[test]
 #[should_panic(expected = "divide by zero")]
 fn test_divide_by_zero() {
-    divide(10, 0);  // function นี้ควร panic
+    divide(10, 0);  // this function should panic
 }
 ```
 
@@ -90,14 +95,12 @@ fn test_divide_by_zero() {
 Rust รัน code example ที่เขียนใน `///` doc comment ได้จริง ตัวอย่างชุดเดียวจึงทำหน้าที่เป็นทั้ง documentation และ test
 
 ```rust
-/// บวกเลขจำนวนเต็มสองตัวเข้าด้วยกัน
+/// Adds two integers together.
 ///
 /// # Examples
 ///
-/// ```
-/// let result = my_crate::add(2, 3);
-/// assert_eq!(result, 5);
-/// ```
+///     let result = my_crate::add(2, 3);
+///     assert_eq!(result, 5);
 pub fn add(a: i32, b: i32) -> i32 {
     a + b
 }
@@ -118,7 +121,7 @@ fn is_even(n: i32) -> bool {
 }
 
 fn main() {
-    // ทดสอบ logic ด้วยตนเอง (ใน project จริงใช้ #[test])
+    // Manually exercise the logic (in real projects, use #[test])
     assert_eq!(add(3, 4), 7);
     assert_eq!(add(-1, 1), 0);
     assert!(is_even(4));
@@ -128,13 +131,14 @@ fn main() {
 
 <Playground code={testingCode} />
 
-<RsOnly title="Integration test">
+<RsOnly title="Integration test คืออะไร">
 
 Integration test อยู่ใน directory `tests/` ระดับบนสุด (ไม่ใช่ใน `src/`) แต่ละ `.rs` file ใน `tests/` จะถูก compile เป็น crate แยกที่ import library ของคุณ — สามารถ access เฉพาะ public API เท่านั้น เหมือนกับ consumer ภายนอก
 
-<Mermaid code={integrationTestTree} title="Integration test layout" />
+<Mermaid code={integrationTestTree} title="โครงสร้าง integration test" />
 
 ```rust
+// @skip-verify multi-file: separate tests/ crate importing the library crate `my_lib`
 // tests/integration_test.rs
 use my_lib::add;
 

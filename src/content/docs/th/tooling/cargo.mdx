@@ -28,13 +28,13 @@ npm init -y
 npm install typescript --save-dev
 
 # Rust
-cargo new my-app   # สร้าง binary (มี fn main)
-cargo new my-lib --lib   # สร้าง library (ไม่มี fn main)
+cargo new my-app   # creates a binary (has fn main)
+cargo new my-lib --lib   # creates a library (no fn main)
 cd my-app
 ```
 
 `cargo new` สร้างโครงสร้าง:
-<Mermaid code={cargoNewTree} title="What cargo new creates" />
+<Mermaid code={cargoNewTree} title="สิ่งที่ cargo new สร้าง" />
 
 ## Cargo.toml เทียบกับ package.json
 
@@ -84,27 +84,27 @@ cargo add --dev pretty_assertions  # dev dep
 ## Subcommand หลัก
 
 ```bash
-cargo build          # compile (debug, เร็ว, ไม่ optimise)
-cargo build --release  # compile (optimise, build ช้ากว่า)
+cargo build          # compile (debug, fast, unoptimized)
+cargo build --release  # compile (optimized, slower build)
 cargo run            # compile + execute
-cargo run -- --port 8080  # ส่ง args ให้ binary
-cargo check          # type-check เท่านั้น ไม่สร้าง binary (เร็วมาก)
-cargo test           # รัน test ทั้งหมด
-cargo test my_fn     # รัน test ที่ชื่อมี "my_fn"
-cargo doc --open     # สร้าง + เปิด HTML docs
-cargo clean          # ลบ directory target/
+cargo run -- --port 8080  # pass args to your binary
+cargo check          # type-check only, no binary (very fast)
+cargo test           # run all tests
+cargo test my_fn     # run tests whose name contains "my_fn"
+cargo doc --open     # generate + open HTML docs
+cargo clean          # delete target/ directory
 ```
 
 ## Cargo.lock — commit หรือไม่?
 
-```
-# Binary / application  →  COMMIT Cargo.lock (build ที่ reproducible)
-# Library crate         →  ไม่ commit Cargo.lock (ให้ผู้ใช้เลือก version)
+```bash
+# Binary / application  →  COMMIT Cargo.lock (reproducible builds)
+# Library crate         →  DO NOT commit Cargo.lock (let consumers pick versions)
 ```
 
 นี่สอดคล้องกับ convention ของ npm: application commit `package-lock.json` แต่ library ที่ publish มักไม่ commit
 
-<RsOnly title="edition = 2024">
+<RsOnly title="edition = 2024 คืออะไร">
 
 Rust ออก **edition** ใหม่ทุก 3 ปี (2015, 2018, 2021, 2024) edition อาจมี syntax change ที่ breaking แต่ compiler สามารถ migrate code ให้อัตโนมัติด้วย `cargo fix --edition` สำหรับ project ใหม่ให้ใช้ `edition = "2024"` — `cargo new` เลือกให้อยู่แล้ว และเป็นตัวที่ปลดล็อก let chain, การ drop temporary ของ `if let` ก่อนเข้า branch `else` และ `unsafe extern` block
 

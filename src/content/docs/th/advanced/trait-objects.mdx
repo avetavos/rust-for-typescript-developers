@@ -82,8 +82,9 @@ fn main() {
 
 เมื่อต้องการเก็บ trait object ไว้ใน collection (เช่น `Vec`) หรือ return ออกจาก function คุณต้อง box ก่อน ตัว `Box<dyn Trait>` เป็น fat pointer: เก็บทั้ง address ของข้อมูลบน heap และ pointer ไปยัง vtable
 
-```
-// ส่งคืน trait object จากฟังก์ชัน
+```rust
+// @skip-verify fragment: builds on the Animal/Dog/Cat example above (dynRs), not standalone
+// Returning a trait object from a function
 fn new_animal(kind: &str) -> Box<dyn Animal> {
     match kind {
         "dog" => Box::new(Dog { name: String::from("Rex") }),

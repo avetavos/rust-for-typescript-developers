@@ -17,7 +17,7 @@ import RsOnly from '../../../../components/RsOnly.astro';
 
 Rust ทำ type inference ได้เหมือนกับ TypeScript คุณสามารถใส่ annotation ระบุชัดเจนได้เมื่อต้องการความชัดเจน หรือเมื่อ compiler ไม่สามารถ infer type ได้ด้วยตัวเอง
 
-```
+```text
 // TypeScript
 let score: number = 42;
 let name = "Alice";        // inferred as string
@@ -78,14 +78,15 @@ export const variablesCode = `fn main() {
 
 นี่เป็นการตัดสินใจเชิงดีไซน์ที่ให้ผลคุ้มค่าเมื่อระบบใหญ่ขึ้น: compiler รับประกันว่าค่าจะเปลี่ยนไม่ได้เว้นแต่คุณจะเลือกอย่างชัดเจนด้วย `let mut` การเป็น immutable โดยปริยายทำให้โค้ดเข้าใจง่ายขึ้น เปิดทางให้ compiler ทำ optimization และป้องกันบั๊กทั้งกลุ่ม
 
-```
+```rust
+// @expect-error E0384
 let x = 5;
 x = 6; // error[E0384]: cannot assign twice to immutable variable `x`
 ```
 
 หากต้องการให้ mutate ได้ คุณต้องระบุให้ชัดเจน:
 
-```
+```rust
 let mut x = 5;
 x = 6; // fine
 ```

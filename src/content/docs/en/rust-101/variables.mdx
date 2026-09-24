@@ -17,7 +17,7 @@ In TypeScript, `let` declares a mutable binding and `const` declares an immutabl
 
 Rust infers types just like TypeScript. You can annotate explicitly when you need clarity or when the compiler cannot infer the type on its own.
 
-```
+```text
 // TypeScript
 let score: number = 42;
 let name = "Alice";        // inferred as string
@@ -78,14 +78,15 @@ In TypeScript, `let` creates a mutable binding — you can reassign it freely. I
 
 This is a design choice that pays off at scale: the compiler guarantees that a value cannot change unless you explicitly opt in with `let mut`. Immutability by default makes code easier to reason about, enables compiler optimizations, and prevents a whole class of bugs.
 
-```
+```rust
+// @expect-error E0384
 let x = 5;
 x = 6; // error[E0384]: cannot assign twice to immutable variable `x`
 ```
 
 To allow mutation, you must be explicit:
 
-```
+```rust
 let mut x = 5;
 x = 6; // fine
 ```

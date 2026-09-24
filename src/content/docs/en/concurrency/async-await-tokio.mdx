@@ -108,7 +108,8 @@ async fn main() {
 
 ## Try it
 
-export const asyncCode = `use tokio::time::{sleep, Duration};
+export const asyncCode = `// @skip-verify crate: tokio
+use tokio::time::{sleep, Duration};
 
 async fn fetch_user(id: u32) -> String {
     sleep(Duration::from_millis(10)).await;
@@ -133,6 +134,7 @@ async fn main() {
 In JavaScript, creating a Promise immediately starts executing it — the executor function runs right away. In Rust, an `async fn` returns a `Future` that does **nothing** until someone drives it (polls it). Writing:
 
 ```rust
+// @skip-verify nocode: fragment illustrating that creating a Future doesn't run it
 let f = fetch_user(1); // does NOT start the computation
 ```
 
@@ -150,6 +152,7 @@ tokio = { version = "1", features = ["full"] }
 The `#[tokio::main]` attribute macro rewrites your `async fn main()` into a sync `fn main()` that starts the Tokio runtime and blocks on the async body:
 
 ```rust
+// @skip-verify nocode: pseudocode illustrating macro expansion (`...` is not valid Rust)
 // What you write:
 #[tokio::main]
 async fn main() { ... }

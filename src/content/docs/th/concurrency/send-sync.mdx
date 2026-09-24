@@ -77,8 +77,9 @@ fn main() {
 
 ถ้าคุณพยายามส่ง type ที่ไม่ใช่ `Send` (เช่น `Rc<T>`) ไปยัง thread อื่น compiler จะปฏิเสธ:
 
-```
-// โค้ดนี้ compile ไม่ผ่าน:
+```rust
+// @expect-error E0277
+// This does NOT compile:
 use std::rc::Rc;
 use std::thread;
 
@@ -90,7 +91,7 @@ fn main() {
 }
 ```
 
-```
+```text
 error[E0277]: `Rc<i32>` cannot be sent between threads safely
    --> src/main.rs:6:19
     |

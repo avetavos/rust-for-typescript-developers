@@ -17,7 +17,7 @@ TypeScript functions are defined with `function` or arrow syntax, with optional 
 
 TypeScript uses `: Type` for parameters and `: ReturnType` after the closing paren. Rust uses the same `: Type` syntax for parameters and `-> ReturnType` after the param list.
 
-```
+```text
 // TypeScript
 function add(a: number, b: number): number {
   return a + b;
@@ -80,14 +80,16 @@ fn main() {
 
 In TypeScript, `if` and blocks are statements — they don't produce values. You need the ternary `? :` to produce a value conditionally. Rust is an expression-oriented language: `if`, `match`, and block expressions all produce values.
 
-```
+```rust
+let score = 75;
+
 // No ternary needed in Rust — if is an expression
 let label = if score >= 60 { "pass" } else { "fail" };
 ```
 
 This also means function bodies don't need a `return` statement for the common case. The last expression in the function body is automatically returned. You still can use `return` for early returns.
 
-```
+```rust
 fn absolute(n: i32) -> i32 {
     if n < 0 { -n } else { n }  // the whole if is the return value
 }

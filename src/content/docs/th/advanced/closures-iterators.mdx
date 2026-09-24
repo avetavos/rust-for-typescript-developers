@@ -64,7 +64,7 @@ Rust จำลองความสามารถของ closure เป็น
 
 ทุก `Fn` เป็น `FnMut` ด้วย; ทุก `FnMut` เป็น `FnOnce` ด้วย เมื่อคุณรับ parameter `&dyn Fn(T) -> U` คุณยอมรับ requirement ที่เข้มงวดที่สุด — closure ต้องเรียกได้หลายครั้งโดยไม่ mutate
 
-```
+```rust
 fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
     f(f(x))
 }
@@ -112,7 +112,8 @@ let total = run_twice(async |url: &str| {
 
 เลือก bound ให้ตรงกับวิธีที่ closure ถูกใช้ เหมือนกับ `Fn`/`FnMut`/`FnOnce` เป๊ะ: `AsyncFn` ถ้าอ่าน capture อย่างเดียว, `AsyncFnMut` ถ้าแก้ไข capture (ตัวอย่างนี้ push ลง `log`), `AsyncFnOnce` ถ้าใช้ capture จนหมด
 
-export const asyncCloCode = `async fn fetch_len(url: &str) -> usize {
+export const asyncCloCode = `// @skip-verify crate: tokio
+async fn fetch_len(url: &str) -> usize {
     url.len() // pretend this awaits the network
 }
 
@@ -183,14 +184,14 @@ export const iterRs = `fn main() {
 
 <TsGo ts={iterTs} go={iterRs} />
 
-<RsOnly title="move closures">
+<RsOnly title="move closures คืออะไร">
 
 โดย default closure จะ borrow ค่าที่จับไว้ ถ้าอยากบังคับให้ closure *own* ค่าเหล่านั้น (จำเป็นเมื่อ closure ต้องอยู่นานกว่า scope ปัจจุบัน เช่น ส่งเข้า `std::thread::spawn`) ให้ใส่ prefix `move`:
 
-```
+```rust
 let name = String::from("Alice");
 let greeting = move || println!("Hello, {name}!");
-// name ถูก move เข้าไปใน closure; เราไม่สามารถใช้มันที่นี่อีกต่อไป
+// name is moved into the closure; we can no longer use it here
 greeting();
 ```
 

@@ -78,7 +78,7 @@ fn main() {
 
 `vec![1, 2, 3]` is itself a `macro_rules!` macro from the standard library. It expands to code that creates a `Vec`, calls `push` for each element, and returns the vector. Without it you would write:
 
-```
+```rust
 let mut v = Vec::new();
 v.push(1);
 v.push(2);

@@ -72,6 +72,7 @@ async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
 The `?` operator is Rust's early-return shorthand for `Result`. It replaces try/catch for recoverable errors:
 
 ```rust
+// @skip-verify crate: axum (Path extractor, fragment building on this lesson's AppError)
 async fn get_user(Path(id): Path<u32>) -> Result<Json<User>, AppError> {
     // ? returns Err(AppError::Database(...)) early if the query fails
     let user = db_find(id).await?;

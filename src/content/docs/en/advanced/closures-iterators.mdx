@@ -64,7 +64,7 @@ Rust models closure capabilities as three traits. Understanding them is importan
 
 Every `Fn` is also `FnMut`; every `FnMut` is also `FnOnce`. When you take a `&dyn Fn(T) -> U` parameter, you accept the most restrictive requirement — the closure must be callable multiple times without mutating.
 
-```
+```rust
 fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
     f(f(x))
 }
@@ -112,7 +112,8 @@ let total = run_twice(async |url: &str| {
 
 Take the bound that matches how the closure is used, exactly as with `Fn`/`FnMut`/`FnOnce`: `AsyncFn` if it only reads its captures, `AsyncFnMut` if it mutates them (the example pushes to `log`), `AsyncFnOnce` if it consumes them.
 
-export const asyncCloCode = `async fn fetch_len(url: &str) -> usize {
+export const asyncCloCode = `// @skip-verify crate: tokio
+async fn fetch_len(url: &str) -> usize {
     url.len() // pretend this awaits the network
 }
 
@@ -187,7 +188,7 @@ export const iterRs = `fn main() {
 
 By default a closure borrows its captures. To force it to *own* them (necessary when the closure must outlive the current scope, e.g., passed to `std::thread::spawn`), prefix it with `move`:
 
-```
+```rust
 let name = String::from("Alice");
 let greeting = move || println!("Hello, {name}!");
 // name is moved into the closure; we can no longer use it here

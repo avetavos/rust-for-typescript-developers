@@ -68,6 +68,7 @@ fn main() {
 `match` ของ Rust เป็น **exhaustive**: คุณต้อง handle ทุก variant มิฉะนั้นโค้ดจะ compile ไม่ได้
 
 ```rust
+// @expect-error E0004
 enum Direction { North, South, East, West }
 
 fn describe(d: Direction) -> &'static str {
@@ -75,10 +76,10 @@ fn describe(d: Direction) -> &'static str {
         Direction::North => "north",
         Direction::South => "south",
         Direction::East  => "east",
-        // Direction::West หายไป!
+        // Direction::West is missing!
     }
 }
-// error[E0004]: non-exhaustive patterns: `West` not covered
+// error[E0004]: non-exhaustive patterns: `Direction::West` not covered
 //  --> src/main.rs:4:11
 ```
 
@@ -87,10 +88,13 @@ fn describe(d: Direction) -> &'static str {
 คุณใช้ `_` เป็น catch-all ถ้าตั้งใจจะ ignore variant ที่เหลือ:
 
 ```rust
+enum Direction { North, South, East, West }
+let d = Direction::West;
+
 match d {
     Direction::North => "north",
     _ => "not north",
-}
+};
 ```
 
 </RsOnly>

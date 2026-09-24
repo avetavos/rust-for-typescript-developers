@@ -29,7 +29,7 @@ Node.js, Python, Go, Java, C# — ทุกภาษา mainstream ที่ค�
 
 Rust **ไม่มีสิ่งเหล่านี้เลย** แต่ได้ memory safety มาจาก ownership model ล้วน ๆ ตัว Compiler พิสูจน์แบบ static ว่า memory ถูกจัดการถูกต้อง แล้ว generate โค้ดคืน allocation แต่ละก้อนในจุดที่ถูกต้องพอดี
 
-<RsOnly title="RAII — Resource Acquisition Is Initialization">
+<RsOnly title="RAII คืออะไร (Resource Acquisition Is Initialization)">
 
 **RAII** คือ pattern ที่ Rust ใช้แทน GC เมื่อคุณสร้าง value ที่เป็น owner ของ resource (memory, file handle, mutex lock) resource นั้นจะถูก acquire เมื่อสร้าง และ release เมื่อ owner หลุด scope — อัตโนมัติ, แน่นอน, ไม่ต้องการ runtime
 
@@ -110,7 +110,7 @@ GC language แลก runtime overhead กับความสะดวกข�
 
 ## การ cleanup แบบ deterministic กับ non-deterministic
 
-<Mermaid code={cleanupDiagram} title="Deterministic vs non-deterministic cleanup" />
+<Mermaid code={cleanupDiagram} title="Cleanup แบบ deterministic กับ non-deterministic" />
 
 ความแน่นอนนี้คือเหตุผลที่ Rust ถูกใช้สำหรับ OS kernel, game engine, WebAssembly runtime, และ database เมื่อ file handle หรือ network socket ต้องถูกปิดในจุดที่แน่นอน "GC จะจัดการในที่สุด" ไม่ใช่คำตอบที่ยอมรับได้
 

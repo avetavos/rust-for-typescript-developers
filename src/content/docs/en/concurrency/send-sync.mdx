@@ -77,7 +77,8 @@ The most important thing to understand about `Send` and `Sync` is that they are 
 
 If you try to send a non-`Send` type (like `Rc<T>`) to another thread, the compiler refuses:
 
-```
+```rust
+// @expect-error E0277
 // This does NOT compile:
 use std::rc::Rc;
 use std::thread;
@@ -90,7 +91,7 @@ fn main() {
 }
 ```
 
-```
+```text
 error[E0277]: `Rc<i32>` cannot be sent between threads safely
    --> src/main.rs:6:19
     |

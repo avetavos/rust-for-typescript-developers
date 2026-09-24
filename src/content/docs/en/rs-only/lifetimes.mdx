@@ -33,6 +33,7 @@ A lifetime annotation does NOT change how long data lives. It is a constraint th
 TypeScript never has dangling references — the GC prevents the underlying data from being freed while any reference exists. Rust frees data when its owner goes out of scope. Without lifetimes, it would be possible to return a reference to data that has already been freed:
 
 ```rust
+// @expect-error E0106
 // This does NOT compile — and that is the point.
 fn dangle() -> &String {
     let s = String::from("hello");

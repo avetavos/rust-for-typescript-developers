@@ -104,21 +104,21 @@ fn main() {
 
 คุณสามารถกำหนดให้ type ต้อง implement หลาย trait พร้อมกันโดยเชื่อมด้วย `+` เหมือนกับ `T extends A & B` ของ TypeScript
 
-```
+```text
 // TypeScript
 function foo<T extends Serializable & Loggable>(x: T) { ... }
 
 // Rust — inline
 fn foo<T: Serialize + Debug>(x: T) { ... }
 
-// Rust — where clause (แนะนำเมื่อ bounds ยาว)
+// Rust — where clause (preferred when bounds get long)
 fn foo<T>(x: T)
 where
     T: Serialize + Debug + Clone,
 { ... }
 ```
 
-<RsOnly title="Monomorphisation: zero-cost generics">
+<RsOnly title="Monomorphisation — generics แบบ zero-cost">
 
 เมื่อคุณเขียน `print_twice::<i32>(42)` และ `print_twice::<&str>("hi")` compiler สร้างฟังก์ชัน machine-code แยกสองฟังก์ชัน — หนึ่งสำหรับ `i32`, หนึ่งสำหรับ `&str` ไม่มี dynamic dispatch ไม่มี vtable lookup ไม่มี boxing นี่คือเหตุผลที่ Rust generics ถูกเรียกว่า "zero-cost abstractions"
 

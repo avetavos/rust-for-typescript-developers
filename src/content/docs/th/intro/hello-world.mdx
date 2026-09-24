@@ -45,7 +45,8 @@ export const helloRs = `fn main() {
 
 `println!` มีความสามารถมากกว่า `console.log` Format string ใช้ `{}` เป็น Placeholder และคุณสามารถอ้างอิงตัวแปรด้วยชื่อ (`{name}`) หรือใช้ Positional placeholders:
 
-```
+```rust
+// @skip-verify nocode: fragment illustrating println! placeholder styles (`value` from surrounding context)
 println!("{}", value);           // positional
 println!("{value}");             // named (Rust 1.58+)
 println!("{:?}", value);         // debug format — works on most types
@@ -71,7 +72,7 @@ cargo run
 
 คุณจะเห็น:
 
-```
+```text
    Compiling hello-world v0.1.0
     Finished dev [unoptimized + debuginfo] target(s) in 0.42s
      Running `target/debug/hello-world`

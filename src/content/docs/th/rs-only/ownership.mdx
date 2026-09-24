@@ -63,8 +63,8 @@ fn main() {
     {
         let s = String::from("hello");
         println!("inside block: {}", s);
-    } // <-- s ถูก drop ที่นี่ Memory ถูกคืนที่บรรทัดนี้พอดี
-    println!("after block — s หายไปแล้ว");
+    } // <-- s is dropped HERE. Memory is freed at this exact line.
+    println!("after block — s is gone");
 }
 ```
 

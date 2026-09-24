@@ -17,7 +17,7 @@ function ใน TypeScript นิยามด้วย `function` หรือ a
 
 TypeScript ใช้ `: Type` กับ parameter และ `: ReturnType` หลังวงเล็บปิด ส่วน Rust ใช้ `: Type` แบบเดียวกันกับ parameter แล้วต่อท้ายรายการ parameter ด้วย `-> ReturnType`
 
-```
+```text
 // TypeScript
 function add(a: number, b: number): number {
   return a + b;
@@ -80,14 +80,16 @@ fn main() {
 
 ใน TypeScript นั้น `if` และ block เป็น statement — ไม่ให้ค่ากลับมา คุณต้องใช้ ternary `? :` เพื่อให้ได้ค่าตามเงื่อนไข ส่วน Rust เป็นภาษาแบบ expression-oriented: `if`, `match` และ block expression ล้วนให้ค่ากลับมาทั้งสิ้น
 
-```
+```rust
+let score = 75;
+
 // No ternary needed in Rust — if is an expression
 let label = if score >= 60 { "pass" } else { "fail" };
 ```
 
 นี่ยังหมายความว่าตัว body ของ function ไม่จำเป็นต้องมี statement `return` ในกรณีทั่วไป expression สุดท้ายใน body ของ function จะถูก return ให้อัตโนมัติ คุณยังคงใช้ `return` ได้สำหรับการ return ก่อนกำหนด (early return)
 
-```
+```rust
 fn absolute(n: i32) -> i32 {
     if n < 0 { -n } else { n }  // the whole if is the return value
 }

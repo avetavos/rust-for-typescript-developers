@@ -129,7 +129,7 @@ When you call `thread::spawn`, the closure you pass is not allowed to borrow fro
 
 Without `move`, you get a compile error:
 
-```
+```text
 error[E0373]: closure may outlive the current function,
 but it borrows `value`, which is owned by the current function
 ```

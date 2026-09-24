@@ -67,6 +67,7 @@ Compared to `npm install express`, you declare everything in one file and Cargo 
 ## `main.rs` — the entry point
 
 ```rust
+// @skip-verify multi-file: mod errors/handlers/models/routes/state are separate files shown elsewhere in this module; crate: axum
 use axum::Router;
 use std::net::SocketAddr;
 

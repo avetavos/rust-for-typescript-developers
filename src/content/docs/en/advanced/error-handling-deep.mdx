@@ -69,7 +69,8 @@ fn main() {
 
 The `?` at the end of a `Result`-returning expression is syntactic sugar for "if this is `Err`, convert the error and return early; otherwise unwrap the `Ok` value." It replaces dozens of explicit `match` branches.
 
-```
+```rust
+// @skip-verify nocode: fragment — `s` and `AppError` come from the surrounding lesson context, not standalone
 // Without ?
 let n = match s.trim().parse::<u32>() {
     Ok(val) => val,
@@ -146,7 +147,8 @@ fn main() {
 
 `thiserror` is for **library** code where callers need to inspect the error type. `anyhow` is for **application/binary** code where you just want errors to propagate cleanly with good context messages and you do not need to match on specific variants.
 
-```
+```rust
+// @skip-verify crate: anyhow
 use anyhow::{Context, Result};
 
 fn read_config(path: &str) -> Result<String> {
@@ -161,7 +163,8 @@ fn read_config(path: &str) -> Result<String> {
 
 Both `thiserror` and `anyhow` support error chaining. With `anyhow`, you add context layers:
 
-```
+```rust
+// @skip-verify crate: anyhow (fragment; db_query/parse_user/User from surrounding context)
 fn load_user(id: u32) -> anyhow::Result<User> {
     let row = db_query(id).context("database query failed")?;
     parse_user(row).with_context(|| format!("could not parse user {id}"))

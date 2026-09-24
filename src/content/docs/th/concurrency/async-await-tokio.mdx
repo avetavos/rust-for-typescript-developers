@@ -108,7 +108,8 @@ async fn main() {
 
 ## ลองรันเลย
 
-export const asyncCode = `use tokio::time::{sleep, Duration};
+export const asyncCode = `// @skip-verify crate: tokio
+use tokio::time::{sleep, Duration};
 
 async fn fetch_user(id: u32) -> String {
     sleep(Duration::from_millis(10)).await;
@@ -133,7 +134,8 @@ async fn main() {
 ใน JavaScript การสร้าง Promise จะเริ่มทำงานทันที — executor function รันเลย ส่วนใน Rust `async fn` คืน `Future` ที่ **ไม่ทำอะไรเลย** จนกว่าจะมีใครมา drive (poll) การเขียนแบบนี้:
 
 ```rust
-let f = fetch_user(1); // ไม่เริ่มการคำนวณ
+// @skip-verify nocode: fragment illustrating that creating a Future doesn't run it
+let f = fetch_user(1); // does NOT start the computation
 ```
 
 ...ไม่ทำอะไรเลย คุณต้อง `.await` หรือโยนให้ `tokio::spawn` (หรือ executor อื่น) Future ถึงจะเริ่มทำงาน ถ้าสร้าง Future ทิ้งไว้เฉย ๆ โดยไม่เคย await body ของ async function จะไม่ถูกรันเลย
@@ -150,11 +152,12 @@ tokio = { version = "1", features = ["full"] }
 attribute macro `#[tokio::main]` เขียนใหม่ `async fn main()` ของคุณเป็น sync `fn main()` ที่เริ่ม Tokio runtime และ block บน async body:
 
 ```rust
-// สิ่งที่คุณเขียน:
+// @skip-verify nocode: pseudocode illustrating macro expansion (`...` is not valid Rust)
+// What you write:
 #[tokio::main]
 async fn main() { ... }
 
-// สิ่งที่ macro ขยายออกมา (โดยคร่าวๆ):
+// What the macro expands to (roughly):
 fn main() {
     tokio::runtime::Runtime::new()
         .unwrap()

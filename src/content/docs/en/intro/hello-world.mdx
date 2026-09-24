@@ -45,7 +45,8 @@ There are several things to notice immediately:
 
 `println!` is more powerful than `console.log`. The format string uses `{}` as the placeholder, and you can reference variables by name (`{name}`) or use positional placeholders:
 
-```
+```rust
+// @skip-verify nocode: fragment illustrating println! placeholder styles (`value` from surrounding context)
 println!("{}", value);           // positional
 println!("{value}");             // named (Rust 1.58+)
 println!("{:?}", value);         // debug format — works on most types
@@ -71,7 +72,7 @@ cargo run
 
 You will see:
 
-```
+```text
    Compiling hello-world v0.1.0
     Finished dev [unoptimized + debuginfo] target(s) in 0.42s
      Running `target/debug/hello-world`

@@ -41,7 +41,7 @@ export const targetTree = `flowchart TD
 
 เมื่อคุณรัน `cargo new my-app` Cargo จะสร้างโปรเจกต์ที่เล็กแต่ครบถ้วน:
 
-<Mermaid code={binCrateTree} title="What cargo new gives you (binary crate)" />
+<Mermaid code={binCrateTree} title="สิ่งที่ cargo new ให้มา (binary crate)" />
 
 สำหรับ Library (ไม่มี `main` แค่เป็น API สำหรับ Crate อื่นใช้):
 
@@ -49,7 +49,7 @@ export const targetTree = `flowchart TD
 cargo new --lib my-lib
 ```
 
-<Mermaid code={libCrateTree} title="Library crate layout" />
+<Mermaid code={libCrateTree} title="โครงสร้าง library crate" />
 
 ## Cargo.toml vs package.json
 
@@ -101,7 +101,7 @@ pretty_assertions = "1"`;
 
 Binary crate มี `src/main.rs` ส่วน Library crate มี `src/lib.rs` และจะมีทั้งคู่ในโปรเจกต์เดียวกันก็ได้ — เก็บ Logic ที่แชร์ไว้ใน `src/lib.rs` แล้วให้ `src/main.rs` เรียกใช้
 
-<Mermaid code={moduleTree} title="A project with modules" />
+<Mermaid code={moduleTree} title="โปรเจกต์ที่มี module" />
 
 ใน TypeScript คุณใช้ `import/export` ใน Rust คุณใช้ `mod` เพื่อประกาศ Module และ `use` เพื่อนำ Items เข้า Scope:
 
@@ -134,7 +134,7 @@ fn main() {
 
 เมื่อรัน `cargo build` Rust จะ Compile ทุกอย่างลงใน `target/` เทียบได้กับ `dist/` บวก `node_modules/.cache/` และไม่ควร Commit เข้า Version control
 
-<Mermaid code={targetTree} title="The target/ directory" />
+<Mermaid code={targetTree} title="ไดเรกทอรี target/" />
 
 เพิ่ม `target/` ลงใน `.gitignore` ได้เลย ซึ่ง Cargo ใส่ให้อัตโนมัติอยู่แล้วเมื่อคุณรัน `cargo new`
 

@@ -20,7 +20,7 @@ TypeScript ใช้ `T | null | undefined` สำหรับค่าที่
 
 ## Option — การไม่มีค่าโดยไม่ต้องมี null
 
-```
+```text
 // TypeScript: null can silently propagate
 function findUser(id: number): User | null { ... }
 const user = findUser(42);
@@ -36,7 +36,7 @@ match find_user(42) {
 
 ## Result — error ในฐานะค่า
 
-```
+```text
 // TypeScript: error can be thrown anywhere
 function divide(a: number, b: number): number {
   if (b === 0) throw new Error("division by zero");
@@ -62,7 +62,7 @@ fn divide(a: f64, b: f64) -> Result<f64, String> {
 
 ใน function ที่ return `Result` นั้น `?` บนค่า `Result` จะ unwrap `Ok` ให้ หรือไม่ก็ return `Err` ออกไปก่อนกำหนด — ช่วยตัดการซ้อน `match` หลายชั้นออกไป:
 
-```
+```rust
 fn read_number(s: &str) -> Result<i32, std::num::ParseIntError> {
     let n = s.trim().parse::<i32>()?; // returns Err early if parse fails
     Ok(n * 2)

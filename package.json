@@ -8,7 +8,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check": "node tools/check-parity.mjs",
+    "verify:snippets": "node tools/verify-snippets.mjs"
   },
   "dependencies": {
     "@astrojs/preact": "^5.1.5",

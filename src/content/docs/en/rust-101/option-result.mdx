@@ -20,7 +20,7 @@ The type system forces you to handle both cases before you can use the value.
 
 ## Option — absence without null
 
-```
+```text
 // TypeScript: null can silently propagate
 function findUser(id: number): User | null { ... }
 const user = findUser(42);
@@ -36,7 +36,7 @@ match find_user(42) {
 
 ## Result — errors as values
 
-```
+```text
 // TypeScript: error can be thrown anywhere
 function divide(a: number, b: number): number {
   if (b === 0) throw new Error("division by zero");
@@ -62,7 +62,7 @@ fn divide(a: f64, b: f64) -> Result<f64, String> {
 
 In a function that returns `Result`, `?` on a `Result` value either unwraps `Ok` or returns the `Err` early — eliminating nested `match` chains:
 
-```
+```rust
 fn read_number(s: &str) -> Result<i32, std::num::ParseIntError> {
     let n = s.trim().parse::<i32>()?; // returns Err early if parse fails
     Ok(n * 2)

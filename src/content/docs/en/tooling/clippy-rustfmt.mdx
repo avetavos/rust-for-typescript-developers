@@ -77,6 +77,7 @@ if doubled.is_empty() {
 ## Suppressing a lint
 
 ```rust
+// @skip-verify nocode: two illustrative attribute forms shown together (item-level, then crate-root #![allow])
 // Suppress one lint on the next item
 #[allow(clippy::needless_pass_by_value)]
 fn process(data: Vec<u8>) { /* ... */ }

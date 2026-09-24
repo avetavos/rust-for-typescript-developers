@@ -17,7 +17,7 @@ TypeScript มี discriminated union: type union ที่สมาชิกแ
 
 ใน TypeScript คุณเขียน union ของ object type ส่วนใน Rust แต่ละ enum variant สามารถเก็บข้อมูลแบบ tuple, field ที่มีชื่อ หรือไม่เก็บอะไรเลยก็ได้:
 
-```
+```text
 // TypeScript discriminated union
 type Shape =
   | { kind: "circle"; radius: number }
@@ -38,7 +38,10 @@ enum Shape {
 
 `if let` เป็นรูปแบบย่อของ `match` ที่มี arm ที่คุณสนใจเพียง arm เดียวและ fallback ที่คุณไม่สน:
 
-```
+```rust
+enum Shape { Circle(f64) }
+let shape = Shape::Circle(2.0);
+
 if let Shape::Circle(r) = shape {
     println!("radius is {r}");
 }
@@ -102,7 +105,7 @@ enum ของ Rust เป็น **algebraic data types (ADTs)** — ฟีเ�
 
 variant สามารถเก็บข้อมูลรูปทรงต่าง ๆ ได้โดยไม่มี boilerplate:
 
-```
+```rust
 enum Message {
     Quit,                        // unit variant
     Move { x: i32, y: i32 },    // named fields

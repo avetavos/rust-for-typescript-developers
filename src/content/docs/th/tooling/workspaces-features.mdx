@@ -53,10 +53,10 @@ npm run test --workspaces
 npm run build --workspace packages/api
 
 # Cargo
-cargo build --workspace         # build ทุก member
-cargo test --workspace          # test ทุก member
-cargo build -p api              # build เฉพาะ crate "api"
-cargo test -p core              # test เฉพาะ crate "core"
+cargo build --workspace         # build every member
+cargo test --workspace          # test every member
+cargo build -p api              # build only the "api" crate
+cargo test -p core              # test only the "core" crate
 ```
 
 ## Share dependency version ข้าม crate
@@ -67,7 +67,7 @@ cargo test -p core              # test เฉพาะ crate "core"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 
-# crates/api/Cargo.toml  — inherit โดยไม่ต้องระบุ version ซ้ำ
+# crates/api/Cargo.toml  — inherit without repeating the version
 [dependencies]
 tokio = { workspace = true }
 serde = { workspace = true }
@@ -82,10 +82,10 @@ Feature flag คือคำตอบของ Rust สำหรับ optional 
 ```toml
 # Cargo.toml
 [features]
-default = ["json"]          # feature ที่เปิดโดย default
-json = ["dep:serde_json"]   # feature "json" ดึง serde_json เข้ามา
-async = ["dep:tokio"]       # feature "async" ดึง tokio เข้ามา
-full = ["json", "async"]    # ความสะดวก: เปิดทุกอย่าง
+default = ["json"]          # features enabled by default
+json = ["dep:serde_json"]   # "json" feature pulls in serde_json
+async = ["dep:tokio"]       # "async" feature pulls in tokio
+full = ["json", "async"]    # convenience: enable everything
 
 [dependencies]
 serde_json = { version = "1", optional = true }
@@ -103,19 +103,19 @@ pub mod json_support {
 ```
 
 ```bash
-# Build โดยไม่มี default feature
+# Build with no default features
 cargo build --no-default-features
 
-# เปิด feature เฉพาะ
+# Enable specific features
 cargo build --features "async,json"
 
-# เปิดทุก feature
+# Enable all features
 cargo build --all-features
 ```
 
 > Workspace และ feature flag ต้องการ project layout หลาย file จึงไม่มี browser Playground สำหรับบทนี้ สร้าง workspace ใน local ด้วย `cargo new --lib` และทดลองกับตัวอย่างข้างต้น
 
-<RsOnly title="Path dependency — local crate">
+<RsOnly title="Path dependency — local crate คืออะไร">
 
 ภายใน workspace crate อ้างอิงกันโดยใช้ `path` dependency แทน version number นี่เทียบเท่ากับ `"@my/core": "*"` กับ `npm link`
 

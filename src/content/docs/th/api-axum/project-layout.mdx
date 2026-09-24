@@ -36,9 +36,9 @@ export const rsLayoutDiagram = `flowchart TD
 
 ทุกโปรเจกต์ Node.js เริ่มด้วย `package.json` ส่วนของเทียบเท่าใน Rust คือ `Cargo.toml` ซึ่งประกาศชื่อ crate, version และ dependency ตัว Cargo เองเป็นทั้ง package manager และ build tool — ไม่ต้องแยก `npm` กับ `tsc` กับ `ts-node`
 
-<Mermaid code={tsLayoutDiagram} title="Express/NestJS project layout" />
+<Mermaid code={tsLayoutDiagram} title="โครงสร้างโปรเจกต์ Express/NestJS" />
 
-<Mermaid code={rsLayoutDiagram} title="Axum project layout" />
+<Mermaid code={rsLayoutDiagram} title="โครงสร้างโปรเจกต์ Axum" />
 
 ## `Cargo.toml` สำหรับ Axum service
 
@@ -67,6 +67,7 @@ thiserror   = "2"
 ## `main.rs` — entry point
 
 ```rust
+// @skip-verify multi-file: mod errors/handlers/models/routes/state are separate files shown elsewhere in this module; crate: axum
 use axum::Router;
 use std::net::SocketAddr;
 

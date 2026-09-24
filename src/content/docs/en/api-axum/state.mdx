@@ -112,6 +112,7 @@ async fn list_users(
 `Arc<T>` is an atomically reference-counted smart pointer. Axum handlers run concurrently on multiple Tokio tasks. Without `Arc`, passing `AppState` to multiple handlers would require copying it. With `Arc`, all handlers hold a reference to the same allocation — no copies, no locks for read-only data.
 
 ```rust
+// @skip-verify crate: sqlx (fragment; AppConfig is a placeholder type)
 // AppState must implement Clone so Axum can clone the Arc per handler
 #[derive(Clone)]
 struct AppState {
@@ -123,6 +124,8 @@ struct AppState {
 If your state contains mutable data (e.g., an in-memory cache), wrap only the mutable part:
 
 ```rust
+// @skip-verify crate: sqlx (fragment)
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]

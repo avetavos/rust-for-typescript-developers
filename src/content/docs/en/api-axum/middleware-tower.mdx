@@ -48,6 +48,7 @@ let app = Router::new()
 `tower-http` ships a `CorsLayer` that mirrors the `cors` npm package. Add it to `Cargo.toml` with `tower-http = { version = "0.7", features = ["cors"] }`.
 
 ```rust
+// @skip-verify crate: tower-http, axum
 use tower_http::cors::{Any, CorsLayer};
 use axum::http::Method;
 
@@ -66,6 +67,7 @@ let app = Router::new()
 `tower-http`'s `TraceLayer` integrates with `tracing` to log every request/response. Add `tower-http = { version = "0.7", features = ["trace"] }` to `Cargo.toml`.
 
 ```rust
+// @skip-verify crate: tower-http, axum
 use tower_http::trace::TraceLayer;
 
 let app = Router::new()
@@ -89,12 +91,12 @@ protectedRouter.get('/profile', getProfile);
 app.use('/api', protectedRouter);`;
 
 export const rsScopedLayer = `use axum::Router;
-use tower_http::auth::RequireAuthorizationLayer;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 // Layer applied only to the protected sub-router
 let protected_routes = Router::new()
     .route("/profile", get(get_profile))
-    .layer(RequireAuthorizationLayer::bearer("secret-token"));
+    .layer(ValidateRequestHeaderLayer::bearer("secret-token"));
 
 let app = Router::new()
     .route("/health", get(health))

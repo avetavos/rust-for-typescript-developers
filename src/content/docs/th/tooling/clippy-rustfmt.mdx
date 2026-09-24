@@ -28,14 +28,14 @@ Rust มาพร้อมสองเครื่องมือ first-party �
 npx prettier --write "src/**/*.ts"
 
 # Rust
-cargo fmt              # format ทุก file ใน workspace
-cargo fmt --check      # โหมด CI: exit 1 ถ้า file ใดต้องเปลี่ยน
+cargo fmt              # format all files in the workspace
+cargo fmt --check      # CI mode: exit 1 if any file would change
 ```
 
 `cargo fmt` ครอบ **rustfmt** ไว้ค่า default คือ official style และแทบไม่มีใคร override `rustfmt.toml` ที่ project root ปรับได้บางตัวเลือก:
 
 ```toml
-# rustfmt.toml (optional — ส่วนใหญ่ไม่มี)
+# rustfmt.toml (optional — most projects have none)
 max_width = 100
 edition = "2024"
 ```
@@ -47,8 +47,8 @@ edition = "2024"
 npx eslint src/
 
 # Rust
-cargo clippy                  # เตือนเมื่อ lint ถูกละเมิด
-cargo clippy -- -D warnings   # ให้ทุก warning เป็น compile error (ใช้บน CI)
+cargo clippy                  # warn on lint violations
+cargo clippy -- -D warnings   # treat every warning as a compile error (use on CI)
 ```
 
 export const clippyTs = `// eslint might warn: prefer const
@@ -77,11 +77,12 @@ if doubled.is_empty() {
 ## ปิด lint เฉพาะ
 
 ```rust
-// ปิด lint เดียวบน item ถัดไป
+// @skip-verify nocode: two illustrative attribute forms shown together (item-level, then crate-root #![allow])
+// Suppress one lint on the next item
 #[allow(clippy::needless_pass_by_value)]
 fn process(data: Vec<u8>) { /* ... */ }
 
-// ปิดทั้ง file (ใส่ที่ crate root)
+// Suppress across the whole file (put at crate root)
 #![allow(dead_code)]
 ```
 

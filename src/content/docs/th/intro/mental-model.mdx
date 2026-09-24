@@ -192,7 +192,7 @@ fn main() {
 
 การ match ทุก `Result` ทำให้โค้ดยืดยาวได้ Rust จึงมีตัวดำเนินการ `?` มาให้: วางไว้หลัง `Result` แล้วจะ unwrap ค่า `Ok` หรือไม่ก็ return `Err` กลับไปให้ caller ทันที เทียบได้กับการ re-throw exception แต่ปรากฏชัดอยู่ใน function signature
 
-```
+```rust
 fn read_number(s: &str) -> Result<i32, String> {
     let n = s.parse::<i32>().map_err(|e| e.to_string())?;
     Ok(n * 2)

@@ -117,7 +117,7 @@ fn main() {
 
 TypeScript มี `null`, `undefined`, optional chaining (`?.`), และ non-null assertion (`!`) Rust ไม่มีสิ่งเหล่านี้เลย แต่ใช้การไม่มีค่าแทนด้วย enum `Option<T>`:
 
-```
+```rust
 let name: Option<&str> = Some("Alice");
 let missing: Option<&str> = None;
 ```

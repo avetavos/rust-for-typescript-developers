@@ -93,11 +93,12 @@ TypeScript ไม่มีการป้องกันเหล่านี้
 นี่คือ error ที่พบบ่อยที่สุดสำหรับ Rust developer มือใหม่ โค้ดด้านล่างพยายาม hold shared reference และ mutable reference พร้อมกัน:
 
 ```rust
+// @expect-error E0502
 fn main() {
     let mut s = String::from("hello");
 
-    let r1 = &s;      // shared borrow เริ่ม
-    let r2 = &s;      // shared borrow อีกตัว — ยังโอเค
+    let r1 = &s;      // shared borrow begins
+    let r2 = &s;      // another shared borrow — still fine
     let r3 = &mut s;  // ERROR: cannot borrow `s` as mutable because it is also borrowed as immutable
 
     println!("{}, {}, {}", r1, r2, r3);

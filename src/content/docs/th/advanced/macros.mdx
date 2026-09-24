@@ -78,7 +78,7 @@ fn main() {
 
 `vec![1, 2, 3]` เป็น `macro_rules!` macro จาก standard library ตอน compile จะ expand เป็นโค้ดที่สร้าง `Vec`, เรียก `push` ทีละ element แล้ว return vector ออกมา ถ้าไม่มี macro ตัวนี้คุณต้องเขียนแบบนี้:
 
-```
+```rust
 let mut v = Vec::new();
 v.push(1);
 v.push(2);
@@ -100,7 +100,7 @@ v.push(3);
 | `serde::Serialize` / `Deserialize` | JSON (และ format อื่น) serialisation |
 | `thiserror::Error` | `Display` และ `From` impls สำหรับ error enums |
 
-<RsOnly title="Macro hygiene">
+<RsOnly title="Macro hygiene คืออะไร">
 
 Rust macro เป็น **hygienic**: ตัวแปรที่ประกาศภายใน macro จะไม่ไปชนกับตัวแปรใน calling scope โดยบังเอิญ ถ้า macro ประกาศตัวแปรชื่อ `x` ก็ shadow `x` ของผู้เรียกไม่ได้ เว้นแต่ผู้เรียกจะส่ง identifier นั้นเข้ามาเอง จุดนี้ดีขึ้นมากจาก C preprocessor macro ที่ทำแค่ textual substitution จนขึ้นชื่อเรื่อง name-clash bug
 

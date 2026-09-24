@@ -17,7 +17,7 @@ TypeScript has discriminated unions: a type union where each member has a litera
 
 In TypeScript you write a union of object types. In Rust, each enum variant can hold tuple-style data, named fields, or nothing at all:
 
-```
+```text
 // TypeScript discriminated union
 type Shape =
   | { kind: "circle"; radius: number }
@@ -38,7 +38,10 @@ When you `match` on a Rust enum, the compiler requires you to handle every varia
 
 `if let` is shorthand for a `match` with one arm you care about and a fallback you don't:
 
-```
+```rust
+enum Shape { Circle(f64) }
+let shape = Shape::Circle(2.0);
+
 if let Shape::Circle(r) = shape {
     println!("radius is {r}");
 }
@@ -102,7 +105,7 @@ Rust enums are **algebraic data types (ADTs)** — a formal feature of the type 
 
 Variants can hold different shapes of data with no boilerplate:
 
-```
+```rust
 enum Message {
     Quit,                        // unit variant
     Move { x: i32, y: i32 },    // named fields

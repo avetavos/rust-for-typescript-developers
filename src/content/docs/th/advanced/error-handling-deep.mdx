@@ -69,14 +69,15 @@ fn main() {
 
 `?` ที่ท้าย expression ที่ return `Result` คือ syntactic sugar ของ "ถ้าเป็น `Err` ให้แปลง error แล้ว return ออกไปเลย ไม่เช่นนั้นก็ unwrap ค่า `Ok`" เขียนตัวเดียวแทน `match` แบบเต็ม ๆ ได้หลายบล็อก
 
-```
-// ไม่มี ?
+```rust
+// @skip-verify nocode: fragment — `s` and `AppError` come from the surrounding lesson context, not standalone
+// Without ?
 let n = match s.trim().parse::<u32>() {
     Ok(val) => val,
     Err(e)  => return Err(AppError::from(e)),
 };
 
-// มี ? — behaviour เหมือนกันทุกประการ ตัวอักษรเดียว
+// With ?  — identical behaviour, one character
 let n: u32 = s.trim().parse()?;
 ```
 
@@ -146,7 +147,8 @@ fn main() {
 
 `thiserror` ใช้สำหรับ **library** code ที่ผู้เรียกต้องตรวจสอบ error type `anyhow` ใช้สำหรับ **application/binary** code ที่คุณแค่ต้องการให้ errors propagate อย่างชัดเจนพร้อม context messages ดีๆ โดยไม่ต้องการ match บน specific variants
 
-```
+```rust
+// @skip-verify crate: anyhow
 use anyhow::{Context, Result};
 
 fn read_config(path: &str) -> Result<String> {
@@ -161,7 +163,8 @@ fn read_config(path: &str) -> Result<String> {
 
 ทั้ง `thiserror` และ `anyhow` รองรับ error chaining ด้วย `anyhow` คุณเพิ่ม context layers:
 
-```
+```rust
+// @skip-verify crate: anyhow (fragment; db_query/parse_user/User from surrounding context)
 fn load_user(id: u32) -> anyhow::Result<User> {
     let row = db_query(id).context("database query failed")?;
     parse_user(row).with_context(|| format!("could not parse user {id}"))

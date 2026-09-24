@@ -15,7 +15,8 @@ TypeScript ใช้ ESM `import`/`export` สำหรับการจัด�
 
 module จัดกลุ่ม item ที่เกี่ยวข้องกันไว้ด้วยกัน ใช้ `pub` เพื่อทำให้ item มองเห็นได้จากภายนอก module — ค่าเริ่มต้นคือ private
 
-```
+```rust
+// @skip-verify multi-file: two files (src/math.rs then src/main.rs) shown together
 // src/math.rs  (a module file)
 pub fn add(a: i32, b: i32) -> i32 { a + b }
 fn helper() { }  // private — not accessible outside

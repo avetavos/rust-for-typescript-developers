@@ -58,14 +58,14 @@ CMD ["/usr/local/bin/my-app"]
 pattern `COPY` สองขั้นตอนข้างต้นสำคัญมากสำหรับ rebuild ที่เร็ว:
 
 ```dockerfile
-# ขั้นตอน 1: copy เฉพาะ manifest และ build stub main.rs
-# Docker layer-cache สิ่งนี้ — invalidate เฉพาะเมื่อ Cargo.toml/Cargo.lock เปลี่ยน
+# Step 1: copy only manifests and build a stub main.rs
+# Docker layer-caches this — only invalidated when Cargo.toml/Cargo.lock changes
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release --locked
 
-# ขั้นตอน 2: copy source จริง — layer นี้ invalidate ทุกครั้งที่ code เปลี่ยน
-# แต่การ compile dependency ถูก cache ไว้แล้ว
+# Step 2: copy real source — this layer is invalidated on every code change
+# but dependency compilation is already cached
 COPY src ./src
 RUN touch src/main.rs && cargo build --release --locked
 ```
@@ -142,7 +142,7 @@ Rust workflow ใช้ `dtolnay/rust-toolchain` (action ทางการ) แ
 
 > เหล่านี้คือ Dockerfile และ YAML configuration ไม่มี browser Playground สำหรับ Docker build — ใช้ไฟล์เหล่านี้ใน project ของคุณและ push ไปยัง GitHub เพื่อ trigger Actions workflow
 
-<RsOnly title="distroless vs scratch vs Alpine">
+<RsOnly title="distroless vs scratch vs Alpine — เลือกใช้ตัวไหน">
 
 สามตัวเลือกทั่วไปสำหรับ Rust final image:
 

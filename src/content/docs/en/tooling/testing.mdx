@@ -69,6 +69,7 @@ cargo test -- --test-threads=1  # run tests sequentially (no parallelism)
 ## Common assertion macros
 
 ```rust
+// @skip-verify nocode: placeholder identifiers (left/right/condition), illustrating macro signatures
 assert_eq!(left, right);         // expect(a).toBe(b)
 assert_ne!(left, right);         // expect(a).not.toBe(b)
 assert!(condition);              // expect(condition).toBeTruthy()
@@ -78,6 +79,10 @@ assert!(condition, "message {}",  42);  // with a custom failure message
 ## Expecting a panic (like Jest's toThrow)
 
 ```rust
+fn divide(a: i32, b: i32) -> i32 {
+    a / b
+}
+
 #[test]
 #[should_panic(expected = "divide by zero")]
 fn test_divide_by_zero() {
@@ -94,10 +99,8 @@ Rust can run code examples written in `///` doc comments. They serve as both doc
 ///
 /// # Examples
 ///
-/// ```
-/// let result = my_crate::add(2, 3);
-/// assert_eq!(result, 5);
-/// ```
+///     let result = my_crate::add(2, 3);
+///     assert_eq!(result, 5);
 pub fn add(a: i32, b: i32) -> i32 {
     a + b
 }
@@ -135,6 +138,7 @@ Integration tests live in a top-level `tests/` directory (not inside `src/`). Ea
 <Mermaid code={integrationTestTree} title="Integration test layout" />
 
 ```rust
+// @skip-verify multi-file: separate tests/ crate importing the library crate `my_lib`
 // tests/integration_test.rs
 use my_lib::add;
 

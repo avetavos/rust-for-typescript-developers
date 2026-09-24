@@ -77,6 +77,7 @@ async fn create_user(
 Serde supports the same field-level transformations you get from TypeScript's class-transformer or zod `.transform()`:
 
 ```rust
+// @skip-verify crate: serde
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -98,7 +99,8 @@ struct User {
 
 The snippet below runs entirely in the browser. It does **not** use Axum (no server needed) — just `serde` and `serde_json`, which are available on the Rust Playground.
 
-export const serdeCode = `use serde::{Serialize, Deserialize};
+export const serdeCode = `// @skip-verify crate: serde, serde_json (verified on play.rust-lang.org, not vendored locally)
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct User {

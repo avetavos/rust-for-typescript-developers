@@ -42,9 +42,9 @@ scp target/release/my-app user@server:/usr/local/bin/`;
 ## Debug vs release build
 
 ```bash
-cargo build          # debug build: compile เร็ว, ไม่ optimise, มี debug info
-cargo build --release  # release build: compile ช้า, optimise เต็มที่ (LLVM -O3)
-cargo run --release    # compile ใน release mode และรัน
+cargo build          # debug build: fast compile, unoptimised, includes debug info
+cargo build --release  # release build: slow compile, fully optimised (LLVM -O3)
+cargo run --release    # compile in release mode and run
 ```
 
 Debug build ใช้ระหว่าง development — compile ใน second Release build อาจใช้เวลาหลายนาทีสำหรับ project ใหญ่แต่สร้าง binary ที่เร็วกว่าที่ runtime บ่อยถึง 10–100 เท่า
@@ -54,12 +54,12 @@ Debug build ใช้ระหว่าง development — compile ใน second
 Rust รองรับ cross-compilation โดยตรง **target triple** ระบุ OS + architecture + ABI combination
 
 ```bash
-# เพิ่ม cross-compilation target
-rustup target add x86_64-unknown-linux-musl   # Linux, static link (musl libc)
+# Add a cross-compilation target
+rustup target add x86_64-unknown-linux-musl   # Linux, statically linked (musl libc)
 rustup target add aarch64-unknown-linux-gnu    # Linux, ARM64 (Raspberry Pi, AWS Graviton)
-rustup target add x86_64-pc-windows-gnu       # Windows จาก macOS/Linux
+rustup target add x86_64-pc-windows-gnu       # Windows from macOS/Linux
 
-# Compile สำหรับ target อื่น
+# Compile for a different target
 cargo build --release --target x86_64-unknown-linux-musl
 # → target/x86_64-unknown-linux-musl/release/my-app
 ```
@@ -69,14 +69,14 @@ cargo build --release --target x86_64-unknown-linux-musl
 target `x86_64-unknown-linux-musl` link กับ **musl libc** แทน glibc สร้าง static binary เต็มรูปแบบที่รันบน Linux distribution ใดก็ได้ — รวมถึง Alpine Linux container — โดยไม่มี shared library dependency
 
 ```bash
-# Setup ครั้งเดียว
+# One-time setup
 rustup target add x86_64-unknown-linux-musl
 
-# บน macOS ต้องมี cross-linker; ง่ายสุดผ่าน cargo-zigbuild:
+# On macOS you need a cross-linker; easiest via cargo-zigbuild:
 cargo install cargo-zigbuild
 cargo zigbuild --release --target x86_64-unknown-linux-musl
 
-# ตรวจสอบ: binary ไม่มี dynamic dependency
+# Verify: the binary has no dynamic dependencies
 ldd target/x86_64-unknown-linux-musl/release/my-app
 # → not a dynamic executable
 ```
@@ -85,11 +85,11 @@ ldd target/x86_64-unknown-linux-musl/release/my-app
 
 ```toml
 [profile.release]
-opt-level = 3        # LLVM optimisation สูงสุด (default)
-lto = true           # link-time optimisation: binary เล็กและเร็วกว่า
-codegen-units = 1    # codegen unit เดียว: compile ช้ากว่า แต่ optimise ดีกว่า
-strip = true         # ตัด debug symbol ออกจาก binary
-panic = "abort"      # abort เมื่อ panic แทน unwind (binary เล็กกว่า)
+opt-level = 3        # maximum LLVM optimisation (default)
+lto = true           # link-time optimisation: smaller + faster binary
+codegen-units = 1    # single codegen unit: slower compile, better optimisation
+strip = true         # strip debug symbols from the binary
+panic = "abort"      # abort on panic instead of unwinding (smaller binary)
 ```
 
 > เหล่านี้คือ `bash`/`toml` configuration ไม่มี browser Playground สำหรับ cross-compilation — รัน command เหล่านี้ใน terminal หลังติดตั้ง Rust ผ่าน [rustup.rs](https://rustup.rs)

@@ -94,7 +94,7 @@ fn main() {
 
 borrow checker ของ Rust บังคับว่าคุณจะมี mutable reference หนึ่งตัว หรือ immutable reference หลายตัวก็ได้ — แต่ห้ามมีพร้อมกัน ส่วน `RefCell<T>` ย้ายการตรวจนี้ไปไว้ที่ **runtime**: เรียก `.borrow()` เมื่อต้องการ shared access และ `.borrow_mut()` เมื่อต้องการ exclusive access ถ้าละเมิดกฎตอน runtime จะเกิด panic แทนที่จะโดนปฏิเสธตั้งแต่ compile
 
-```
+```rust
 use std::cell::RefCell;
 
 let data = RefCell::new(vec![1, 2, 3]);

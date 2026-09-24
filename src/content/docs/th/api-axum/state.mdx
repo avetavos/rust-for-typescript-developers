@@ -112,6 +112,7 @@ async fn list_users(
 `Arc<T>` คือ atomically reference-counted smart pointer Axum handlers ทำงานพร้อมกันบน Tokio tasks หลายตัว หากไม่มี `Arc` การส่ง `AppState` ไปยัง handlers หลายตัวจะต้องทำสำเนา ด้วย `Arc` handlers ทั้งหมดถือ reference ไปยัง allocation เดียวกัน — ไม่มีสำเนา ไม่มี locks สำหรับข้อมูล read-only
 
 ```rust
+// @skip-verify crate: sqlx (fragment; AppConfig is a placeholder type)
 // AppState must implement Clone so Axum can clone the Arc per handler
 #[derive(Clone)]
 struct AppState {
@@ -123,6 +124,8 @@ struct AppState {
 ถ้า state ของคุณมีข้อมูลที่ mutable (เช่น in-memory cache) ให้ wrap เฉพาะส่วนที่ mutable:
 
 ```rust
+// @skip-verify crate: sqlx (fragment)
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
@@ -132,7 +135,7 @@ struct AppState {
 }
 ```
 
-<RsOnly title="Arc vs Mutex vs RwLock">
+<RsOnly title="Arc vs Mutex vs RwLock — เลือกใช้ตัวไหน">
 
 - `Arc<T>` — shared ownership, immutable access ใช้สำหรับ state ที่ read-only เช่น config หรือ DB pool
 - `Arc<Mutex<T>>` — shared ownership, exclusive (write) access ทีละ task เดียวถือ lock ใช้สำหรับการ write ที่เกิดขึ้นน้อย

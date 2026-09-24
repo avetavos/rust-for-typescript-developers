@@ -33,12 +33,13 @@ Lifetime annotation ไม่ได้เปลี่ยนระยะเวล
 TypeScript ไม่มี dangling reference เลย — GC จะไม่ยอมคืน underlying data ตราบใดที่ยังมี reference ชี้อยู่ ส่วน Rust คืน data ทันทีที่ owner หลุด scope ถ้าไม่มี lifetime ก็เป็นไปได้ที่จะ return reference ไปยัง data ที่ถูกคืนไปแล้ว:
 
 ```rust
-// โค้ดนี้ compile ไม่ได้ — และนั่นคือจุดประสงค์
+// @expect-error E0106
+// This does NOT compile — and that is the point.
 fn dangle() -> &String {
     let s = String::from("hello");
     &s  // error[E0106]: missing lifetime specifier
-        // แม้ระบุ lifetime แล้ว ก็ยังล้มเหลว:
-        // s ถูก drop เมื่อ function จบ — reference จะ dangle!
+        // But even with a lifetime, this would fail:
+        // s is dropped at the end of this function — the reference would dangle!
 }
 // error[E0515]: cannot return reference to local variable `s`
 //  --> src/main.rs:3:5

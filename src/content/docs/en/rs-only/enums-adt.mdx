@@ -68,6 +68,7 @@ fn main() {
 Rust's `match` is **exhaustive**: you must handle every variant, or the code will not compile.
 
 ```rust
+// @expect-error E0004
 enum Direction { North, South, East, West }
 
 fn describe(d: Direction) -> &'static str {
@@ -78,7 +79,7 @@ fn describe(d: Direction) -> &'static str {
         // Direction::West is missing!
     }
 }
-// error[E0004]: non-exhaustive patterns: `West` not covered
+// error[E0004]: non-exhaustive patterns: `Direction::West` not covered
 //  --> src/main.rs:4:11
 ```
 
@@ -87,10 +88,13 @@ This means: when you add a new enum variant, the compiler tells you every place 
 You can use `_` as a catch-all if you intentionally want to ignore remaining variants:
 
 ```rust
+enum Direction { North, South, East, West }
+let d = Direction::West;
+
 match d {
     Direction::North => "north",
     _ => "not north",
-}
+};
 ```
 
 </RsOnly>

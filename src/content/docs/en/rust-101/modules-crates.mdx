@@ -15,7 +15,8 @@ TypeScript uses ESM `import`/`export` for code organisation and `npm` (or simila
 
 A module groups related items. Use `pub` to make items visible outside the module — the default is private.
 
-```
+```rust
+// @skip-verify multi-file: two files (src/math.rs then src/main.rs) shown together
 // src/math.rs  (a module file)
 pub fn add(a: i32, b: i32) -> i32 { a + b }
 fn helper() { }  // private — not accessible outside

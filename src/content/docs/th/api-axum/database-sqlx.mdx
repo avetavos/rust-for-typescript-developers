@@ -99,6 +99,7 @@ async fn find_user(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<User>> {
 ## Insert และ delete
 
 ```rust
+// @skip-verify crate: sqlx (query! macros need a live DATABASE_URL at compile time)
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -135,6 +136,7 @@ async fn delete_user(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
 ## เชื่อม pool เข้ากับ Axum State
 
 ```rust
+// @skip-verify crate: sqlx, axum
 use axum::{extract::State, routing::get, Json, Router};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -163,7 +165,7 @@ async fn main() {
 }
 ```
 
-<RsOnly title="Compile-time query verification">
+<RsOnly title="การตรวจสอบ query ตั้งแต่ compile time">
 
 `sqlx::query_as!` และ `sqlx::query!` ใช้ procedural macro system ของ Rust เชื่อมต่อกับ database ของคุณ **ที่ compile time** (โดยใช้ environment variable `DATABASE_URL`) และตรวจสอบ:
 

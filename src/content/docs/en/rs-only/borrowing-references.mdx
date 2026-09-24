@@ -93,6 +93,7 @@ TypeScript has none of these protections. A JS array can be mutated by any code 
 This is the most common error new Rust developers encounter. The code below tries to hold a shared reference and a mutable reference at the same time:
 
 ```rust
+// @expect-error E0502
 fn main() {
     let mut s = String::from("hello");
 

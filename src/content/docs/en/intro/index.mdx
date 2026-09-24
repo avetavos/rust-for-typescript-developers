@@ -117,7 +117,7 @@ fn main() {
 
 TypeScript has `null`, `undefined`, optional chaining (`?.`), and the non-null assertion (`!`). Rust has none of these. Instead, the absence of a value is represented by the `Option<T>` enum:
 
-```
+```rust
 let name: Option<&str> = Some("Alice");
 let missing: Option<&str> = None;
 ```

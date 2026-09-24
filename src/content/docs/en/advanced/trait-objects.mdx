@@ -82,7 +82,8 @@ fn main() {
 
 When you need to store trait objects in a collection (like a `Vec`) or return them from a function, you must box them. `Box<dyn Trait>` is a fat pointer: it holds the address of the data on the heap and a pointer to the vtable.
 
-```
+```rust
+// @skip-verify fragment: builds on the Animal/Dog/Cat example above (dynRs), not standalone
 // Returning a trait object from a function
 fn new_animal(kind: &str) -> Box<dyn Animal> {
     match kind {
@@ -94,14 +95,16 @@ fn new_animal(kind: &str) -> Box<dyn Animal> {
 
 This is the Rust equivalent of returning an interface type from a TypeScript factory function.
 
-## Object-safety rules
+## Dyn-compatibility rules
 
-Not every trait can be made into a trait object. A trait is **object-safe** if:
+Not every trait can be made into a trait object. A trait is **dyn compatible** if:
 
 1. It has no generic methods (generics would require monomorphisation, breaking the vtable).
 2. Its methods do not return `Self` by value.
 
-The standard library's `Clone` trait is **not** object-safe because `clone()` returns `Self`. `Display` and `Debug` are object-safe.
+The standard library's `Clone` trait is **not** dyn compatible because `clone()` returns `Self`. `Display` and `Debug` are dyn compatible.
+
+> Older Rust material calls this **object safety** / **object-safe** — the compiler's own diagnostic (rustc 1.96) now reads `error[E0038]: the trait '...' is not dyn compatible`.
 
 <RsOnly title="Static vs dynamic dispatch — choosing the right tool">
 
@@ -182,12 +185,12 @@ export const quizDyn = [
       "Always, because dynamic dispatch is more idiomatic",
       "When all types are known at compile time",
       "When you need a collection of mixed concrete types or the type is determined at runtime",
-      "Only when the trait is not object-safe"
+      "Only when the trait is not dyn compatible"
     ],
     answer: 2
   },
   {
-    q: "Which of the following standard-library traits is NOT object-safe?",
+    q: "Which of the following standard-library traits is NOT dyn compatible?",
     options: [
       "Display",
       "Debug",
